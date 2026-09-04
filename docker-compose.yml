@@ -7,7 +7,11 @@
 # ==============================================================
 services:
   app:
-    build: .
+    build:
+      context: .
+      # يُخبَز في الحزمة وقت البناء — انظر التعليق في Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?ضع العنوان العام للموقع}
     image: plate-auction:staging
     restart: unless-stopped
 

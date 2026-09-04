@@ -24,6 +24,24 @@ FROM node:20-alpine AS build
 RUN corepack enable
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# --------------------------------------------------------------
+#  ⚠ العنوان العام يُخبَز في الحزمة وقت البناء لا يُقرأ وقت التشغيل.
+#
+#  كل `NEXT_PUBLIC_*` يستبدله Next بقيمته النصّية أثناء الترجمة — في حزمة
+#  الخادم أيضًا لا العميل وحده. فتصير `appUrl()` ثابتًا:
+#
+#      function appUrl(){ return "https://your-domain".replace(/\/$/,"") }
+#
+#  ولو مُرِّر المتغيّر وقت التشغيل فقط لخُبز الافتراضي `http://localhost:3000`،
+#  فتُرسَل بوابة الدفع المشتريَ إلى `localhost` بعد سداده، ويُطلب الويبهوك من
+#  عنوانٍ لا يصله أحد — بلا خطأ في أي سجلّ.
+#
+#  في Coolify: علّم المتغيّر **Build Variable**، وإلّا لم يصل إلى هنا.
+# --------------------------------------------------------------
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # `next build` يُجري فحص الأنواع والتدقيق أيضًا — فلا تُبنى صورةٌ من كود مكسور

@@ -6,6 +6,16 @@
   // يبني في `.next`، اجتمع مجلّدا أنواع متضاربان في ملف واحد فسقط البناء.
   // هنا نُضمّن أنواع `.next-e2e` وحدها ونستثني `.next`.
   "extends": "./tsconfig.json",
-  "include": ["**/*.ts", "**/*.tsx", ".next-e2e/types/**/*.ts", "next-env.d.ts"],
-  "exclude": ["node_modules", "tests/e2e", ".next"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next-e2e/types/**/*.ts",
+    "next-env.d.ts",
+    ".next-probe/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/e2e",
+    ".next"
+  ]
 }
