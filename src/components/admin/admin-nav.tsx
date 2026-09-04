@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   Banknote,
   CreditCard,
@@ -15,8 +16,16 @@ import {
   ScrollText,
   Settings,
   ShieldAlert,
+  Menu,
   Users,
 } from 'lucide-react'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
 /** ما يحتاج تصرّفًا الآن — تُحسب في الخادم وتُمرَّر إلى الشارات. */
@@ -81,55 +90,89 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
 ]
 
+/**
+ * أقسام الإدارة — عمودٌ ثابت على الواسع، ودُرجٌ جانبيّ على الجوال.
+ *
+ * كان شريطًا أفقيًّا يُمرَّر: أربعة عشر رابطًا في شاشة ٣٧٥، أكثرها خلف الحافّة،
+ * وعناوين العناقيد تمرّ في الصفّ نفسه فلا تفصل شيئًا. ولوحة الإدارة تُفتح على
+ * قسمٍ بعينه لا تُتصفَّح، فالوصول إلى قسمٍ مخبوء كان تمريرًا وتخمينًا.
+ *
+ * والدُرج يُظهرها كلّها مرّة واحدة بعناوينها، ولا يأخذ من الشاشة شيئًا وهو
+ * مغلق — والزرّ يحمل مجموع ما ينتظر تصرّفًا فلا يُفتح ليُسأل عنه.
+ */
 export function AdminNav({ badges = {} }: { badges?: AdminNavBadges }) {
-  const pathname = usePathname()
+  return (
+    <nav aria-label="أقسام الإدارة" className="hidden lg:sticky lg:top-20 lg:block lg:min-w-0">
+      <NavGroups badges={badges} />
+    </nav>
+  )
+}
 
+/** زرّ الدُرج — يسكن ترويسة اللوحة ويختفي فوق `lg`. */
+export function AdminNavDrawer({ badges = {} }: { badges?: AdminNavBadges }) {
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+
+  // بلا هذا يبقى الدُرج مفتوحًا فوق الصفحة الجديدة بعد الانتقال
+  useEffect(() => setOpen(false), [pathname])
+
+  const waiting = Object.values(badges).reduce<number>((sum, n) => sum + (n ?? 0), 0)
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        aria-label="أقسام الإدارة"
+        className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+      >
+        <Menu className="size-5" />
+        {waiting > 0 && (
+          /* نقطةٌ لا رقم: الرقم على زرٍّ بحجم الإبهام يُقرأ لطخة */
+          <span
+            aria-label={`${waiting} تحتاج تصرّفًا`}
+            className="absolute end-1.5 top-1.5 size-2 rounded-full bg-danger ring-2 ring-[#0e1420]"
+          />
+        )}
+      </SheetTrigger>
+
+      <SheetContent side="start" className="w-[17rem]">
+        <SheetTitle>أقسام الإدارة</SheetTitle>
+        <NavGroups badges={badges} inDrawer />
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/** العناقيد نفسها في الموضعين — نصٌّ واحد لا نسختان يقرؤهما قارئ الشاشة. */
+function NavGroups({ badges, inDrawer = false }: { badges: AdminNavBadges; inDrawer?: boolean }) {
+  const pathname = usePathname()
   const isActive = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
 
-  // التمرير على `nav` لا على `ul`: عنصر الشبكة عرضه تلقائي فيتمدّد بعرض محتواه
-  // ما لم يكن هو نفسه حاوية التمرير — وإلا تجاوزت الصفحة كلّها أفقيًا
   return (
-    <nav
-      aria-label="أقسام الإدارة"
-      className="scrollbar-none edge-fade-start -mx-4 min-w-0 overflow-x-auto px-4 pb-1 lg:sticky lg:top-20 lg:mx-0 lg:overflow-visible lg:mask-none lg:px-0 lg:pb-0"
-    >
-      {/*
-        * بنية واحدة لشاشتين.
-        *
-        * كان الجوال شريطًا مسطّحًا: أحد عشر رابطًا متتابعًا بلا فاصل تُقرأ
-        * بالتمرير والتخمين — أين ينتهي التشغيل ويبدأ المال؟ والعنوان الصغير
-        * قبل كل عنقود يعيد التصنيف الذي تراه الشاشة العريضة بكلفة بضعة
-        * بكسلات لا صفٍّ كامل.
-        *
-        * ونصُّ العنوان يُكتب **مرّة واحدة** ينتقل موضعه بالتنسيق: صفًّا على
-        * الواسع وسطرًا جانبيًّا على الضيّق. ونسختان منه في الشجرة تعنيان
-        * عنوانًا يقرؤه قارئ الشاشة مرّتين.
-        */}
-      <div className="flex items-center gap-1 lg:block lg:space-y-4">
-        {GROUPS.map((group, index) => (
-          <div key={group.title ?? index} className="flex shrink-0 items-center gap-1 lg:block">
-            {group.title && (
-              <p className="flex shrink-0 items-center gap-1.5 ps-1 pe-0.5 text-[10px] font-bold tracking-wide text-muted/70 lg:mb-1.5 lg:block lg:px-3 lg:text-[11px] lg:uppercase">
-                {index > 0 && <span aria-hidden className="h-5 w-px bg-ink-600 lg:hidden" />}
-                {group.title}
-              </p>
-            )}
-            <ul className="flex gap-1 lg:block lg:space-y-1">
-              {group.links.map((link) => (
-                <li key={link.href} className="shrink-0">
-                  <NavItem
-                    link={link}
-                    active={isActive(link.href)}
-                    count={countOf(link, badges)}
-                  />
+    <div className="space-y-4">
+      {GROUPS.map((group, index) => (
+        <div key={group.title ?? index}>
+          {group.title && (
+            <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wide text-muted/70">
+              {group.title}
+            </p>
+          )}
+          <ul className="space-y-1">
+            {group.links.map((link) => {
+              const item = (
+                <NavItem link={link} active={isActive(link.href)} count={countOf(link, badges)} />
+              )
+              return (
+                <li key={link.href}>
+                  {/* داخل الدُرج: النقر يُغلقه ولو كان الرابط لنفس الصفحة */}
+                  {inDrawer ? <SheetClose asChild>{item}</SheetClose> : item}
                 </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </nav>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -150,14 +193,14 @@ function NavItem({
       href={link.href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition-colors lg:w-full',
+        'group flex w-full items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
         active
           ? 'bg-ink-800 text-paper shadow-sm ring-1 ring-ink-600'
           : 'text-muted hover:bg-ink-800/70 hover:text-paper',
       )}
     >
       <link.icon className="size-4 shrink-0" />
-      <span className="lg:min-w-0 lg:flex-1">{link.label}</span>
+      <span className="min-w-0 flex-1">{link.label}</span>
       {count > 0 && (
         /* الشارة تقول «هنا عمل ينتظرك» — وإلا وجب فتح كل قسم للتأكّد */
         <span

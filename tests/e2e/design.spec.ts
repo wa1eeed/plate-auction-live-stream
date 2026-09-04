@@ -381,6 +381,39 @@ test.describe('الجوال عند 360px', () => {
     expect(r, red).toBeGreaterThan(b + 60)
   })
 
+  /*
+   * أقسام الإدارة دُرجٌ جانبيّ لا شريطٌ يُمرَّر.
+   *
+   * كانت أربعة عشر رابطًا في صفٍّ أفقيّ داخل شاشة ٣٧٥، أكثرها خلف الحافّة،
+   * وعناوين العناقيد تمرّ في الصفّ نفسه فلا تفصل شيئًا. ولوحة الإدارة تُفتح
+   * على قسمٍ بعينه لا تُتصفَّح، فالوصول إلى قسمٍ مخبوء كان تمريرًا وتخمينًا.
+   */
+  test('أقسام الإدارة دُرجٌ جانبيّ يُظهرها كلّها', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginAdmin(page)
+    await page.goto('/admin/orders')
+
+    // العمود الجانبي غائب، ولا شريط يُمرَّر مكانه
+    await expect(page.locator('nav[aria-label="أقسام الإدارة"]')).toBeHidden()
+
+    const trigger = page.getByRole('button', { name: 'أقسام الإدارة' })
+    await expect(trigger).toBeVisible()
+    await trigger.click()
+
+    const drawer = page.getByRole('dialog')
+    await expect(drawer).toBeVisible()
+    // كلّها حاضرة دفعةً واحدة، بعناوين عناقيدها
+    await expect(drawer.getByRole('link')).toHaveCount(13)
+    for (const group of ['التشغيل', 'المال', 'المحاسبة', 'النظام']) {
+      await expect(drawer, `عنقود ${group} غائب عن الدُرج`).toContainText(group)
+    }
+
+    // والنقر ينقل ويُغلق — لا يبقى الدُرج فوق الصفحة الجديدة
+    await drawer.getByRole('link', { name: /الإعدادات/ }).click()
+    await expect(page).toHaveURL(/\/admin\/settings/)
+    await expect(page.getByRole('dialog')).toBeHidden()
+  })
+
   test('كشف الحساب يُقرأ كاملًا على الجوال', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 900 })
     await loginUser(page, USERS.majed)
@@ -583,24 +616,39 @@ test.describe('تصفّح السوق على دفعات', () => {
   })
 })
 
-test('شعار اللوحة يُرسم ولو كان أوّل تعريف لقناعه في صفٍّ مخفيّ', async ({ page }) => {
+test('شعار اللوحة يُرسم في كل محرّك ولو خُفي أوّل تعريف له', async ({ page }) => {
   /*
-   * كان قناع الشعار مشتركًا بين كل اللوحات. وفي جدولٍ يُخفي صفوفه
-   * بـ`display:none` يقع أوّل تعريف في صفٍّ مخفيّ، فلا يحلّه المتصفّح وتُطلى
-   * اللوحات الظاهرة **سوداء**. ولكل لوحة قناعها الآن.
+   * مربّعٌ أسود خلف النخلة والسيفين — وقع مرّتين بسببين مختلفين.
+   *
+   * الأولى: قناعٌ مشترك بين كل اللوحات، فيقع أوّل تعريف له في صفٍّ مخفيّ
+   * بـ`display:none` فلا يحلّه المتصفّح. ولكل لوحة تعريفها الآن.
+   *
+   * والثانية: عكسُ الصورة داخل القناع بـ`filter: invert(1)` — وهو مرشِّح
+   * **CSS** على عنصر SVG، لا يطبّقه WebKit. فيبقى القناع بصورته الأصلية،
+   * والأبيض فيه يعني «ظاهر»: فيُطلى المربّع كلّه ويُقتطع منه الشعار. ورُصد
+   * حيًّا على iOS في كل صفحة فيها لوحة.
+   *
+   * فصار الرسم بأوّليّات SVG وحدها. والاختبار يحرس الشرطين معًا — ولا يكفي
+   * فيه محرّك واحد يمرّ، فالعيب الثاني لا يظهر في Chromium أصلًا.
    */
   await loginAdmin(page)
   await page.goto('/admin/orders')
   const plate = page.locator('svg[data-plate-type]:visible').first()
   await expect(plate).toBeVisible()
 
-  // القناع الذي تشير إليه اللوحة الظاهرة معرَّفٌ داخلها هي
-  const resolves = await plate.evaluate((svg) => {
-    const masked = svg.querySelector('[mask^="url(#"]')
-    if (!masked) return true
+  const audit = await plate.evaluate((svg) => {
+    // ما يشير إليه الشعار — قناعًا كان أو مرشِّحًا — معرَّفٌ داخل لوحته هو
+    const painted = svg.querySelector('[mask^="url(#"], [filter^="url(#"]')
+    const ref = painted?.getAttribute('mask') ?? painted?.getAttribute('filter') ?? null
     // `url(#` خمسة أحرف لا ستّة
-    const id = masked.getAttribute('mask')!.slice(5, -1)
-    return svg.querySelector(`mask[id="${id}"]`) !== null
+    const id = ref ? ref.slice(5, -1) : null
+    return {
+      resolves: !id || svg.querySelector(`[id="${id}"]`) !== null,
+      // ولا مرشِّح CSS على أي عنصر داخل اللوحة — WebKit يتجاهله بلا خطأ
+      cssFilters: [...svg.querySelectorAll('[style*="filter"]')].length,
+    }
   })
-  expect(resolves, 'قناع الشعار يشير إلى تعريف خارج لوحته').toBe(true)
+
+  expect(audit.resolves, 'الشعار يشير إلى تعريف خارج لوحته').toBe(true)
+  expect(audit.cssFilters, 'مرشِّح CSS داخل SVG — يسقط صامتًا في WebKit').toBe(0)
 })

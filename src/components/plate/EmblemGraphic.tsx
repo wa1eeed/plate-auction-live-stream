@@ -6,10 +6,10 @@ import { EMBLEM_ART, isImageArt, STRIP_SYMBOL, type EmblemArt } from './emblem-a
  * عدّاد متزايد كان يُنتج معرّفات مختلفة بين الخادم والعميل فيقع عدم تطابق في
  * الترطيب — والاشتقاق من المحتوى يمنع ذلك.
  *
- * وكان الاشتقاق من المحتوى وحده، فتتشارك كل اللوحات قناعًا واحدًا. وقيل
+ * وكان الاشتقاق من المحتوى وحده، فتتشارك كل اللوحات تعريفًا واحدًا. وقيل
  * «بلا ضرر» — والضرر ظهر: في جدولٍ يُخفي صفوفه بـ`display:none` يقع **أوّل**
- * تعريف للقناع في صفٍّ مخفيّ، فلا يحلّه المتصفّح وتُطلى اللوحات الظاهرة
- * سوداء. فصار لكل لوحة قناعها.
+ * تعريف في صفٍّ مخفيّ، فلا يحلّه المتصفّح وتُطلى اللوحات الظاهرة سوداء. فصار
+ * لكل لوحة تعريفها.
  */
 function stableId(parts: (string | number)[]): string {
   const source = parts.join('|')
@@ -49,24 +49,56 @@ export function EmblemShapes({
     const imgX = box / 2 - imgWidth * (content.x + content.width / 2)
     const imgY = -content.y * imgHeight
 
-    // الصورة سوداء على أبيض: نعكسها لتصير قناعًا (الرسم أبيض = ظاهر،
-    // الخلفية سوداء = مخفيّة)، ثم نملأ القناع باللون المطلوب.
+    /*
+     * الصورة سوداء على أبيض، فتُقلَب إضاءتها إلى شفافية بمرشِّح SVG.
+     *
+     * وكان قناعًا يُعكَس محتواه بـ`filter: invert(1)` — وهو مرشِّح **CSS** على
+     * عنصر داخل `<mask>`، لا يطبّقه WebKit. فيبقى القناع بصورته الأصلية،
+     * والأبيض في القناع يعني «ظاهر»: فيُطلى مربّع الصورة كلّه ويُقتطع منه
+     * الشعار — مربّعٌ أسود خلف النخلة والسيفين في كل لوحة على iOS.
+     *
+     * وبدائل الحيلة كلّها هنا من أوّليّات SVG نفسها، مدعومةٌ منذ SVG 1.1:
+     *   `feColorMatrix` يجعل الألفا = ١ − الأحمر، فالأبيض يختفي والأسود يظهر
+     *   وما بينهما يتدرّج — فتبقى الحواف ناعمة بلا تسنّن.
+     *   ثمّ `feFlood` + `feComposite` يصبغان ما بقي باللون المطلوب، وهما
+     *   يقبلان أي صيغة لون فلا يحتاج التلوين تفكيك ستّ عشرة.
+     *
+     * وحدود المرشِّح تُضبَط على حدود الصورة بالضبط (`userSpaceOnUse`) لا على
+     * الافتراضي الذي يزيد ١٠٪ في كل جهة: خارج الصورة بكسلاتٌ شفّافة أحمرها
+     * صفر، فتُعطيها المعادلة ألفا = ١ — أي يعود المربّع الأسود من حيث فُرَّ
+     * منه، إطارًا حول الشعار هذه المرّة.
+     */
     return (
       <>
         <defs>
-          <mask id={id} maskUnits="userSpaceOnUse" x={imgX} y={imgY} width={imgWidth} height={imgHeight}>
-            <image
-              href={art.href}
-              x={imgX}
-              y={imgY}
-              width={imgWidth}
-              height={imgHeight}
-              preserveAspectRatio="none"
-              style={{ filter: 'invert(1)' }}
+          <filter
+            id={id}
+            filterUnits="userSpaceOnUse"
+            x={imgX}
+            y={imgY}
+            width={imgWidth}
+            height={imgHeight}
+            /* الافتراضي `linearRGB` يلوي تدرّج الألفا ويختلف بين المحرّكات */
+            colorInterpolationFilters="sRGB"
+          >
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1 0 0 0 1"
+              result="alpha"
             />
-          </mask>
+            <feFlood floodColor={tint} result="ink" />
+            <feComposite in="ink" in2="alpha" operator="in" />
+          </filter>
         </defs>
-        <rect x={imgX} y={imgY} width={imgWidth} height={imgHeight} fill={tint} mask={`url(#${id})`} />
+        <image
+          href={art.href}
+          x={imgX}
+          y={imgY}
+          width={imgWidth}
+          height={imgHeight}
+          preserveAspectRatio="none"
+          filter={`url(#${id})`}
+        />
       </>
     )
   }
