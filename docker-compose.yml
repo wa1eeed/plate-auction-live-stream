@@ -1,0 +1,47 @@
+# ==============================================================
+#  التشغيل على خادم خاص (VPS)
+#
+#  خدمةٌ واحدة بلا قاعدة بيانات وبلا volume — لا شيء يُخزَّن خارج الذاكرة.
+#  المنفذ مربوط بـ127.0.0.1 وحده: الوكيل العكسي هو الواجهة، والحاوية لا
+#  تُكشف للإنترنت مباشرةً.
+# ==============================================================
+services:
+  app:
+    build: .
+    image: plate-auction:staging
+    restart: unless-stopped
+
+    # ⚠ لا تزد النسخ أبدًا.
+    # الحالة والمقابس على `globalThis` في العملية، فنسختان تعنيان عالمين
+    # منفصلين: مزايدةٌ تصل إلى نصف المتصفّحين، ورصيدٌ يختلف باختلاف من ردّ.
+    deploy:
+      replicas: 1
+
+    ports:
+      - '127.0.0.1:3000:3000'
+
+    environment:
+      NODE_ENV: production
+      AUCTION_STORE: memory
+      # بيانات الديمو — أطفئها بـfalse حين تصير النسخة حقيقية
+      DEMO_MODE: ${DEMO_MODE:-true}
+      # شارة «بيئة تجريبية» — مُطفأة افتراضيًّا فلا تظهر في نسخ العملاء
+      APP_ENV: ${APP_ENV:-staging}
+      # إلزاميّ: `crypto.ts` يرمي استثناءً في الإنتاج إن لم يُضبط
+      SESSION_SECRET: ${SESSION_SECRET:?اضبطه في .env — openssl rand -base64 48}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?ضع العنوان العام للموقع}
+      TAP_TEST_SECRET_KEY: ${TAP_TEST_SECRET_KEY:-}
+      TAP_LIVE_SECRET_KEY: ${TAP_LIVE_SECRET_KEY:-}
+      PORT: '3000'
+      HOST: 0.0.0.0
+
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }

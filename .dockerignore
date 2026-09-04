@@ -1,0 +1,31 @@
+# ما لا يدخل سياق البناء — ولا الصورة
+node_modules
+.next
+.next-e2e
+.next-prod
+out
+.git
+.github
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# الاختبارات وأدواتها لا تُشحن
+tests
+playwright.config.ts
+vitest.config.ts
+tsconfig.e2e.json
+/test-results
+/playwright-report
+/blob-report
+
+# ملفّات المستودع لا الصورة
+docs
+CHANGELOG.md
+CONTRIBUTING.md
+README.md
+deploy
+Dockerfile
+docker-compose.yml

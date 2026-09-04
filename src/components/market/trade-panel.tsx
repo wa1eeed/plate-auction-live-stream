@@ -1,0 +1,418 @@
+'use client'
+
+import { useCallback, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import {
+  Check,
+  Clock3,
+  Crown,
+  HandCoins,
+  Loader2,
+  LogIn,
+  ShoppingCart,
+  TrendingUp,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input, Textarea } from '@/components/ui/input'
+import { quickBidSteps } from '@/lib/domain/auction'
+import { formatAmount, halalasToRiyals, parseAmountInput } from '@/lib/domain/money'
+import {
+  LISTING_STATUS_LABELS,
+  OFFER_STATUS_LABELS,
+  isClosedListing,
+  type ListingDetail,
+} from '@/lib/domain/types'
+import { cn, formatTimestamp } from '@/lib/utils'
+import { useSound } from '@/lib/hooks/use-sound'
+import { DepositNotice } from './deposit-notice'
+import { CommissionNotice } from './commission-notice'
+
+function randomRequestId() {
+  return `req_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+}
+
+/**
+ * لوحة التداول — تتبدّل حسب طريقة البيع:
+ * مزايدة، أو شراء مباشر، أو إرسال عرض. كل تحقق حقيقي يقع على الخادم؛
+ * ما هنا تعطيل مبكر للأزرار ورسائل أوضح.
+ */
+export function TradePanel({
+  detail,
+  isSignedIn,
+  onDone,
+}: {
+  detail: ListingDetail
+  isSignedIn: boolean
+  onDone: () => void | Promise<void>
+}) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [customAmount, setCustomAmount] = useState('')
+  const [offerAmount, setOfferAmount] = useState('')
+  const [offerMessage, setOfferMessage] = useState('')
+  const inFlight = useRef(false)
+  const { play } = useSound()
+
+  /**
+   * الشراء المباشر ينقل إلى صفحة السداد لا يُنهي الأمر بتنبيه.
+   *
+   * الطلب يُسجَّل أوّلًا (فتُحجز اللوحة ولا يسبقه غيره)، ثم يُراجع المشتري
+   * التفصيل ويختار وسيلته — فلا يجد نفسه مدينًا بمبلغ لم يره.
+   */
+  const buyNow = useCallback(async () => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setBusy(true)
+    try {
+      const response = await fetch(`/api/listings/${detail.id}/buy`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ clientRequestId: randomRequestId() }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        toast.error(data?.error?.message ?? 'تعذّر إتمام العملية')
+        return
+      }
+      router.push(`/checkout/${data.orderId}`)
+    } catch {
+      toast.error('تعذّر الاتصال بالخادم')
+    } finally {
+      inFlight.current = false
+      setBusy(false)
+    }
+  }, [detail.id, router])
+
+  const send = useCallback(
+    async (url: string, body: Record<string, unknown>, successMessage?: string) => {
+      if (inFlight.current) return false
+      inFlight.current = true
+      setBusy(true)
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          toast.error(data?.error?.message ?? 'تعذّر إتمام العملية')
+          return false
+        }
+        if (successMessage) toast.success(successMessage)
+        play('bid')
+        if (data.extended) toast.info(`تم تمديد المزاد ${data.addedSeconds} ثانية`)
+        await onDone()
+        router.refresh()
+        return true
+      } catch {
+        toast.error('تعذّر الاتصال بالخادم')
+        return false
+      } finally {
+        inFlight.current = false
+        setBusy(false)
+      }
+    },
+    [onDone, router, play],
+  )
+
+  if (detail.isMine) {
+    return (
+      <Panel title="هذا إعلانك">
+        <p className="text-sm text-muted">
+          تابع المزايدات والعروض وأدر الإعلان من صفحة لوحاتي.
+        </p>
+        <Button asChild variant="secondary" className="mt-3 w-full">
+          <Link href="/account/listings">إدارة لوحاتي</Link>
+        </Button>
+      </Panel>
+    )
+  }
+
+  if (isClosedListing(detail.status)) {
+    return (
+      <Panel title="التداول">
+        <p className="flex items-center justify-center gap-2 rounded-xl border border-ink-600 bg-ink-900/60 p-4 text-sm text-muted">
+          <Clock3 className="size-4" />
+          {detail.status === 'sold' && detail.soldToMe
+            ? 'رست عليك هذه اللوحة — تابعها من مشترياتي'
+            : LISTING_STATUS_LABELS[detail.status]}
+        </p>
+        {detail.soldToMe && (
+          <Button asChild className="mt-3 w-full">
+            <Link href="/account/purchases">مشترياتي</Link>
+          </Button>
+        )}
+      </Panel>
+    )
+  }
+
+  if (!isSignedIn) {
+    const cta =
+      detail.saleType === 'auction'
+        ? `سجّل وزايد بـ ${formatAmount(detail.nextBidAmount)} ريال`
+        : detail.saleType === 'fixed'
+          ? `سجّل واشترِ بـ ${formatAmount(detail.price)} ريال`
+          : 'سجّل وأرسل عرضك'
+    return (
+      <Panel title="التداول">
+        <Button asChild size="xl" className="w-full">
+          <Link href={`/login?next=/market/${detail.id}`}>
+            <LogIn className="size-5" />
+            {cta}
+          </Link>
+        </Button>
+        <p className="mt-2 text-center text-xs text-muted">
+          التصفّح مفتوح للجميع — الحساب مطلوب للتداول فقط.
+        </p>
+      </Panel>
+    )
+  }
+
+  // ------------------------------------------------------------- مزاد
+  if (detail.saleType === 'auction') {
+    const steps = quickBidSteps(detail.minimumIncrement, detail.nextBidAmount)
+    return (
+      <Panel title="المزايدة">
+        <DepositNotice detail={detail} />
+        <CommissionNotice detail={detail} />
+        <Button
+          size="xl"
+          className="w-full"
+          disabled={busy || detail.iAmHighest}
+          onClick={() =>
+            void send(
+              `/api/listings/${detail.id}/bids`,
+              {
+                amount: halalasToRiyals(detail.nextBidAmount),
+                isCustomAmount: false,
+                clientRequestId: randomRequestId(),
+              },
+              'سُجّلت مزايدتك',
+            )
+          }
+        >
+          {busy ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : detail.iAmHighest ? (
+            <Crown className="size-5" />
+          ) : (
+            <TrendingUp className="size-5" />
+          )}
+          {detail.iAmHighest ? 'أنت أعلى مزايد' : `زايد بـ ${formatAmount(detail.nextBidAmount)} ريال`}
+        </Button>
+
+        {detail.allowCustomBid && steps.length > 0 && (
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {steps.map((step) => (
+              <Button
+                key={step}
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() =>
+                  void send(`/api/listings/${detail.id}/bids`, {
+                    amount: halalasToRiyals(detail.nextBidAmount + step),
+                    isCustomAmount: true,
+                    clientRequestId: randomRequestId(),
+                  })
+                }
+              >
+                +{formatAmount(step)}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {detail.allowCustomBid && (
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const parsed = parseAmountInput(customAmount)
+              if (parsed === null) {
+                toast.error('أدخل مبلغًا صحيحًا')
+                return
+              }
+              void send(`/api/listings/${detail.id}/bids`, {
+                amount: halalasToRiyals(parsed),
+                isCustomAmount: true,
+                clientRequestId: randomRequestId(),
+              }).then((okResult) => {
+                if (okResult) setCustomAmount('')
+              })
+            }}
+          >
+            <Input
+              value={customAmount}
+              onChange={(event) => setCustomAmount(event.target.value)}
+              inputMode="numeric"
+              dir="ltr"
+              placeholder={`${formatAmount(detail.nextBidAmount)} أو أكثر`}
+              disabled={busy}
+              aria-label="مبلغ مخصص"
+            />
+            <Button type="submit" variant="outline" disabled={busy || !customAmount}>
+              زايد
+            </Button>
+          </form>
+        )}
+      </Panel>
+    )
+  }
+
+  // ------------------------------------------------------------- بيع مباشر
+  if (detail.saleType === 'fixed') {
+    return (
+      <Panel title="الشراء">
+        <CommissionNotice detail={detail} />
+        <Button
+          size="xl"
+          className="w-full"
+          disabled={busy}
+          onClick={() => void buyNow()}
+        >
+          {busy ? <Loader2 className="size-5 animate-spin" /> : <ShoppingCart className="size-5" />}
+          اشترِ الآن بـ {formatAmount(detail.price)} ريال
+        </Button>
+        <p className="mt-2 text-center text-xs leading-relaxed text-muted">
+          ننتقل بك إلى صفحة السداد لمراجعة التفاصيل واختيار وسيلة الدفع — لا يُخصم شيء قبل
+          تأكيدك.
+        </p>
+      </Panel>
+    )
+  }
+
+  // ------------------------------------------------------------- استقبال عروض
+  const pending = detail.myOffers.find((offer) => offer.status === 'pending')
+  return (
+    <Panel title="إرسال عرض" id="trade">
+      <CommissionNotice detail={detail} />
+      {pending ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-gold-600/50 bg-gold-500/10 p-4">
+            <p className="text-xs text-muted">عرضك الحالي</p>
+            <p className="mt-1 text-2xl font-extrabold text-gold-500 tabular-nums">
+              {formatAmount(pending.amount)} <span className="text-sm">ريال</span>
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {OFFER_STATUS_LABELS[pending.status]} · {formatTimestamp(pending.createdAt, detail.serverTime)}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              try {
+                const response = await fetch(`/api/offers/${pending.id}`, { method: 'DELETE' })
+                if (!response.ok) {
+                  const data = await response.json().catch(() => null)
+                  toast.error(data?.error?.message ?? 'تعذّر سحب العرض')
+                  return
+                }
+                toast.success('تم سحب عرضك')
+                await onDone()
+                router.refresh()
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            اسحب العرض
+          </Button>
+        </div>
+      ) : (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const parsed = parseAmountInput(offerAmount)
+            if (parsed === null) {
+              toast.error('أدخل مبلغًا صحيحًا')
+              return
+            }
+            void send(
+              `/api/listings/${detail.id}/offers`,
+              { amount: halalasToRiyals(parsed), message: offerMessage || undefined },
+              'أُرسل عرضك إلى البائع',
+            ).then((okResult) => {
+              if (okResult) {
+                setOfferAmount('')
+                setOfferMessage('')
+              }
+            })
+          }}
+        >
+          <Input
+            value={offerAmount}
+            onChange={(event) => setOfferAmount(event.target.value)}
+            inputMode="numeric"
+            dir="ltr"
+            placeholder={
+              detail.minimumOffer > 0
+                ? `${formatAmount(detail.minimumOffer)} أو أكثر`
+                : 'مبلغ عرضك بالريال'
+            }
+            disabled={busy}
+            aria-label="مبلغ العرض"
+          />
+          <Textarea
+            value={offerMessage}
+            onChange={(event) => setOfferMessage(event.target.value)}
+            rows={2}
+            placeholder="رسالة للبائع (اختياري)"
+            disabled={busy}
+            aria-label="رسالة للبائع"
+          />
+          <Button type="submit" size="lg" className="w-full" disabled={busy || !offerAmount}>
+            {busy ? <Loader2 className="size-5 animate-spin" /> : <HandCoins className="size-5" />}
+            أرسل العرض
+          </Button>
+        </form>
+      )}
+
+      {detail.myOffers.filter((offer) => offer.status !== 'pending').length > 0 && (
+        <ul className="mt-3 space-y-1.5 border-t border-ink-700 pt-3 text-xs text-muted">
+          {detail.myOffers
+            .filter((offer) => offer.status !== 'pending')
+            .map((offer) => (
+              <li key={offer.id} className="flex items-center justify-between gap-2">
+                <span className={cn(offer.status === 'accepted' && 'font-bold text-success')}>
+                  {offer.status === 'accepted' && <Check className="me-1 inline size-3" />}
+                  {OFFER_STATUS_LABELS[offer.status]}
+                </span>
+                <span className="tabular-nums">{formatAmount(offer.amount)} ريال</span>
+              </li>
+            ))}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
+function Panel({
+  title,
+  id,
+  children,
+}: {
+  title: string
+  /** مرساة يقفز إليها شريط الجوال */
+  id?: string
+  children: React.ReactNode
+}) {
+  return (
+    /*
+     * لا التصاق على الجوال: أسفل الشاشة مِلكُ الشريط الثابت (z-40) وهو أطول
+     * من هذه اللوحة، فكانت تُقصّ تحته ويُحجب بيان العربون طوال التمرير —
+     * ويهبط عليها رابط «أرسل عرضك» فلا يرى صاحبه ما قفز إليه.
+     */
+    <section id={id} className="scroll-mt-24 rounded-2xl border border-ink-600 bg-ink-800 p-4">
+      <h2 className="mb-3 text-sm font-bold">{title}</h2>
+      {children}
+    </section>
+  )
+}

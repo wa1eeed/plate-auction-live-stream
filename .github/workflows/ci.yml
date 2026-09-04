@@ -1,0 +1,65 @@
+name: البوّابة
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: فحص الأنواع
+        run: pnpm typecheck
+
+      - name: التدقيق
+        run: pnpm lint
+
+      - name: اختبارات الوحدة
+        run: pnpm test
+
+      # الاختبار الشامل يبني مبنى إنتاج ويشغّل server.mjs الحقيقي بمقبسه —
+      # فهو يغطّي مسار التشغيل الذي تشغّله الحاوية نفسه
+      - name: تثبيت متصفّح الاختبار
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: الاختبار الشامل
+        run: pnpm test:e2e
+        env:
+          SESSION_SECRET: ci-secret-not-a-real-one
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  image:
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # نبنيها ولا ندفعها: الغرض أن ينكسر البناء هنا لا على الخادم
+      - name: بناء صورة الإنتاج
+        run: docker build -t plate-auction:ci .

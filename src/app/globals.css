@@ -1,0 +1,675 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-950: #080b10;
+  --color-ink-900: #0b1017;
+  --color-ink-800: #111722;
+  --color-ink-700: #18202e;
+  --color-ink-600: #222c3d;
+  --color-ink-500: #33405a;
+  --color-paper: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-gold-500: #d6a84b;
+  --color-gold-400: #e6bf6d;
+  --color-gold-600: #b98b32;
+  /*
+   * أخضر عميق قريب من أخضر العلم السعودي (#006C35) بدل الأخضر الفاتح.
+   * يليق بمنصّة تعامل مالي، ويقارب ما تعتمده المنصّات الحكومية السعودية.
+   * النسخة الداكنة أفتح قليلًا من الحكومي ليبقى مقروءًا على خلفية داكنة.
+   */
+  --color-success: #128a4e;
+  --color-success-soft: #0b241a;
+  --color-danger: #e5484d;
+  --color-danger-soft: #2c1216;
+
+  --font-sans: var(--font-tajawal), 'IBM Plex Sans Arabic', system-ui, sans-serif;
+
+  --radius-xl2: 1.25rem;
+  --radius-xl3: 1.75rem;
+
+  --animate-pulse-ring: pulse-ring 1s ease-out infinite;
+  --animate-rise: rise 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-marquee: marquee 40s linear infinite;
+}
+
+/* ==========================================================================
+   رموز التصميم — طبقة واحدة تحكم الإحساس البصري للمنصّة كلّها
+   ========================================================================== */
+:root {
+  /*
+   * منحنيات الحركة.
+   * `spring` منحنى فيه تجاوز طفيف يعطي الإحساس النابض المميّز للواجهات
+   * المتقنة، و`smooth` للانتقالات الهادئة التي لا يجب أن تلفت النظر.
+   */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --duration-fast: 140ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+
+  /*
+   * سُلّم الارتفاع.
+   * الظلال في السمة الداكنة لا تُرى، فالارتفاع فيها يُبنى بالحدود والإضاءة
+   * الداخلية لا بالظلّ وحده — ولهذا لكل مستوى تعريفان.
+   */
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-overlay: 0 18px 48px -24px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --shadow-lifted: 0 28px 70px -32px rgb(0 0 0 / 0.8);
+  --shadow-gold: 0 12px 34px -16px color-mix(in oklab, var(--color-gold-500) 70%, transparent);
+
+  /* توهّج ذهبي خافت يستعمله البطل وحواف البطاقات المميّزة */
+  --glow-gold: radial-gradient(
+    60% 60% at 50% 0%,
+    color-mix(in oklab, var(--color-gold-500) 18%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+:root {
+  /* خط اللوحة: Arial للصفّين العربي واللاتيني، كما في اللوحة الحقيقية */
+  --font-plate-arabic: Arial, 'Arial Unicode MS', 'Helvetica Neue', sans-serif;
+  --font-plate-latin: Arial, 'Helvetica Neue', sans-serif;
+  color-scheme: dark;
+}
+
+@layer base {
+  /*
+   * وزنُ العناوين وسِعةُ الفقرات.
+   *
+   * `balance` يوزّع كلمات العنوان على سطوره فلا تبقى كلمة يتيمة في سطر —
+   * وهو أظهر ما يكون في العربية حيث تطول الكلمة. و`pretty` يمنع اليتيمة في
+   * الفقرات. وكلاهما تحسينٌ يتجاهله المتصفّح القديم بلا ضرر.
+   */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  * {
+    border-color: color-mix(in oklab, var(--color-ink-600) 70%, transparent);
+  }
+
+  html,
+  body {
+    background-color: var(--color-ink-950);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * ضبط التصفّح من الجوال.
+   *  - `text-size-adjust` يمنع سفاري من تكبير النصّ تلقائيًا عند تدوير الجهاز.
+   *  - `tap-highlight-color` يزيل المستطيل الأزرق الذي يومض فوق كل لمسة.
+   *  - `overscroll-behavior-y` يمنع سحب الصفحة لأسفل من تحديثها أثناء المزايدة.
+   */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* مساحة لمس لا تقلّ عن 44px للأزرار الصغيرة على الأجهزة اللمسية */
+  @media (pointer: coarse) {
+    button:not([data-compact]),
+    [role='button']:not([data-compact]),
+    a[class*='rounded'] {
+      min-height: 44px;
+    }
+
+    /*
+     * و`data-compact` استُثني من الارتفاع لأن شكله جزء من التخطيط (زرّ مسح
+     * داخل حقل، ونسخ بجانب آيبان) — لا لأن إصابته بالإبهام أسهل. فتُوسَّع
+     * **منطقته** وحدها: هدف 44px حول زرٍّ لا يكبر.
+     */
+    button[data-compact],
+    [role='button'][data-compact] {
+      position: relative;
+    }
+    button[data-compact]::before,
+    [role='button'][data-compact]::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+    }
+  }
+
+  /* الأرقام الغربية افتراضيًا في كل الواجهة لوضوح القراءة داخل البث */
+  body {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-gold-500) 40%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-ink-600);
+    border-radius: 999px;
+  }
+}
+
+/* شاشة البث في وضع Overlay: خلفية شفافة حقيقية لـ OBS / TikTok LIVE Studio */
+body[data-transparent='true'],
+html[data-transparent='true'] {
+  background: transparent !important;
+}
+
+@utility surface {
+  background-color: var(--color-ink-800);
+  border: 1px solid color-mix(in oklab, var(--color-ink-600) 80%, transparent);
+}
+
+@utility gold-text {
+  color: var(--color-gold-500);
+}
+
+@utility stage-shadow {
+  box-shadow:
+    0 24px 60px -20px rgb(0 0 0 / 0.85),
+    0 0 0 1px color-mix(in oklab, var(--color-gold-500) 18%, transparent);
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-danger) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 18px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes plate-shimmer-sweep {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.plate-shimmer {
+  animation: plate-shimmer-sweep 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  opacity: 0.55;
+}
+
+
+/*
+ * احترام تفضيل تقليل الحركة على مستوى المنصّة كلّها لا على رسمين فقط:
+ * من يفعّله يعاني عادة من دوار الحركة، والحركات الزخرفية تؤذيه فعلًا.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   السمة الفاتحة — واجهة تصفّح المزادات وشاشة البث بوضع ?theme=light
+   تُعاد تعريف رموز الألوان على الشجرة الفرعية فتتبعها جميع أدوات Tailwind
+   دون الحاجة لتعديل أي مكوّن.
+   ========================================================================== */
+[data-theme='light'],
+[data-stage-theme='light'] {
+  --color-ink-950: #f4f6fa; /* خلفية الصفحة */
+  --color-ink-900: #eaeff5; /* الحقول والمساحات الغائرة */
+  --color-ink-800: #ffffff; /* البطاقات */
+  --color-ink-700: #e7edf4; /* التمرير فوق العناصر */
+  --color-ink-600: #d7e0ea; /* الحدود */
+  --color-ink-500: #aab6c4;
+  --color-paper: #0a1017; /* النص الأساسي */
+  --color-muted: #5a6a80;
+  --color-gold-400: #8a6413;
+  --color-gold-500: #a97f22;
+  --color-gold-600: #cfa54e;
+  --color-success: #006c35;
+  --color-success-soft: #e6f2ec;
+  --color-danger: #c53339;
+  --color-danger-soft: #fdeced;
+  color-scheme: light;
+}
+
+/* الخلفية الفعلية للصفحة تتبع السمة، فلا تظهر حواف داكنة حول المحتوى */
+/*
+ * خلفية الصفحة الفعلية تتبع السمة.
+ * ‏`html` أيضًا لا ‏`body` وحده: ما يظهر خارج صندوق ‏body — عند تمرير أفقي أو
+ * ارتداد التمرير — يُرسم بخلفية ‏html، فتظهر رقعة داكنة حول محتوى فاتح.
+ */
+html[data-theme='light'],
+html:has([data-theme='light']),
+body:has([data-theme='light']) {
+  background-color: #f4f6fa;
+}
+
+[data-theme='light'] {
+  background-color: var(--color-ink-950);
+  color: var(--color-paper);
+}
+
+/* في السمة الفاتحة يُرى الظلّ فعلًا، فيحمل الارتفاع بدل الحدود */
+[data-theme='light'] {
+  --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.05);
+  --shadow-overlay: 0 20px 50px -24px rgb(15 23 42 / 0.28), 0 0 0 1px rgb(15 23 42 / 0.05);
+  --shadow-lifted: 0 30px 70px -34px rgb(15 23 42 / 0.3);
+  --glow-gold: radial-gradient(
+    60% 60% at 50% 0%,
+    color-mix(in oklab, var(--color-gold-500) 12%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+/* ظل ألطف على الخلفية الفاتحة */
+[data-theme='light'] .stage-shadow {
+  box-shadow:
+    0 18px 45px -22px rgb(15 23 42 / 0.35),
+    0 0 0 1px color-mix(in oklab, var(--color-gold-500) 22%, transparent);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #c3cedb;
+}
+
+
+/* ---------------------------------------------------------- هيكل الانتظار */
+
+/**
+ * لمعان يمرّ على الهيكل.
+ *
+ * `background-position` لا `opacity` ولا `transform`: العنصر يُرسَل مرئيًّا
+ * تمامًا، فلا يقع تحت حارس «لا شيء بشفافية صفر»، ويبقى ظاهرًا بلا سكربت.
+ */
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@utility skeleton {
+  background-color: color-mix(in oklab, var(--color-ink-700) 70%, transparent);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-paper) 8%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   جداول الإدارة على الجوال — بطاقات لا تمرير أفقي
+   ========================================================================== */
+
+/**
+ * الجدول يمرّر أفقيًّا ثلاثة أضعاف عرض الجوال، وعمود الإجراءات آخره دائمًا —
+ * فيُدفَن ما يُفعل خلف حافّة الشاشة. وتحت `sm` ينقلب كل صفٍّ **بطاقة**، وكل
+ * خليّة سطرًا: اسمُ العمود يمينًا وقيمته يسارًا. والاسم يأتي من `--col-N`
+ * التي يضبطها `AdminTable` من تعريف الأعمدة نفسه، فلا يُكتب مرّتين.
+ */
+@media (max-width: 639px) {
+  .admin-table {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+  .admin-table > div {
+    overflow-x: visible;
+  }
+  .admin-table table {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .admin-table colgroup,
+  .admin-table thead {
+    display: none;
+  }
+  .admin-table tbody {
+    display: grid;
+    gap: 0.625rem;
+  }
+  .admin-table tr {
+    display: block;
+    border: 1px solid var(--color-ink-600);
+    border-radius: 1rem;
+    background-color: var(--color-ink-800);
+    padding: 0.35rem 0.85rem;
+  }
+  .admin-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    text-align: start;
+  }
+  .admin-table td + td {
+    border-top: 1px solid color-mix(in oklab, var(--color-ink-600) 55%, transparent);
+  }
+  .admin-table td::before {
+    color: var(--color-muted);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .admin-table td:nth-child(1)::before { content: var(--col-1, ''); }
+  .admin-table td:nth-child(2)::before { content: var(--col-2, ''); }
+  .admin-table td:nth-child(3)::before { content: var(--col-3, ''); }
+  .admin-table td:nth-child(4)::before { content: var(--col-4, ''); }
+  .admin-table td:nth-child(5)::before { content: var(--col-5, ''); }
+  .admin-table td:nth-child(6)::before { content: var(--col-6, ''); }
+  .admin-table td:nth-child(7)::before { content: var(--col-7, ''); }
+  .admin-table td:nth-child(8)::before { content: var(--col-8, ''); }
+  .admin-table td:nth-child(9)::before { content: var(--col-9, ''); }
+  .admin-table td:nth-child(10)::before { content: var(--col-10, ''); }
+  .admin-table td:nth-child(11)::before { content: var(--col-11, ''); }
+  .admin-table td:nth-child(12)::before { content: var(--col-12, ''); }
+  /* خليّة الإجراءات بلا اسم — تُمنح السطر كلّه */
+  .admin-table td:has(> :is(button, a, div)):not(:has(::before)) {
+    justify-content: flex-start;
+  }
+}
+
+/* ==========================================================================
+   أدوات مساعدة مبنية على الرموز
+   ========================================================================== */
+
+/* ---------------------------------------------------------- مسار الصفقة */
+
+/**
+ * السكّة تُرسم لا تظهر.
+ *
+ * `transform` وحده — لا `opacity`: حركة دخول بشفافية صفر تترك ما يُرسل من
+ * الخادم غير مرئي إن تعطّل السكربت، واختبارٌ شامل يحرس ذلك. والمبدأ من الطرف
+ * الابتدائي لأن المسار يُقرأ من حيث بدأ.
+ */
+@keyframes rail-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@utility rail-draw {
+  transform-origin: right;
+  animation: rail-draw var(--duration-slow) var(--ease-out-quart) both;
+  animation-delay: var(--rail-delay, 0ms);
+}
+
+[dir='ltr'] .rail-draw {
+  transform-origin: left;
+}
+
+/** هالة المحطّة الجارية: نبضة بطيئة تقول «هنا نحن» بلا أن تُلحّ. */
+@keyframes stage-halo {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-gold-500) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@utility stage-halo {
+  animation: stage-halo 2.4s var(--ease-out-quart) infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/** سطح مرتفع: بطاقات ولوحات تطفو فوق الخلفية. */
+@utility surface {
+  background-color: var(--color-ink-800);
+  border: 1px solid color-mix(in oklab, var(--color-ink-600) 90%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+
+/** سطح عائم: قوائم ونوافذ ودُرج الجوال. */
+@utility surface-overlay {
+  background-color: var(--color-ink-800);
+  box-shadow: var(--shadow-overlay);
+}
+
+/** توهّج ذهبي خلف المحتوى — للبطل والأقسام المميّزة. */
+@utility glow {
+  background-image: var(--glow-gold);
+}
+
+/** حدّ متدرّج ذهبي يلتف حول العنصر بلا تأثير على حشوته. */
+@utility ring-gold {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-gold-500) 45%, transparent),
+    var(--shadow-gold);
+}
+
+/**
+ * إخفاء شريط التمرير مع إبقاء التمرير عاملًا.
+ * تحتاجه الكاروسيلات: شريط التمرير الأفقي تحت البطاقات يشوّه التصميم،
+ * والتنقّل فيها بالأسهم ولوحة المفاتيح على أي حال.
+ */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/** تدرّج يخفت عند حافة الكاروسيل فيوحي بوجود محتوى بعده. */
+@utility edge-fade-start {
+  mask-image: linear-gradient(to left, transparent 0, black 3rem);
+}
+
+/*
+ * تلاشي حافّتي الكاروسيل — بعرضٍ يضبطه الجافاسكربت حسب موضع التمرير.
+ *
+ * الحافّة تتلاشى حيث يوجد مخبوء فقط: تلاشٍ ثابت على طرفٍ لا شيء وراءه يكذب على
+ * العين فيوهمها ببقيّةٍ لا وجود لها، ويقصّ أوّل عنصرٍ أو آخره بلا سبب.
+ */
+@utility carousel-fade {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black var(--fade-left, 0px),
+    black calc(100% - var(--fade-right, 0px)),
+    transparent 100%
+  );
+}
+
+/** يُلغي التلاشي حيث لا فائض — فلا تُقصّ حافّة سليمة على الشاشات الواسعة. */
+@utility mask-none {
+  mask-image: none;
+}
+
+/** شبكة نقطية خافتة تعطي عمقًا للخلفيات الكبيرة. */
+/*
+ * محاذاة أعمدة الجداول الإدارية.
+ *
+ * `data-align` على الخلية والعنوان معًا، والقاعدة واحدة تحكمهما — فيستحيل أن
+ * ينزاح رقم عن عنوانه لأن أحدهما كُتب `text-right` والآخر `text-end`.
+ * ومنطقية لا فيزيائية: `start` أوّل السطر في اتجاه القراءة أيًّا كان.
+ */
+.admin-table th[data-align='start'],
+.admin-table td[data-align='start'] {
+  text-align: start;
+}
+.admin-table th[data-align='end'],
+.admin-table td[data-align='end'] {
+  text-align: end;
+}
+.admin-table th[data-align='center'],
+.admin-table td[data-align='center'] {
+  text-align: center;
+}
+
+/* العمود الرقمي يُحاذى نهايةً، فتُقرأ آحاده تحت آحاد ما فوقه */
+.admin-table td[data-align='end'] > * {
+  justify-content: flex-end;
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--color-ink-500) 55%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* ==========================================================================
+   حركات الطبقات العائمة (Radix)
+   نعرّفها هنا بدل الاعتماد على إضافة خارجية: Radix يضع `data-state`
+   على العنصر، ونربط به منحنياتنا الخاصة فتتّسق مع بقية المنصّة.
+   ========================================================================== */
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 50;
+}
+
+.layer-overlay[data-state='open'] {
+  animation: overlay-in var(--duration-base) var(--ease-smooth);
+}
+.layer-overlay[data-state='closed'] {
+  animation: overlay-out var(--duration-fast) var(--ease-smooth);
+}
+
+.layer-pop[data-state='open'] {
+  animation: pop-in var(--duration-base) var(--ease-spring);
+}
+.layer-pop[data-state='closed'] {
+  animation: pop-out var(--duration-fast) var(--ease-smooth);
+}
+
+/* ==========================================================================
+   حركات الدخول
+   بـ CSS لا بجافاسكربت عمدًا: حركة دخول مبنيّة على JS تُصيَّر على الخادم
+   بشفافية صفر، فإذا تعطّل السكربت أو تأخّر بقي المحتوى غير مرئي نهائيًا.
+   وCSS يصل مع الصفحة نفسها ويكمل حتى لو تجمّد إطار الرسم مؤقتًا.
+   ========================================================================== */
+
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@utility enter {
+  animation: enter-up var(--duration-slow) var(--ease-smooth) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/** تدرّج ظهور العناصر المتتابعة بلا كتابة تأخير لكل عنصر. */
+@utility enter-stagger {
+  & > * {
+    animation: enter-up var(--duration-slow) var(--ease-smooth) both;
+  }
+  & > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  & > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  & > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  & > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  & > *:nth-child(n + 5) {
+    animation-delay: 240ms;
+  }
+}

@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+/test-results
+/playwright-report
+/blob-report
+.demo-data.json
+
+# مخرجات الاختبار الشامل
+.next-e2e/
