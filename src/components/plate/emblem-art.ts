@@ -48,14 +48,25 @@ export function isImageArt(art: EmblemArt): art is EmblemImageArt {
 }
 
 /**
- * صندوق رسم النخلة والسيفان داخل `palm.jpeg` (900×576)،
- * مقيسًا من حواف الرسم الفعلية لا حواف الملف.
+ * النخلة والسيفان — صورةٌ شفّافة مقصوصة على حدّ الرسم.
+ *
+ * كان الأصل `palm.jpeg`: رسمٌ أسود على **أبيض** بلا شفافية، يُنتزع بياضه في
+ * المتصفّح — قناعًا يُعكَس بـ`filter: invert(1)` أوّلًا، ثمّ مرشِّح
+ * `feColorMatrix`. والحيلتان تعملان في Chromium وتسقطان في WebKit بعيبين
+ * متعاقبين: مربّعٌ **أسود** خلف الشعار، ثمّ **إطارٌ أبيض** حوله — في كل لوحة
+ * على iOS، بلا خطأ في أي سجلّ.
+ *
+ * والعلاج ليس حيلةً ثالثة: الشفافية تُخبز في الملفّ نفسه. `scripts/bake-emblem.py`
+ * يقرأ الأصل، ويجعل الألفا من الإضاءة بعتبةٍ تُذيب الهالة الرمادية التي يخلّفها
+ * ضغط JPEG، ويقصّ على حدود الرسم فلا تبقى حوله مساحة أصلًا، ويكتب نسخةً لكل
+ * لون. فما يصل المتصفّح صورةٌ جاهزة يرسمها كما هي — لا قناع ولا مرشِّح ولا
+ * محرّك يختلف عن محرّك.
  */
 const PALM_IMAGE = {
   kind: 'image' as const,
-  href: '/plate-emblems/palm.jpeg',
-  content: { x: 0.291, y: 0.165, width: 0.418, height: 0.703 },
-  imageRatio: 900 / 576,
+  // مقصوصة على الرسم: الصندوق هو الصورة كلّها
+  content: { x: 0, y: 0, width: 1, height: 1 },
+  imageRatio: 368 / 390,
 }
 
 const path = (d: string, role: EmblemRole = 'primary', opacity?: number): EmblemShape => ({
@@ -70,11 +81,13 @@ const path = (d: string, role: EmblemRole = 'primary', opacity?: number): Emblem
 export const EMBLEM_ART: Record<string, EmblemArt> = {
   'palm-swords-black': {
     ...PALM_IMAGE,
+    href: '/plate-emblems/palm-black.png',
     title: 'النخلة والسيفان',
     tint: '#0A0D12',
   },
   'palm-swords-gold': {
     ...PALM_IMAGE,
+    href: '/plate-emblems/palm-gold.png',
     title: 'النخلة والسيفان — ذهبي',
     tint: '#B8860B',
   },
@@ -127,6 +140,7 @@ export const EMBLEM_ART: Record<string, EmblemArt> = {
 /** الشعار الصغير المستخدم داخل الشريط الرأسي (رمز الدولة). */
 export const STRIP_SYMBOL: EmblemArt = {
   ...PALM_IMAGE,
+  href: '/plate-emblems/palm-black.png',
   title: 'رمز الشريط',
   tint: '#0A0D12',
 }

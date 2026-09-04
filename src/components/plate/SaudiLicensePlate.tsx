@@ -320,7 +320,7 @@ export function SaudiLicensePlate({
               <g
                 transform={`translate(${stripCenter - geo.strip.width * 0.1 - stripSymbolSize / 2} ${geo.inset + geo.height * 0.055}) scale(${stripSymbolSize / 100})`}
               >
-                <EmblemShapes art={STRIP_SYMBOL} monochrome="#0A0D12" box={100} scope={uid} />
+                <EmblemShapes art={STRIP_SYMBOL} monochrome="#0A0D12" box={100} />
               </g>
             </Unflip>
 
@@ -367,7 +367,7 @@ export function SaudiLicensePlate({
                   data-plate-emblem="center"
                   transform={`translate(${geo.emblem.center - geo.emblem.size / 2} ${geo.height / 2 - geo.emblem.size / 2}) scale(${geo.emblem.size / 100})`}
                 >
-                  <EmblemShapes art={art} box={100} scope={uid} />
+                  <EmblemShapes art={art} box={100} />
                 </g>
               </Unflip>
             )}

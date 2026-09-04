@@ -89,7 +89,7 @@ test.describe('الجوال وحسابات التواصل', () => {
 })
 
 test.describe('صفحة الإعلان على الجوال', () => {
-  test('السعر تحت اللوحة مباشرة — قبل الوصف والبائع', async ({ page }) => {
+  test('السعر تحت اللوحة مباشرة — قبل الوصف والكشف', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     const { listings } = (await (await page.request.get('/api/listings')).json()) as {
       listings: { id: string; saleType: string; status: string }[]
@@ -108,7 +108,6 @@ test.describe('صفحة الإعلان على الجوال', () => {
       return {
         plate: y('svg[data-plate-type]'),
         price: y('[data-live-price]'),
-        seller: y('p:has(+ p) , [class*="البائع"]'),
       }
     })
     expect(order.plate).toBeLessThan(order.price)
@@ -120,11 +119,20 @@ test.describe('صفحة الإعلان على الجوال', () => {
       .evaluate((el) => Math.round(el.getBoundingClientRect().top))
     expect(priceTop).toBeLessThan(812)
 
-    // ووصف اللوحة والبائع بعدهما لا قبلهما
-    const sellerTop = await page
-      .getByText('البائع', { exact: true })
+    /*
+     * وما دونهما بعدهما لا قبلهما.
+     *
+     * كان اسم البائع هو ما يُقاس به هذا الترتيب، وقد حُذف من الصفحة: لا
+     * يُقرَّر به شراء لوحة. وكشف المزايدات حلّ محلّه — وهو أولى بالموضع لأنّه
+     * سجلّ ما يُقرَّر به.
+     */
+    const ledgerTop = await page
+      .getByRole('heading', { name: 'كشف المزايدات' })
       .evaluate((el) => Math.round(el.getBoundingClientRect().top))
-    expect(sellerTop).toBeGreaterThan(priceTop)
+    expect(ledgerTop).toBeGreaterThan(priceTop)
+
+    // واسم البائع لم يعد في الصفحة أصلًا
+    await expect(page.getByText('البائع', { exact: true })).toHaveCount(0)
   })
 
   test('الحاسوب يبقى عمودين بلا فجوة تحت اللوحة', async ({ page }) => {

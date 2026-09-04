@@ -685,18 +685,23 @@ test('شعار اللوحة يُرسم في كل محرّك ولو خُفي أو
   await expect(plate).toBeVisible()
 
   const audit = await plate.evaluate((svg) => {
-    // ما يشير إليه الشعار — قناعًا كان أو مرشِّحًا — معرَّفٌ داخل لوحته هو
-    const painted = svg.querySelector('[mask^="url(#"], [filter^="url(#"]')
-    const ref = painted?.getAttribute('mask') ?? painted?.getAttribute('filter') ?? null
-    // `url(#` خمسة أحرف لا ستّة
-    const id = ref ? ref.slice(5, -1) : null
+    const emblem = svg.querySelector('image')
     return {
-      resolves: !id || svg.querySelector(`[id="${id}"]`) !== null,
+      // شفافيته مخبوزة في ملفّه: لا قناع ولا مرشِّح يُنتزع بهما بياضٌ عند العرض
+      masked: emblem?.hasAttribute('mask') ?? false,
+      filtered: emblem?.hasAttribute('filter') ?? false,
       // ولا مرشِّح CSS على أي عنصر داخل اللوحة — WebKit يتجاهله بلا خطأ
       cssFilters: [...svg.querySelectorAll('[style*="filter"]')].length,
+      // وما يشير إلى تعريفٍ يجده داخل لوحته هو
+      resolves: [...svg.querySelectorAll('[mask^="url(#"], [filter^="url(#"]')].every((el) => {
+        const ref = el.getAttribute('mask') ?? el.getAttribute('filter')!
+        return svg.querySelector(`[id="${ref.slice(5, -1)}"]`) !== null
+      }),
     }
   })
 
-  expect(audit.resolves, 'الشعار يشير إلى تعريف خارج لوحته').toBe(true)
+  expect(audit.masked, 'قناعٌ على الشعار — سقط في WebKit مرّتين من قبل').toBe(false)
+  expect(audit.filtered, 'مرشِّحٌ على الشعار — سقط في WebKit مرّتين من قبل').toBe(false)
   expect(audit.cssFilters, 'مرشِّح CSS داخل SVG — يسقط صامتًا في WebKit').toBe(0)
+  expect(audit.resolves, 'إحالةٌ إلى تعريف خارج اللوحة').toBe(true)
 })

@@ -188,18 +188,18 @@ export function ListingView({
             </p>
           )}
 
-          <div className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
-            <p className="text-xs text-muted">البائع</p>
-            <p className="mt-0.5 font-bold">{detail.seller.displayName}</p>
-            <p className="mt-1 text-xs text-muted">
-              {detail.seller.city ? `${detail.seller.city} · ` : ''}
-              عضو منذ{' '}
-              {new Date(detail.seller.memberSince).toLocaleDateString('ar-SA-u-nu-latn', {
-                year: 'numeric',
-                month: '2-digit',
-              })}
-            </p>
-          </div>
+          {/*
+            * الكشف تحت اللوحة لا في عمود التداول.
+            *
+            * اسم البائع كان يشغل هذا الموضع، ولا يُقرَّر به شراء لوحة — رقمها
+            * وحالها وسجلّ منافستها هو ما يُقرَّر به. وكان الكشف في العمود
+            * الآخر يزاحم المزايدة نفسها ويدفعها إلى أسفل، والعمود هنا ينتهي
+            * بفراغٍ طويل تحت الوصف.
+            *
+            * فانتقل إلى الفراغ: يُقرأ مع اللوحة التي يخصّها، ويُخلي لصندوق
+            * المزايدة عموده.
+            */}
+          {detail.saleType === 'auction' && <BidLedger detail={detail} />}
         </div>
 
         {/* ------------------------------------------------ السعر والتداول */}
@@ -218,8 +218,6 @@ export function ListingView({
           )}
 
           <TradePanel detail={detail} isSignedIn={isSignedIn} onDone={refetch} />
-
-          {detail.saleType === 'auction' && <BidLedger detail={detail} />}
 
           <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-ink-600 bg-ink-800 p-4 sm:grid-cols-3">
             {detail.saleType === 'auction' && (
