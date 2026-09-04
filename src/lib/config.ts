@@ -79,7 +79,16 @@ export const DEMO_PRIMARY_USER = DEMO_USERS[0]
  * والافتراض يبقى كما هو ليعمل التطوير المحلّي والاختبارات بلا إعداد.
  */
 export const DEMO_ADMIN = {
-  email: process.env.DEMO_ADMIN_EMAIL || 'admin@demo.sa',
+  /*
+   * يُخفَّض الحرف هنا لا عند المقارنة وحدها.
+   *
+   * `findAdminByEmail` يُخفّض ما يُكتب في نموذج الدخول ثمّ يقارنه بما في
+   * المخزن **حرفيًّا**. والبذرة تخزّن ما جاء من البيئة كما جاء — فمن كتب
+   * `Admin@Site.com` في متغيّرات النشر خُزّن بحرفه الكبير، ولم يُطابقه ما
+   * يُخفَّض عند الدخول أبدًا. والرسالة الراجعة «بيانات الدخول غير صحيحة»
+   * لا تدلّ على السبب، فيبقى صاحب اللوحة خارجها بلا خبر.
+   */
+  email: (process.env.DEMO_ADMIN_EMAIL || 'admin@demo.sa').trim().toLowerCase(),
   password: process.env.DEMO_ADMIN_PASSWORD || 'admin1234',
   displayName: 'مدير المنصّة',
 } as const
