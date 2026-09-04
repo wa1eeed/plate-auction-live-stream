@@ -27,10 +27,9 @@ services:
     environment:
       NODE_ENV: production
       AUCTION_STORE: memory
-      # بيانات الديمو — أطفئها بـfalse حين تصير النسخة حقيقية
-      DEMO_MODE: ${DEMO_MODE:-true}
-      # شارة «بيئة تجريبية» — مُطفأة افتراضيًّا فلا تظهر في نسخ العملاء
-      APP_ENV: ${APP_ENV:-staging}
+      # تلميحات الديمو (بيانات دخول معروضة + شارة «نسخة تجريبية»).
+      # مطفأة افتراضًا فتخرج نسخةً تبدو حقيقية.
+      DEMO_HINTS: ${DEMO_HINTS:-false}
       # إلزاميّ: `crypto.ts` يرمي استثناءً في الإنتاج إن لم يُضبط
       SESSION_SECRET: ${SESSION_SECRET:?اضبطه في .env — openssl rand -base64 48}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?ضع العنوان العام للموقع}

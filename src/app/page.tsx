@@ -149,7 +149,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {config.demoMode && (
+        {config.demoHints && (
           <div className="mx-auto w-full max-w-7xl px-4 pb-14 pt-12 sm:px-6">
             <div className="ring-gold rounded-3xl bg-gold-500/[0.06] p-6 sm:p-8">
               <div className="flex flex-wrap items-center justify-between gap-4">

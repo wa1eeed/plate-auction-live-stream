@@ -30,7 +30,7 @@ export default async function LoginPage({
         <AuthForm
           mode="login"
           nextUrl={next ?? '/account'}
-          demo={config.demoMode ? { email: DEMO_PRIMARY_USER.email, password: DEMO_PRIMARY_USER.password } : null}
+          demo={config.demoHints ? { email: DEMO_PRIMARY_USER.email, password: DEMO_PRIMARY_USER.password } : null}
         />
 
         <p className="mt-5 text-center text-sm text-muted">

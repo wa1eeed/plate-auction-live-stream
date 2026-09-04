@@ -10,5 +10,5 @@ export const metadata: Metadata = { title: 'دخول الإدارة' }
 
 export default async function AdminLoginPage() {
   if (await getCurrentAdmin()) redirect('/admin')
-  return <AdminLoginForm demo={config.demoMode ? DEMO_ADMIN : null} />
+  return <AdminLoginForm demo={config.demoHints ? DEMO_ADMIN : null} />
 }
