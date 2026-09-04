@@ -165,8 +165,21 @@ test.describe('المحفظة والعربون', () => {
     )!
 
     await page.goto(`/market/${target.id}`)
-    await expect(page.getByLabel('مبلغ المزايدة')).toBeVisible()
-    await expect(page.getByLabel('زيادة المبلغ')).toBeVisible()
+
+    /*
+     * يُقصَد الشريط الثابت وحده.
+     *
+     * صندوق المزايدة واحدٌ للشاشتين، ونسخة العمود الجانبي في الشجرة مخفيّةً
+     * بـ`display:none` دون `lg`. فيُطابق الاسمُ المعرِّف نسختين، ولا يميّز
+     * بينهما إلّا الموضع.
+     */
+    const bar = page.locator('.fixed.bottom-0')
+    await expect(bar.getByLabel('مبلغ المزايدة')).toBeVisible()
+    await expect(bar.getByLabel('زيادة المبلغ')).toBeVisible()
+
+    // ولا نسخة ثانية ظاهرة معه — واجهةٌ واحدة لفعلٍ واحد
+    await expect(page.getByLabel('مبلغ المزايدة')).toHaveCount(2)
+    await expect(page.locator('[aria-label="مبلغ المزايدة"]:visible')).toHaveCount(1)
 
     // لا تمرير أفقي، والمحتوى لا يختفي خلف الشريط
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
@@ -174,6 +187,21 @@ test.describe('المحفظة والعربون', () => {
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
     )
     expect(overflow).toBe(false)
+
+    /*
+     * وآخر المحتوى فوق الشريط لا خلفه.
+     *
+     * كان المتن يحجز `pb-52` ثابتة والشريط يبلغ ٢٥٧ بكسل، وارتفاعه ليس ثابتًا
+     * أصلًا: يزيد بسطر العربون وبرقاقات الزيادة. فصار يقيس نفسه ويكتبه.
+     */
+    const clear = await page.evaluate(() => {
+      const barEl = document.querySelector('.fixed.bottom-0') as HTMLElement | null
+      const main = document.getElementById('main')!
+      if (!barEl) return true
+      const pad = parseFloat(getComputedStyle(main).paddingBottom)
+      return pad >= barEl.offsetHeight
+    })
+    expect(clear, 'الشريط يغطّي آخر المحتوى').toBe(true)
   })
 })
 

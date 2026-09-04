@@ -90,7 +90,17 @@ export function OrderTabs({
         onKeyDown={keys.onKeyDown}
         role="tablist"
         aria-label="أقسام المعاملات"
-        className="scrollbar-none edge-fade-start -mb-px flex gap-1 overflow-x-auto border-b border-ink-600 sm:mask-none"
+        /*
+         * ثلاثة أقسام تقتسم العرض — لا شريطٌ يفيض فيُسحب.
+         *
+         * كان `overflow-x-auto` وثلاثة أزرار تتجاوز ٣٧٥ بكسل بقليل، فيصير
+         * الشريط منطقة سحبٍ باللمس: تتحرّك التابات مع الإصبع، وتتأرجح عند
+         * الطرفين بارتداد المتصفّح — وما يُلمس ليَنقُل لا يجوز أن ينزلق.
+         *
+         * والقسمة بـ`flex-1` تُدخل الثلاثة في العرض مهما ضاق، فلا فيض ولا
+         * سحب. ويعود التمرير فوق `sm` حيث تتّسع الأسماء بحشوها الكامل.
+         */
+        className="scrollbar-none -mb-px flex border-b border-ink-600 max-sm:overscroll-x-contain sm:edge-fade-start sm:gap-1 sm:overflow-x-auto sm:mask-none"
       >
         {TABS.map((tab) => {
           const count = groups[tab.key].length
@@ -106,11 +116,12 @@ export function OrderTabs({
               title={tab.hint}
               onClick={() => open(tab.key)}
               className={cn(
-                'relative flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm transition-colors',
+                'relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1.5 py-2.5 text-[13px] transition-colors',
+                'sm:flex-none sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm',
                 on ? 'font-bold text-gold-400' : 'font-semibold text-muted hover:text-paper',
               )}
             >
-              {tab.label}
+              <span className="truncate">{tab.label}</span>
               {/* العدّاد ظاهر دائمًا: تابٌ فيه ما ينتظرك لا يجوز أن يبدو فارغًا */}
               <span
                 className={cn(

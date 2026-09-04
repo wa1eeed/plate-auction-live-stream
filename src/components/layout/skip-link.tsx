@@ -9,7 +9,20 @@ export function SkipLink({ href = '#main' }: { href?: string }) {
   return (
     <a
       href={href}
-      className="sr-only z-[100] rounded-xl bg-gold-500 px-4 py-2 text-sm font-bold text-ink-950 shadow-lifted focus:not-sr-only focus:absolute focus:start-4 focus:top-4"
+      /*
+       * الحشو عند التركيز وحده.
+       *
+       * `sr-only` يصغّر العنصر إلى بكسل ويقصّه، لكنّه لا يُلغي `px-4 py-2` —
+       * ترتيب الأدوات في الملفّ المُولَّد يجعل الحشو يتغلّب على `padding:0`.
+       * فيبقى الرابط ٣٣ بكسل مطلقًا عند طرف الترويسة، مقصوصًا عن العين
+       * وحاضرًا في حساب العرض: تمريرٌ أفقيّ ٧ بكسل في **كل صفحة**، لا يُرى له
+       * سبب لأنّ مُسبِّبه غير مرئيّ.
+       *
+       * و`start-0 top-0` تُثبّته داخل الحدود: `sr-only` يقصّه بـ`clip-path`،
+       * وهو لا يمنع العنصر من التمدّد خارج العرض — يُخفيه ولا يُخرجه من حساب
+       * التمرير. فيُثبَّت في الركن بدل أن يُترك في موضعه الساكن عند الطرف.
+       */
+      className="sr-only start-0 top-0 z-[100] rounded-xl bg-gold-500 text-sm font-bold text-ink-950 shadow-lifted focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:px-4 focus:py-2"
     >
       تخطّي إلى المحتوى
     </a>

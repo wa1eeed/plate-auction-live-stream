@@ -84,8 +84,23 @@ export function EmblemShapes({
             <feColorMatrix
               type="matrix"
               values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1 0 0 0 1"
-              result="alpha"
+              result="raw"
             />
+            {/*
+              * عتبةٌ تسحق الرماديّ الفاتح إلى شفافيةٍ تامّة.
+              *
+              * الأصل JPEG بلا ألفا، وضغطه يترك حول الرسم رنينًا رماديًّا وشبكةَ
+              * كتلٍ خافتة. وألفا = ١ − الأحمر تُبقيها ظاهرةً بنسبةٍ ضئيلة —
+              * ضئيلةٌ في البكسل الواحد، لكنّها على محيط الصورة كلّه تُقرأ
+              * **إطارًا** حول الشعار وخطوطًا داخله.
+              *
+              * والمنحنى `٥س − ١`: ما كان أفتح من ٨٠٪ بياضٍ يسقط إلى صفر،
+              * وما جاوز ٦٠٪ سوادًا يمتلئ، وبينهما شريطٌ قصير يحفظ نعومة
+              * الحواف — فلا يُستبدل الإطار بتسنّن.
+              */}
+            <feComponentTransfer in="raw" result="alpha">
+              <feFuncA type="linear" slope="5" intercept="-1" />
+            </feComponentTransfer>
             <feFlood floodColor={tint} result="ink" />
             <feComposite in="ink" in2="alpha" operator="in" />
           </filter>

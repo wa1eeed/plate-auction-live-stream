@@ -7,16 +7,13 @@ import { toast } from 'sonner'
 import {
   Check,
   Clock3,
-  Crown,
   HandCoins,
   Loader2,
   LogIn,
   ShoppingCart,
-  TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
-import { quickBidSteps } from '@/lib/domain/auction'
 import { formatAmount, halalasToRiyals, parseAmountInput } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
@@ -26,7 +23,7 @@ import {
 } from '@/lib/domain/types'
 import { cn, formatTimestamp } from '@/lib/utils'
 import { useSound } from '@/lib/hooks/use-sound'
-import { DepositNotice } from './deposit-notice'
+import { AuctionBidBox } from './auction-bid-box'
 import { CommissionNotice } from './commission-notice'
 
 function randomRequestId() {
@@ -49,7 +46,6 @@ export function TradePanel({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [customAmount, setCustomAmount] = useState('')
   const [offerAmount, setOfferAmount] = useState('')
   const [offerMessage, setOfferMessage] = useState('')
   const inFlight = useRef(false)
@@ -173,93 +169,18 @@ export function TradePanel({
 
   // ------------------------------------------------------------- مزاد
   if (detail.saleType === 'auction') {
-    const steps = quickBidSteps(detail.minimumIncrement, detail.nextBidAmount)
+    /*
+     * تُخفى دون `lg`: شريط الجوال الثابت يحمل الواجهة نفسها.
+     *
+     * كانتا معًا على الشاشة الضيّقة — لوحةٌ في المتن وشريطٌ أسفلها — بمنطقين
+     * مختلفين لفعلٍ واحد. فيقرأ المزايد واجهتين ويسأل أيّهما الحقيقيّة.
+     */
     return (
-      <Panel title="المزايدة">
-        <DepositNotice detail={detail} />
-        <CommissionNotice detail={detail} />
-        <Button
-          size="xl"
-          className="w-full"
-          disabled={busy || detail.iAmHighest}
-          onClick={() =>
-            void send(
-              `/api/listings/${detail.id}/bids`,
-              {
-                amount: halalasToRiyals(detail.nextBidAmount),
-                isCustomAmount: false,
-                clientRequestId: randomRequestId(),
-              },
-              'سُجّلت مزايدتك',
-            )
-          }
-        >
-          {busy ? (
-            <Loader2 className="size-5 animate-spin" />
-          ) : detail.iAmHighest ? (
-            <Crown className="size-5" />
-          ) : (
-            <TrendingUp className="size-5" />
-          )}
-          {detail.iAmHighest ? 'أنت أعلى مزايد' : `زايد بـ ${formatAmount(detail.nextBidAmount)} ريال`}
-        </Button>
-
-        {detail.allowCustomBid && steps.length > 0 && (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {steps.map((step) => (
-              <Button
-                key={step}
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  void send(`/api/listings/${detail.id}/bids`, {
-                    amount: halalasToRiyals(detail.nextBidAmount + step),
-                    isCustomAmount: true,
-                    clientRequestId: randomRequestId(),
-                  })
-                }
-              >
-                +{formatAmount(step)}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {detail.allowCustomBid && (
-          <form
-            className="mt-2 flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const parsed = parseAmountInput(customAmount)
-              if (parsed === null) {
-                toast.error('أدخل مبلغًا صحيحًا')
-                return
-              }
-              void send(`/api/listings/${detail.id}/bids`, {
-                amount: halalasToRiyals(parsed),
-                isCustomAmount: true,
-                clientRequestId: randomRequestId(),
-              }).then((okResult) => {
-                if (okResult) setCustomAmount('')
-              })
-            }}
-          >
-            <Input
-              value={customAmount}
-              onChange={(event) => setCustomAmount(event.target.value)}
-              inputMode="numeric"
-              dir="ltr"
-              placeholder={`${formatAmount(detail.nextBidAmount)} أو أكثر`}
-              disabled={busy}
-              aria-label="مبلغ مخصص"
-            />
-            <Button type="submit" variant="outline" disabled={busy || !customAmount}>
-              زايد
-            </Button>
-          </form>
-        )}
-      </Panel>
+      <div className="hidden lg:block">
+        <Panel title="المزايدة">
+          <AuctionBidBox detail={detail} isSignedIn={isSignedIn} onDone={onDone} />
+        </Panel>
+      </div>
     )
   }
 

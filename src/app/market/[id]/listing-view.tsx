@@ -8,21 +8,16 @@ import {
   ChevronsLeft,
   Clock3,
   Crown,
-  Eye,
   Gavel,
   HandCoins,
   Share2,
-  ShieldAlert,
-  ShieldCheck,
   Tag,
-  Timer,
 } from 'lucide-react'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { TradePanel } from '@/components/market/trade-panel'
 import { MobileBidBar } from '@/components/market/mobile-bid-bar'
 import { FaqList } from '@/components/market/faq-list'
 import { LocalTime, LocalZoneNote } from '@/components/market/local-time'
-import { ConnectionBadge } from '@/components/market/connection-badge'
 import { Badge } from '@/components/ui/badge'
 import { formatAmount } from '@/lib/domain/money'
 import {
@@ -38,7 +33,7 @@ import { ReferenceChip } from '@/components/market/reference-chip'
 import { OrderJourney, OrderStageCallout } from '@/components/market/order-journey'
 import { OrderEscrowActions } from '@/components/market/order-actions'
 import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
-import { AuctionCountdown } from '@/components/market/auction-countdown'
+import { AuctionStage } from '@/components/market/auction-stage'
 import { useListing } from '@/lib/hooks/use-listing'
 import { cn } from '@/lib/utils'
 
@@ -76,8 +71,8 @@ export function ListingView({
     <main id="main"
       className={cn(
         'mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8',
-        // مساحة سفلية بقدر شريط المزايدة الثابت، وإلا غطّى آخر المحتوى على الجوال
-        showMobileBar && 'pb-52 lg:pb-8',
+        // مساحة سفلية بقدر الشريط الثابت نفسه — يقيس نفسه ويكتبها
+        showMobileBar && 'pb-[calc(var(--bid-bar-h,13rem)+1.5rem)] lg:pb-8',
       )}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -88,16 +83,9 @@ export function ListingView({
           <ChevronsLeft className="size-4 rtl:rotate-180" />
           السوق
         </Link>
-        {isLiveAuction && (
-          <div className="flex items-center gap-2">
-            {viewers > 1 && (
-              <Badge variant="muted">
-                <Eye className="size-3" />
-                {viewers} يشاهدون الآن
-              </Badge>
-            )}
-            <ConnectionBadge status={status} />
-          </div>
+        {/* البثّ والمشاهدون في المسرح نفسه — حيث يُقرآن مع ما يصفانه */}
+        {!isLiveAuction && closed && (
+          <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>
         )}
       </div>
 
@@ -151,7 +139,6 @@ export function ListingView({
             </Badge>
             <Badge variant="muted">{PLATE_TYPE_LABELS[detail.plate.plateType]}</Badge>
             {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>}
-            {detail.saleType === 'auction' && !closed && <ReservePill state={detail.reserveState} />}
             <ReferenceChip reference={detail.reference} />
 
             <button
@@ -217,103 +204,18 @@ export function ListingView({
 
         {/* ------------------------------------------------ السعر والتداول */}
         <div className="order-2 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2">
-          <div
-            className={cn(
-              'rounded-2xl border p-5',
-              detail.status === 'sold'
-                ? 'border-success/60 bg-success-soft'
-                : closed
-                  ? 'border-ink-600 bg-ink-800'
-                  : 'border-gold-600/50 bg-gold-500/8',
-            )}
-          >
-            {detail.status === 'sold' ? (
-              <div className="text-center">
-                <Award className="mx-auto mb-2 size-9 text-success" />
-                <p className="text-lg font-extrabold text-success">تمّت الصفقة</p>
-                <p className="mt-1 text-3xl font-extrabold text-gold-500 tabular-nums">
-                  {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs font-semibold text-muted">
-                  {detail.saleType === 'fixed'
-                    ? 'سعر البيع'
-                    : detail.saleType === 'offers'
-                      ? 'أقل عرض مقبول'
-                      : detail.highestAmount === null
-                        ? 'السعر الافتتاحي'
-                        : 'أعلى مزايدة'}
-                </p>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={detail.highestAmount ?? detail.price ?? 'start'}
-                    data-live-price
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="mt-1 text-4xl font-extrabold leading-none text-gold-500 tabular-nums"
-                    aria-live="polite"
-                  >
-                    {formatAmount(
-                      detail.saleType === 'fixed'
-                        ? detail.price
-                        : detail.saleType === 'offers'
-                          ? detail.minimumOffer
-                          : (detail.highestAmount ?? detail.startingPrice),
-                    )}
-                    <span className="ms-2 text-sm font-bold">ريال</span>
-                  </motion.p>
-                </AnimatePresence>
-
-                {detail.highestBidderName && (
-                  <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
-                    <Crown className="size-4 text-gold-500" />
-                    {detail.iAmHighest ? 'أنت' : detail.highestBidderName}
-                  </p>
-                )}
-
-                {detail.saleType === 'auction' && (
-                  <>
-                    {/*
-                      * بطاقةٌ واحدة لا ثلاث متداخلة.
-                      *
-                      * كان العدّاد والمزايدة التالية صندوقين لكلٍّ حدُّه
-                      * وأرضيّته داخل صندوق السعر — ثلاثة إطارات متداخلة تُفتّت
-                      * ما يجب أن يُقرأ ككتلة واحدة. والفصل بخطٍّ شعري يكفي.
-                      */}
-                    <div className="mt-4 border-t border-ink-600/70 pt-4">
-                      {isLiveAuction ? (
-                        <AuctionCountdown
-                          endsAt={detail.endsAt}
-                          serverTime={detail.serverTime}
-                          durationSeconds={detail.durationSeconds}
-                          className="border-0 bg-transparent p-0 sm:p-0"
-                        />
-                      ) : (
-                        <MiniStat
-                          icon={Clock3}
-                          label="الحالة"
-                          value={LISTING_STATUS_LABELS[detail.status]}
-                        />
-                      )}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-ink-600/70 pt-3">
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-muted">
-                        <Gavel className="size-3.5" />
-                        المزايدة التالية
-                      </span>
-                      <span className="text-sm font-extrabold tabular-nums">
-                        {formatAmount(detail.nextBidAmount)}{' '}
-                        <span className="text-[11px] font-bold">ريال</span>
-                      </span>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
+          {/*
+            * مزادٌ جارٍ له مسرحه، وما عداه بطاقة نتيجة.
+            *
+            * الحيّ يحتاج حياةً تُرى: بثًّا ونبضًا وزمنًا يجري. والمغلق يحتاج
+            * خبرًا واحدًا ساكنًا — وخلطهما في تصميمٍ واحد يُعطي المنتهي حركةً
+            * لا معنى لها، ويُعطي الجاري سكونَ ما انتهى.
+            */}
+          {isLiveAuction ? (
+            <AuctionStage detail={detail} status={status} viewers={viewers} />
+          ) : (
+            <ClosedSummary detail={detail} />
+          )}
 
           <TradePanel detail={detail} isSignedIn={isSignedIn} onDone={refetch} />
 
@@ -381,20 +283,61 @@ export function ListingView({
   )
 }
 
-function ReservePill({ state }: { state: ListingDetail['reserveState'] }) {
-  if (state === 'unknown') return null
-  return state === 'met' ? (
-    <Badge variant="success">
-      <ShieldCheck className="size-3" />
-      تم تحقيق السعر الاحتياطي
-    </Badge>
-  ) : (
-    <Badge variant="gold">
-      <ShieldAlert className="size-3" />
-      لم يتحقق السعر الاحتياطي بعد
-    </Badge>
+/**
+ * ما ليس مزادًا جاريًا: خبرٌ واحد ساكن.
+ *
+ * بيعٌ مباشر بسعره، أو استقبال عروض بحدّه الأدنى، أو جولةٌ انتهت بنتيجتها.
+ * ولا عدّاد ولا نبض: ما لا يتحرّك لا يُعطى واجهة ما يتحرّك.
+ */
+function ClosedSummary({ detail }: { detail: ListingDetail }) {
+  if (detail.status === 'sold') {
+    return (
+      <div className="rounded-2xl border border-success/60 bg-success-soft p-5 text-center">
+        <Award className="mx-auto mb-2 size-9 text-success" />
+        <p className="text-lg font-extrabold text-success">تمّت الصفقة</p>
+        <p className="mt-1 text-3xl font-extrabold tabular-nums text-gold-500">
+          {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>
+        </p>
+      </div>
+    )
+  }
+
+  const done = isClosedListing(detail.status)
+  const { label, value } = done
+    ? { label: 'انتهت الجولة عند', value: detail.highestAmount ?? detail.startingPrice }
+    : detail.saleType === 'fixed'
+      ? { label: 'سعر البيع', value: detail.price }
+      : detail.saleType === 'offers'
+        ? { label: 'أقل عرض مقبول', value: detail.minimumOffer }
+        : { label: 'السعر الافتتاحي', value: detail.startingPrice }
+
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border p-5',
+        done ? 'border-ink-600 bg-ink-800' : 'border-gold-600/50 bg-gold-500/8',
+      )}
+    >
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <p
+        className={cn(
+          'mt-1 text-4xl font-extrabold leading-none tabular-nums',
+          done ? 'text-muted' : 'text-gold-500',
+        )}
+      >
+        {formatAmount(value)}
+        <span className="ms-2 text-sm font-bold">ريال</span>
+      </p>
+      {done && (
+        <p className="mt-3 flex items-center gap-1.5 border-t border-ink-600/70 pt-3 text-xs text-muted">
+          <Clock3 className="size-3.5" />
+          {LISTING_STATUS_LABELS[detail.status]}
+        </p>
+      )}
+    </div>
   )
 }
+
 
 /**
  * كشف المزايدات.
@@ -510,14 +453,3 @@ function Field({ label, value }: { label: string; value: string }) {
   )
 }
 
-function MiniStat({ icon: Icon, label, value }: { icon: typeof Timer; label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-ink-600 bg-ink-900/60 p-3">
-      <p className="flex items-center gap-1.5 text-[11px] text-muted">
-        <Icon className="size-3.5" />
-        {label}
-      </p>
-      <p className="mt-1 text-base font-extrabold tabular-nums">{value}</p>
-    </div>
-  )
-}

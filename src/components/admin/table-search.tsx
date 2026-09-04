@@ -143,7 +143,11 @@ export function TableSearch({
           onKeyDown={keys.onKeyDown}
           role="tablist"
           aria-label="أقسام الجدول"
-          className="scrollbar-none edge-fade-start -mb-px flex gap-1 overflow-x-auto border-b border-ink-600 sm:mask-none"
+          /*
+           * الأقسام تقتسم العرض على الجوال — لا شريطٌ يفيض فيُسحب باللمس.
+           * انظر التعليق نفسه في `order-tabs`.
+           */
+          className="scrollbar-none -mb-px flex border-b border-ink-600 max-sm:overscroll-x-contain sm:edge-fade-start sm:gap-1 sm:overflow-x-auto sm:mask-none"
         >
           {tabs.map((entry) => {
             const on = !query && tab === entry.key
@@ -162,11 +166,12 @@ export function TableSearch({
                   setTab(entry.key)
                 }}
                 className={cn(
-                  'relative flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm transition-colors',
+                  'relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1.5 py-2.5 text-[13px] transition-colors',
+                  'sm:flex-none sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm',
                   on ? 'font-bold text-gold-500' : 'font-semibold text-muted hover:text-paper',
                 )}
               >
-                {entry.label}
+                <span className="truncate">{entry.label}</span>
                 <span
                   className={cn(
                     'rounded-full px-1.5 py-px text-[11px] font-bold tabular-nums',

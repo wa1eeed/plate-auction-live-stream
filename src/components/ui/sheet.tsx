@@ -49,7 +49,7 @@ const SheetContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'surface-overlay fixed z-50 flex flex-col gap-4 border-ink-600 p-5',
+        'surface-overlay fixed z-50 flex flex-col gap-4 overflow-hidden border-ink-600 p-5',
         'transition-transform duration-300 ease-[var(--ease-smooth)]',
         side === 'end' &&
           'inset-y-0 end-0 h-full w-[min(21rem,88vw)] border-s data-[state=closed]:translate-x-full rtl:data-[state=closed]:-translate-x-full',
@@ -61,7 +61,20 @@ const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      {/*
+        * يُمرَّر المحتوى وحده، ويبقى زرّ الإغلاق ثابتًا فوقه.
+        *
+        * كان الدُرج `h-full` بلا تمرير: فما تجاوز الشاشة يُقصّ ولا يُبلغ إليه
+        * بحال — وقع ذلك في أقسام الإدارة، ثلاثة عشر قسمًا آخرها «الإعدادات»
+        * خلف الحافّة السفلى. والقصّ صامت: لا شريط ولا ظلّ يدلّ على بقيّة.
+        *
+        * والتمرير في غلافٍ داخليّ لا في الدُرج نفسه، وإلّا انزلق زرّ الإغلاق
+        * مع المحتوى فغاب عمّن بلغ آخر القائمة. و`overscroll-contain` يمنع
+        * تمرير الصفحة خلفه عند بلوغ طرفه.
+        */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain">
+        {children}
+      </div>
       <DialogPrimitive.Close
         className="absolute end-4 top-4 rounded-lg p-1.5 text-muted transition-colors hover:bg-ink-700 hover:text-paper focus-visible:outline-none"
         aria-label="إغلاق"

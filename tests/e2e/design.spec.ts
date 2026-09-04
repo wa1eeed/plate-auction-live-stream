@@ -148,6 +148,11 @@ test.describe('الترويسة والتنقّل', () => {
     await expect(drawer).not.toBeVisible()
   })
 
+  /*
+   * ولا مُسبِّب غير مرئيّ: رابط «تخطّي إلى المحتوى» كان `sr-only` بحشوٍ يتغلّب
+   * على `padding:0`، فيبقى ٣٣ بكسل مطلقًا عند الطرف — مقصوصًا عن العين
+   * وحاضرًا في حساب العرض. تمريرٌ أفقيّ في كل صفحة لا يُرى له سبب.
+   */
   test('لا تمرير أفقي في أي عرض', async ({ page }) => {
     for (const width of [375, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 })
@@ -412,6 +417,49 @@ test.describe('الجوال عند 360px', () => {
     await drawer.getByRole('link', { name: /الإعدادات/ }).click()
     await expect(page).toHaveURL(/\/admin\/settings/)
     await expect(page.getByRole('dialog')).toBeHidden()
+  })
+
+  /*
+   * التابات تقتسم العرض فلا تُسحب باللمس.
+   *
+   * كانت `overflow-x-auto` وثلاثة أزرار تتجاوز ٣٧٥ بكسل بقليل، فيصير الشريط
+   * منطقة سحبٍ باللمس: تتحرّك التابات مع الإصبع وتتأرجح عند الطرفين. وما
+   * يُلمس ليَنقُل لا يجوز أن ينزلق.
+   */
+  test('تابات المعاملات لا تُسحب باللمس', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 })
+    await loginUser(page, USERS.majed)
+
+    for (const path of ['/account/purchases', '/account/sales']) {
+      await page.goto(path)
+      const drag = await page.locator('[role="tablist"]').first().evaluate((el) => ({
+        x: el.scrollWidth - el.clientWidth,
+        y: el.scrollHeight - el.clientHeight,
+      }))
+      expect(drag.x, `${path}: الشريط يُسحب أفقيًّا`).toBeLessThanOrEqual(1)
+      expect(drag.y, `${path}: الشريط يُسحب رأسيًّا`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  /*
+   * الدُرج يُمرَّر فيُبلَغ آخره.
+   *
+   * كان `h-full` بلا تمرير: ثلاثة عشر قسمًا آخرها «الإعدادات» خلف الحافّة
+   * السفلى، والقصّ صامت لا يدلّ عليه شريط ولا ظلّ.
+   */
+  test('دُرج الإدارة يُمرَّر حتى آخر قسم', async ({ page }) => {
+    // شاشة قصيرة عمدًا: هي ما يكشف القصّ
+    await page.setViewportSize({ width: 375, height: 620 })
+    await loginAdmin(page)
+    await page.goto('/admin')
+
+    await page.getByRole('button', { name: 'أقسام الإدارة' }).click()
+    const drawer = page.getByRole('dialog')
+    await expect(drawer).toBeVisible()
+
+    const last = drawer.getByRole('link', { name: /الإعدادات/ })
+    await last.scrollIntoViewIfNeeded()
+    await expect(last).toBeInViewport()
   })
 
   test('كشف الحساب يُقرأ كاملًا على الجوال', async ({ page }) => {
