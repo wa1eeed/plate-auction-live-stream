@@ -1387,5 +1387,6 @@ export async function getInvoices(): Promise<InvoiceView> {
     totals.total += row.totalAmount
   }
   // المخزَن يُرجع الأحدث أوّلًا، والسلسلة تُقرأ بترتيب إصدارها
-  return { rows, totals, chain: verifyInvoiceChain(rows.slice().reverse()) }
+  // لا يُعكس: التحقّق يمشي بروابط السلسلة فلا يعنيه ترتيب العرض
+  return { rows, totals, chain: verifyInvoiceChain(rows) }
 }

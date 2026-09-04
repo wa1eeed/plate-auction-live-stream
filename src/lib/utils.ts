@@ -38,11 +38,18 @@ export function formatCountdown(ms: number): string {
 const TIME_ZONE = 'Asia/Riyadh'
 const LOCALE = 'ar-SA-u-nu-latn'
 
+/**
+ * الساعة باثنتي عشرة بعلامة صباحٍ ومساء: `06:40 م`.
+ *
+ * وهي الصيغة التي تُقرأ بها الساعة محليًّا — و«18:40» تُترجَم في الذهن قبل أن
+ * تُفهم. والخانتان تبقيان مع ذلك: `6:40` و`06:40` يختلف عرضهما، فتهتزّ أعمدة
+ * الجداول سطرًا بعد سطر.
+ */
 const clockFormat = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false,
+  hour12: true,
 })
 
 /**

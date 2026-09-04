@@ -546,14 +546,15 @@ describe('صيغة التاريخ', () => {
   it('رقمية بالشرطة المائلة بلا اسم شهر', () => {
     const text = plain(formatTimestamp('2026-09-04T08:55:00.000Z'))
     // يوم/شهر/سنة · ساعة:دقيقة — والأرقام لاتينية للقراءة السريعة
-    expect(text).toBe('04/09/2026 · 11:55')
-    // ولا حرف عربي واحد: اسم الشهر يطول ويختلف عرضه فتهتزّ أعمدة الجداول
-    expect(text).not.toMatch(/\p{Script=Arabic}/u)
+    expect(text).toBe('04/09/2026 · 11:55 ص')
+    // ولا اسم شهر: يطول ويختلف عرضه فتهتزّ أعمدة الجداول — و«ص»/«م» ثابتة
+    expect(text.replace(/ [صم]$/, '')).not.toMatch(/\p{Script=Arabic}/u)
   })
 
   it('لا تختصر إلى «اليوم» أو «أمس» — الأسطر تُقارن ببعضها', () => {
     const now = new Date().toISOString()
-    expect(plain(formatTimestamp(now))).toMatch(/^\d{2}\/\d{2}\/\d{4} · \d{2}:\d{2}$/)
+    // الساعة باثنتي عشرة بعلامة صباحٍ ومساء — «18:40» تُترجَم في الذهن قبل أن تُفهم
+    expect(plain(formatTimestamp(now))).toMatch(/^\d{2}\/\d{2}\/\d{4} · \d{2}:\d{2} [صم]$/)
     const yesterday = new Date(Date.now() - 86_400_000).toISOString()
     expect(formatTimestamp(yesterday)).not.toMatch(/أمس/)
   })

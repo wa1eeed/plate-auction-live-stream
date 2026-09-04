@@ -45,28 +45,35 @@ describe('الختم الزمني للأحداث', () => {
   const plain = (text: string) => text.replace(/[\u200e\u200f]/g, '')
 
   it('كامل دائمًا: تاريخ رقمي ووقت، بلا اختصار', () => {
-    expect(plain(formatTimestamp('2026-08-31T04:02:00.000Z', now))).toBe('31/08/2026 · 07:02')
+    expect(plain(formatTimestamp('2026-08-31T04:02:00.000Z', now))).toBe('31/08/2026 · 07:02 ص')
   })
 
   it('لا «اليوم» ولا «أمس» — الأسطر تُقارن بعضها ببعض في كشف طويل', () => {
-    expect(plain(formatTimestamp('2026-08-30T04:02:00.000Z', now))).toBe('30/08/2026 · 07:02')
+    expect(plain(formatTimestamp('2026-08-30T04:02:00.000Z', now))).toBe('30/08/2026 · 07:02 ص')
     expect(formatTimestamp('2026-08-30T04:02:00.000Z', now)).not.toContain('أمس')
   })
 
   it('الشهر رقم لا اسم — فلا يهتزّ عرض العمود من شهر لآخر', () => {
     const value = plain(formatTimestamp('2026-08-20T04:02:00.000Z', now))
-    expect(value).toBe('20/08/2026 · 07:02')
-    expect(value).not.toMatch(/\p{Script=Arabic}/u)
+    expect(value).toBe('20/08/2026 · 07:02 ص')
+    /*
+     * لا حرف عربيّ إلّا علامة الصباح والمساء.
+     *
+     * المقصود منع **اسم الشهر**: يطول ويختلف عرضه من شهر لآخر فتهتزّ أعمدة
+     * الجداول. و«ص»/«م» حرفٌ واحد ثابت العرض لا يفعل ذلك — فيُستثنى بالنصّ
+     * لا بتوسيع الشرط إلى «لا عربية أصلًا».
+     */
+    expect(value.replace(/ [صم]$/, '')).not.toMatch(/\p{Script=Arabic}/u)
   })
 
   it('السنة حاضرة دائمًا لا عند اختلافها فقط', () => {
-    expect(plain(formatTimestamp('2025-12-20T04:02:00.000Z', now))).toBe('20/12/2025 · 07:02')
+    expect(plain(formatTimestamp('2025-12-20T04:02:00.000Z', now))).toBe('20/12/2025 · 07:02 ص')
     expect(plain(formatTimestamp('2026-08-20T04:02:00.000Z', now))).toContain('2026')
   })
 
   it('يحسب اليوم بتوقيت السعودية لا بتوقيت UTC', () => {
     // 2026-08-30T22:30Z هو 01:30 من يوم 31 بالرياض
-    expect(plain(formatTimestamp('2026-08-30T22:30:00.000Z', now))).toBe('31/08/2026 · 01:30')
+    expect(plain(formatTimestamp('2026-08-30T22:30:00.000Z', now))).toBe('31/08/2026 · 01:30 ص')
   })
 
   it('يعيد شرطة للقيمة الفارغة', () => {

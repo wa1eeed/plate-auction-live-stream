@@ -150,10 +150,35 @@ export async function issueCommissionInvoice(
  * وإخفاء الأثر دون إعادة بناء السلسلة كلّها.
  */
 export function verifyInvoiceChain(invoices: TaxInvoice[]): { ok: boolean; brokenAt: string | null } {
-  let previous = genesisHash()
-  // الترتيب هنا ترتيب الإصدار — والمخزَن يُعيده معكوسًا للعرض
+  if (invoices.length === 0) return { ok: true, brokenAt: null }
+
+  /*
+   * تُمشى السلسلة بروابطها لا بترتيب ما وصل.
+   *
+   * كانت تُقرأ بالتسلسل المُعطى، والمُعطى معكوسُ ترتيب العرض — فارتبطت سلامةُ
+   * دفترٍ ضريبيّ بترتيب جدولٍ في الواجهة. وحين رُتِّب الجدول بالتاريخ بدل
+   * ترتيب الإدخال أعلنت اللوحة السلسلة **مكسورة** وهي سليمة: إنذارٌ كاذب في
+   * أخطر ما تعرضه، ويُطارَد فيه عيبٌ لا وجود له.
+   *
+   * والرابطة نفسها تكفي: كل فاتورة تحمل تجزئة سابقتها، فمن البَدء تُتبَع
+   * الحلقات واحدةً واحدة. ويكشف ذلك ما لا يكشفه المرور المرتّب: فاتورتان
+   * تدّعيان الموضع نفسه، أو حلقةٌ سقطت من الوسط.
+   */
+  const byPrevious = new Map<string, TaxInvoice>()
   for (const invoice of invoices) {
-    if (invoice.previousHash !== previous) return { ok: false, brokenAt: invoice.reference }
+    // موضعان لحلقة واحدة: تفرّعٌ لا يقع إلا بعبثٍ في الدفتر
+    if (byPrevious.has(invoice.previousHash)) return { ok: false, brokenAt: invoice.reference }
+    byPrevious.set(invoice.previousHash, invoice)
+  }
+
+  let previous = genesisHash()
+  let lastGood: string | null = null
+
+  for (let walked = 0; walked < invoices.length; walked++) {
+    const invoice = byPrevious.get(previous)
+    // حلقة مفقودة — يُشار إلى آخر سليمة قبلها
+    if (!invoice) return { ok: false, brokenAt: lastGood }
+
     const expected = sha256Base64(
       invoiceDigestInput({
         reference: invoice.reference,
@@ -168,7 +193,10 @@ export function verifyInvoiceChain(invoices: TaxInvoice[]): { ok: boolean; broke
       }),
     )
     if (expected !== invoice.hash) return { ok: false, brokenAt: invoice.reference }
+
     previous = invoice.hash
+    lastGood = invoice.reference
   }
+
   return { ok: true, brokenAt: null }
 }

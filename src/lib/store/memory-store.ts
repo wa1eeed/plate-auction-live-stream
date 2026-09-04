@@ -761,13 +761,24 @@ export class MemoryStore implements AuctionStore {
     return clone(this.db.taxSettings)
   }
 
+  /*
+   * بالزمن لا بعكس ترتيب الإدخال.
+   *
+   * `reverse()` يقلب تسلسل الإضافة، وهو يوافق الزمن ما دامت الصفوف تُضاف
+   * لحظةَ وقوعها. لكنّ البذرة تُنشئ صفقاتٍ مؤرَّخةً في الماضي بترتيبٍ غير
+   * ترتيب تواريخها، فيخرج الجدول من الأقدم إلى الأحدث — وهو ما يقع أيضًا في
+   * أي استيراد أو ترحيل بيانات. والفرز بالحقل نفسه يصحّ في الحالتين.
+   *
+   * وسلسلة التجزئة لا يمسّها هذا: `lastInvoiceHash` يقرأ آخر المُدخَل من
+   * `db.invoices` مباشرةً، لا من هنا.
+   */
   async listInvoices(query: { userId?: string; orderId?: string } = {}): Promise<TaxInvoice[]> {
     return clone(
       this.db.invoices
         .filter((row) => !query.userId || row.customerId === query.userId)
         .filter((row) => !query.orderId || row.orderId === query.orderId)
         .slice()
-        .reverse(),
+        .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)),
     )
   }
 
@@ -803,7 +814,8 @@ export class MemoryStore implements AuctionStore {
         .filter((row) => !query.beneficiaryId || row.beneficiaryId === query.beneficiaryId)
         .filter((row) => !query.orderId || row.orderId === query.orderId)
         .slice()
-        .reverse(),
+        // بالزمن لا بعكس ترتيب الإدخال — انظر `listInvoices`
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     )
   }
 

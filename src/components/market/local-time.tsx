@@ -34,7 +34,10 @@ export function LocalTime({
   if (!iso) return <span className={className}>—</span>
   const date = new Date(iso)
 
-  /* التاريخ رقمي بالشرطة المائلة لا باسم شهر — صيغة واحدة في المنصّة كلّها */
+  /*
+   * التاريخ رقمي بالشرطة المائلة لا باسم شهر، والساعة باثنتي عشرة بعلامة
+   * صباحٍ ومساء — صيغة واحدة في المنصّة كلّها.
+   */
   const dateParts: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: '2-digit',
@@ -44,15 +47,15 @@ export function LocalTime({
     mode === 'date'
       ? dateParts
       : mode === 'time'
-      ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
+      ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }
       : mode === 'datetime'
-        ? { ...dateParts, hour: '2-digit', minute: '2-digit', hour12: false }
+        ? { ...dateParts, hour: '2-digit', minute: '2-digit', hour12: true }
         : {
             ...dateParts,
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: false,
+            hour12: true,
           }
 
   const formatted = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {

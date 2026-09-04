@@ -129,18 +129,27 @@ test.describe('كشف المزايدات', () => {
     await expect(stamp).toBeVisible()
     expect(await stamp.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}T/)
 
-    // والنصّ المعروض يتبع منطقة الجهاز لا منطقة الخادم
+    /*
+     * والنصّ المعروض يتبع منطقة الجهاز لا منطقة الخادم.
+     *
+     * والساعة باثنتي عشرة بعلامة صباحٍ ومساء — فيُبنى المتوقَّع بالخيارات
+     * نفسها لا بسلسلة ثابتة، وإلّا اختبر الاختبارُ صيغةً بعينها بدل أن يختبر
+     * تطابق المنطقة.
+     */
     const iso = (await stamp.getAttribute('datetime'))!
     const hhmm = await page.evaluate(
       (value) =>
         new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
           hour: '2-digit',
           minute: '2-digit',
-          hour12: false,
+          hour12: true,
         }).format(new Date(value)),
       iso,
     )
-    expect(await stamp.innerText()).toContain(hhmm)
+    // «01:02 م» مقابل «01:02:18 م»: تُطابَق الساعة والدقيقة والعلامة
+    const [clock, marker] = hhmm.split(' ')
+    expect(await stamp.innerText()).toContain(clock)
+    expect(await stamp.innerText()).toContain(marker)
   })
 })
 
