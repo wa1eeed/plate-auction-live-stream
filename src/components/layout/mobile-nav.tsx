@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Gavel, HelpCircle, LayoutGrid, Menu, Plus, Route, Wallet } from 'lucide-react'
+import { Gavel, HelpCircle, LayoutGrid, Menu, Plus, Route, User, Wallet } from 'lucide-react'
 import {
   Sheet,
   SheetClose,
@@ -23,6 +23,7 @@ const PUBLIC_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: '/account/listings/new', label: 'أضف لوحة', icon: Plus },
+  { href: '/account', label: 'حسابي', icon: User },
   { href: '/account/listings', label: 'إدارة لوحاتي', icon: Gavel },
   { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
 ] as const

@@ -23,10 +23,9 @@ import type {
   ListingStatus,
   Offer,
   Order,
-  Plate,
   SaleType,
 } from '@/lib/domain/types'
-import { availableBalance, computeCommission } from '@/lib/domain/types'
+import { availableBalance, computeCommission, toPlate } from '@/lib/domain/types'
 import { buildOrderSettlement, buildOrderTimeline } from '@/lib/domain/order-timeline'
 import {
   assertDepositEligibility,
@@ -57,18 +56,6 @@ export class ServiceError extends Error {
 
 export function isServiceError(error: unknown): error is ServiceError {
   return typeof error === 'object' && error !== null && (error as ServiceError).isServiceError === true
-}
-
-function toPlate(listing: Listing): Plate {
-  return {
-    plateType: listing.plateType,
-    plateFormat: listing.plateFormat,
-    arabicLetters: listing.arabicLetters,
-    latinLetters: listing.latinLetters,
-    plateNumbers: listing.plateNumbers,
-    emblem: listing.emblem,
-    customEmblemUrl: listing.customEmblemUrl,
-  }
 }
 
 /**

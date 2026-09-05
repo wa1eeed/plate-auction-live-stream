@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Crown, Gavel, Loader2, LogIn, Minus, Plus, TrendingUp } from 'lucide-react'
+import { Crown, Gavel, Loader2, LogIn, Minus, Plus, TrendingUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { quickBidSteps } from '@/lib/domain/auction'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
@@ -60,7 +60,18 @@ export function AuctionBidBox({
 
   const step = detail.minimumIncrement > 0 ? detail.minimumIncrement : 100_00
   const belowMinimum = amount < detail.nextBidAmount
-  const steps = detail.allowCustomBid ? quickBidSteps(detail.minimumIncrement, detail.nextBidAmount) : []
+  /*
+   * الاختصارات في العمود وحده — لا في الشريط الثابت.
+   *
+   * الشريط يقتطع من أسفل الشاشة على الجوال، والصفحة تحجز تحتها بقدره؛ فكلّ
+   * سطرٍ يُضاف إليه يُقتطع من اللوحة والسعر فوقه. وصفٌّ من أربع رقاقاتٍ بعنوانه
+   * ثلاثةُ أسطر — ثمنٌ باهظ لاختصارٍ يُغني عنه زرّا `+`/`−` والحقلُ نفسه.
+   * وفي العمود الجانبي لا سقف يُزاحم، فتبقى.
+   */
+  const steps =
+    !bar && detail.allowCustomBid
+      ? quickBidSteps(detail.minimumIncrement, detail.nextBidAmount)
+      : []
 
   // رصيدٌ لا يكفي العربون: يُقال قبل المحاولة لا بعد رفض الخادم
   const shortOnDeposit =
@@ -147,25 +158,60 @@ export function AuctionBidBox({
         </p>
       )}
 
-      {/* الرقاقات تُعدِّل المبلغ ولا تلتزم به — الالتزام بالزرّ الكبير وحده */}
+      {/*
+        * اختصارات المزايدة — فوق الحقل، ومقروءةً كأزرار لا كزينة.
+        *
+        * كانت رقاقاتٍ صغيرةً بلون الهامش في صفٍّ متروك بلا عنوان، فتُقرأ وسمًا
+        * لا زرًّا ولا تُستعمل. وهي أسرع طريق إلى مبلغٍ صحيح على الجوال: صفٌّ
+        * متساوي الأعمدة بأرقامٍ غليظة، وتحت كلٍّ ما ستصير إليه المزايدة — فلا
+        * يُحسب في الرأس ما يكتبه الزرّ.
+        *
+        * والالتزام يبقى بالزرّ الكبير وحده: الرقاقة تكتب في الحقل ولا تُزايد.
+        */}
       {steps.length > 0 && !detail.iAmHighest && (
-        <div className="flex flex-wrap gap-1.5">
-          {steps.map((value) => (
-            <button
-              key={value}
-              type="button"
-              disabled={busy}
-              onClick={() => setAmount(detail.nextBidAmount + value)}
-              className={cn(
-                'rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums transition-colors',
-                amount === detail.nextBidAmount + value
-                  ? 'border-gold-600 bg-gold-500/15 text-gold-400'
-                  : 'border-ink-600 bg-ink-900/60 text-muted hover:border-gold-600/50 hover:text-paper',
-              )}
-            >
-              <span dir="ltr">+{formatAmount(value)}</span>
-            </button>
-          ))}
+        <div className="space-y-1.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+            <Zap className="size-3 text-gold-500" />
+            اختصارات المزايدة
+          </p>
+          <div
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+          >
+            {steps.map((value) => {
+              const target = detail.nextBidAmount + value
+              const picked = amount === target
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={picked}
+                  aria-label={`اضبط المبلغ على ${formatAmount(target)} ريال`}
+                  onClick={() => setAmount(target)}
+                  className={cn(
+                    'rounded-xl border px-1 py-1.5 text-center leading-tight transition-colors disabled:opacity-50',
+                    picked
+                      ? 'border-gold-600 bg-gold-500/15 text-gold-400'
+                      : 'border-ink-600 bg-ink-900/60 text-paper hover:border-gold-600/50 hover:bg-ink-900',
+                  )}
+                >
+                  <span dir="ltr" className="block text-[13px] font-extrabold tabular-nums">
+                    +{formatAmount(value)}
+                  </span>
+                  <span
+                    dir="ltr"
+                    className={cn(
+                      'block text-[10px] tabular-nums',
+                      picked ? 'text-gold-400/80' : 'text-muted',
+                    )}
+                  >
+                    {formatAmount(target)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 

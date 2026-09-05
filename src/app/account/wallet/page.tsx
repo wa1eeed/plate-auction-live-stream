@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Info, Receipt, Wallet as WalletIcon } from 'lucide-react'
 import { StatementTable } from '@/components/market/statement-table'
+import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DEPOSIT_STATUS_LABELS } from '@/lib/domain/types'
@@ -152,26 +153,37 @@ export default async function WalletPage() {
       {heldDeposits.length > 0 && (
         <section className="mb-6">
           <h2 className="mb-2 text-sm font-bold">عرابين محجوزة الآن</h2>
+          {/*
+            * اللوحة تُرسم لا تُكتب.
+            *
+            * «سد ٢٠٢٠» نصٌّ يُفكّ حرفًا حرفًا، ومن له ثلاثة عرابين يقرأ ثلاثة
+            * أسطرٍ متشابهة ليعرف أيُّها لوحته. والرسم يُعرف بنظرة، وهو نفسه
+            * الذي يراه في السوق فتُطابق ذاكرتُه ما أمامه.
+            */}
           <ul className="grid gap-2 sm:grid-cols-2">
             {heldDeposits.map((deposit) => (
               <li
                 key={deposit.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-gold-600/40 bg-gold-500/[0.06] p-3"
+                className="flex items-center gap-3 rounded-xl border border-gold-600/40 bg-gold-500/[0.06] p-3"
               >
-                <div className="min-w-0">
-                  <Link
-                    href={`/market/${deposit.listingId}`}
-                    className="block truncate font-bold hover:underline"
-                  >
-                    {deposit.plateLabel}
-                  </Link>
-                  <span className="text-[11px] text-muted">
+                <Link href={`/market/${deposit.listingId}`} className="shrink-0">
+                  {deposit.plate ? (
+                    <span className="flex aspect-[16/7] w-[112px] items-center justify-center rounded-lg bg-ink-900/40 p-1">
+                      <SaudiLicensePlate {...deposit.plate} size="fill" showReflection={false} />
+                    </span>
+                  ) : (
+                    <span className="font-bold">{deposit.plateLabel}</span>
+                  )}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-muted">
                     حُجز {formatTimestamp(deposit.createdAt)}
                   </span>
+                  <span className="mt-0.5 block font-extrabold tabular-nums text-gold-500">
+                    {formatAmount(deposit.amount)}
+                    <span className="ms-1 text-[11px] font-normal text-muted">ريال</span>
+                  </span>
                 </div>
-                <span className="shrink-0 font-extrabold tabular-nums text-gold-500">
-                  {formatAmount(deposit.amount)}
-                </span>
               </li>
             ))}
           </ul>
@@ -192,9 +204,18 @@ export default async function WalletPage() {
               .map((deposit) => (
                 <li
                   key={deposit.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-600 bg-ink-800 p-3 text-sm"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-600 bg-ink-800 p-3 text-sm"
                 >
-                  <span className="font-bold">{deposit.plateLabel}</span>
+                  {/* والسجلّ كذلك: اللوحة رسمًا لا نصًّا */}
+                  <Link href={`/market/${deposit.listingId}`} className="shrink-0">
+                    {deposit.plate ? (
+                      <span className="flex aspect-[16/7] w-[112px] items-center justify-center rounded-lg bg-ink-900/40 p-1">
+                        <SaudiLicensePlate {...deposit.plate} size="fill" showReflection={false} />
+                      </span>
+                    ) : (
+                      <span className="font-bold">{deposit.plateLabel}</span>
+                    )}
+                  </Link>
                   <span className="tabular-nums">{formatAmount(deposit.amount)} ريال</span>
                   <Badge variant={deposit.status === 'forfeited' ? 'danger' : 'muted'}>
                     {DEPOSIT_STATUS_LABELS[deposit.status]}

@@ -6,7 +6,12 @@ import { ListingAdminActions } from '@/components/admin/listing-admin-actions'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { Badge } from '@/components/ui/badge'
 import { formatAmount } from '@/lib/domain/money'
-import { LISTING_STATUS_LABELS, SALE_TYPE_LABELS, isClosedListing } from '@/lib/domain/types'
+import {
+  LISTING_STATUS_LABELS,
+  SALE_TYPE_LABELS,
+  isClosedListing,
+  type ListingStatus,
+} from '@/lib/domain/types'
 import { listAdminListings, type AdminListingRow } from '@/lib/server/admin-service'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { cn, formatTimestamp } from '@/lib/utils'
@@ -16,16 +21,49 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'الإعلانات' }
 
 /** نغمة كل حالة — الموقوف خطر، والمباع نجاح، وما عداهما محايد. */
-const LISTING_STATUS_TONE: Record<string, 'success' | 'muted' | 'danger' | 'gold' | 'default'> = {
+const LISTING_STATUS_TONE: Record<ListingStatus, 'success' | 'muted' | 'danger' | 'gold' | 'default'> = {
   active: 'success',
+  scheduled: 'gold',
   sold: 'success',
   suspended: 'danger',
   cancelled: 'muted',
-  expired: 'muted',
   reserve_not_met: 'gold',
   no_bids: 'muted',
   draft: 'muted',
 }
+
+/**
+ * أقسام الإعلانات — قسمةٌ تامّة لا تُسقط حالة.
+ *
+ * الأقسام تُخفي ما ليس فيها، فحالةٌ بلا قسمٍ تختفي من الصفحة كلّها ولا
+ * يجدها المشغّل إلا ببحثٍ عن رقمها — وهو لا يبحث عمّا لا يعلم أنّه موجود.
+ * فكلّ حالةٍ في الاتّحاد موضعٌ من الأربعة:
+ *
+ * والرابع ليس تكملةً للثلاثة المطلوبة: **الموقوف قرار إدارة** لا إلغاءٌ ولا
+ * انتهاء، وهو أحوج ما في الصفحة إلى نظرة؛ والمسودّة لم تُعرض بعدُ أصلًا.
+ * فدفنهما في «ملغاة أو منتهية» يخفي ما يُنتظر فيه قرار.
+ */
+const LISTING_TAB_OF: Record<ListingStatus, string> = {
+  active: 'live',
+  scheduled: 'live',
+  sold: 'sold',
+  cancelled: 'closed',
+  reserve_not_met: 'closed',
+  no_bids: 'closed',
+  suspended: 'held',
+  draft: 'held',
+}
+
+const LISTING_TABS = [
+  { key: 'live', label: 'معروضة', hint: 'قائمة في السوق الآن، أو مجدولة للعرض' },
+  { key: 'sold', label: 'مباعة', hint: 'رست وتمّت صفقتها' },
+  {
+    key: 'closed',
+    label: 'ملغاة أو منتهية',
+    hint: 'ألغاها البائع، أو انتهت دون مزايدات، أو لم تبلغ سعرها الاحتياطي',
+  },
+  { key: 'held', label: 'موقوفة ومسودّات', hint: 'أوقفتها الإدارة، أو لم تُنشر بعد' },
+]
 
 /**
  * الإعلانات — بطاقاتٌ اللوحةُ عنوانها، لا جدولٌ من تسعة أعمدة.
@@ -51,9 +89,11 @@ export default async function AdminListingsPage() {
 
       <TableSearch
         placeholder="ابحث باللوحة أو البائع أو رقم الإعلان (L26-00001)"
+        tabs={LISTING_TABS}
         rows={rows.map((row) => ({
           key: row.id,
           reference: row.reference,
+          tab: LISTING_TAB_OF[row.status],
           haystack: [
             row.plate.arabicLetters,
             row.plate.latinLetters,

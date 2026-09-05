@@ -10,7 +10,9 @@ import {
   type LedgerEntry,
   type Listing,
   type Order,
+  type Plate,
   type Wallet,
+  toPlate,
 } from '@/lib/domain/types'
 import { buildStatement, isOverdue, isWalletError, type Statement } from '@/lib/domain/wallet'
 import type { Halalas } from '@/lib/domain/money'
@@ -31,7 +33,8 @@ export type WalletView = {
   held: Halalas
   available: Halalas
   statement: Statement
-  deposits: (Deposit & { plateLabel: string })[]
+  /** ومعها لوحتها مرسومةً — تُعرف بالنظر لا بفكّ حروفها */
+  deposits: (Deposit & { plateLabel: string; plate: Plate | null })[]
   /**
    * عمولات استحقّت ولم تُقتطع لعجز الرصيد وقتها.
    *
@@ -55,6 +58,7 @@ export async function getWalletView(userId: string): Promise<WalletView> {
    * كلّ سطرٍ على حدة تعيد الطلب عشرات المرّات على محفظةٍ نشِطة.
    */
   const plateNames = new Map<string, string>()
+  const plateArt = new Map<string, Plate>()
   const plateOf = (listingId: string) => plateNames.get(listingId) ?? null
   const ids = new Set<string>([
     ...deposits.map((deposit) => deposit.listingId),
@@ -62,12 +66,15 @@ export async function getWalletView(userId: string): Promise<WalletView> {
   ])
   for (const id of ids) {
     const listing = await store.getListing(id)
-    if (listing) plateNames.set(id, `${listing.arabicLetters} ${listing.plateNumbers}`)
+    if (!listing) continue
+    plateNames.set(id, `${listing.arabicLetters} ${listing.plateNumbers}`)
+    plateArt.set(id, toPlate(listing))
   }
 
   const decorated = deposits.map((deposit) => ({
     ...deposit,
     plateLabel: plateOf(deposit.listingId) ?? '—',
+    plate: plateArt.get(deposit.listingId) ?? null,
   }))
 
   const dueCommission = (await store.listPlatformEntries({ userId, settled: false }))

@@ -166,12 +166,22 @@ export function TableSearch({
                   setTab(entry.key)
                 }}
                 className={cn(
-                  'relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1.5 py-2.5 text-[13px] transition-colors',
-                  'sm:flex-none sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm',
+                  /*
+                   * على الجوال: العنوان سطرًا (أو سطرين) والعدد تحته.
+                   *
+                   * الأقسام تقتسم العرض بالتساوي فلا تُسحب باللمس، ونصيب القسم
+                   * من أربعةٍ في شاشة ٣٧٥ نحو ٨٦ بكسل — يقتطع منها العدّاد
+                   * والفجوة والحشو فلا يبقى للعنوان إلا ٤٥. فكانت «ملغاة أو
+                   * منتهية» تُقرأ «ملغاة أ…»، و«بانتظار قرارك» تُقرأ «بانتظا…».
+                   * وبإنزال العدّاد سطرًا يتّسع العنوان لعرض القسم كلّه ويلتفّ
+                   * سطرين إن طال — فيُقرأ تامًّا. ومن `sm` يعود صفًّا كما كان.
+                   */
+                  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[12px] leading-tight transition-colors',
+                  'sm:flex-none sm:shrink-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm',
                   on ? 'font-bold text-gold-500' : 'font-semibold text-muted hover:text-paper',
                 )}
               >
-                <span className="truncate">{entry.label}</span>
+                <span className="text-center sm:truncate">{entry.label}</span>
                 <span
                   className={cn(
                     'rounded-full px-1.5 py-px text-[11px] font-bold tabular-nums',

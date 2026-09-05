@@ -19,6 +19,7 @@ import {
   type Deposit,
   type Disbursement,
   isFinalOrderStatus,
+  toPlate,
   type FaqItem,
   type SaleType,
   type TaxInvoice,
@@ -49,18 +50,6 @@ import { releaseOrderEscrow, refundOrderEscrow } from './escrow-service'
 import { notify } from './notification-service'
 import { isPayable } from './disbursement-service'
 import { verifyInvoiceChain } from './invoice-service'
-
-function toPlate(listing: Listing): Plate {
-  return {
-    plateType: listing.plateType,
-    plateFormat: listing.plateFormat,
-    arabicLetters: listing.arabicLetters,
-    latinLetters: listing.latinLetters,
-    plateNumbers: listing.plateNumbers,
-    emblem: listing.emblem,
-    customEmblemUrl: listing.customEmblemUrl,
-  }
-}
 
 // ---------------------------------------------------------------- المؤشرات
 

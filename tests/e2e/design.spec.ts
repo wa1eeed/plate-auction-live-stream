@@ -349,7 +349,15 @@ test.describe('الجوال عند 360px', () => {
      * عمودٍ لا يُريان معًا. والمشغّل يبحث عن إعلانٍ بعينه يعرفه بصورة لوحته.
      */
     await page.goto('/admin/listings')
-    const listingCard = page.locator('li[data-row]').first()
+    /*
+     * أوّل بطاقةٍ **ظاهرة** لا أوّل بطاقةٍ في الصفحة.
+     *
+     * الصفحة صارت أقسامًا — معروضة ومباعة وملغاة وموقوفة — وغيرُ المفتوح
+     * يُخفى بـ`display:none` لا يُنزع. وترتيب الصفوف في الـDOM ترتيبُ المصدر
+     * لا ترتيبُ القسم، فأوّلها قد يكون في قسمٍ آخر — ومتى باعت بقيّةُ الطقم
+     * أوّلَ إعلانٍ سقط هذا الفحص وحده بلا أن ينكسر شيء في الصفحة.
+     */
+    const listingCard = page.locator('li[data-row]:visible').first()
     await expect(listingCard).toBeVisible()
     await expect(listingCard.locator('svg[data-plate-type]')).toBeVisible()
     expect(await page.locator('.admin-table').count()).toBe(0)

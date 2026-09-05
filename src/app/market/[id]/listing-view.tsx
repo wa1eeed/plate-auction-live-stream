@@ -275,22 +275,30 @@ export function ListingView({
             <FieldNode label="نُشر" value={<LocalTime iso={detail.startsAt} mode="datetime" />} />
             <Field label="المشاهدات" value={String(detail.viewCount)} />
           </dl>
-
-          {faq.length > 0 && (
-            <section aria-labelledby="listing-faq" className="pb-2">
-              <h2 id="listing-faq" className="mb-3 text-sm font-bold">
-                أسئلة شائعة قبل المزايدة
-              </h2>
-              <FaqList items={faq} showCategory={false} />
-              <p className="mt-3 text-center text-xs text-muted">
-                <Link href="/faq" className="font-semibold text-gold-500 hover:underline">
-                  كل الأسئلة الشائعة
-                </Link>
-              </p>
-            </section>
-          )}
         </div>
       </div>
+
+      {/*
+        * الأسئلة في ذيل الصفحة لا في عمود التداول.
+        *
+        * على الجوال ينهار العمودان إلى عمود واحد بترتيبهما، فكانت الأسئلة —
+        * وهي ذيل عمود التداول — تسبق كشف المزايدات: يقرأ الزائر «هل يُعاد
+        * العربون؟» قبل أن يرى من زايد وبكم. والكشف هو ما يُتابَع لحظةً بلحظة،
+        * والأسئلة مرجعٌ يُقصد عند الحاجة — فمكانه الذيل في الشاشتين معًا.
+        */}
+      {faq.length > 0 && (
+        <section aria-labelledby="listing-faq" className="mt-8">
+          <h2 id="listing-faq" className="mb-3 text-sm font-bold">
+            أسئلة شائعة قبل المزايدة
+          </h2>
+          <FaqList items={faq} showCategory={false} />
+          <p className="mt-3 text-center text-xs text-muted">
+            <Link href="/faq" className="font-semibold text-gold-500 hover:underline">
+              كل الأسئلة الشائعة
+            </Link>
+          </p>
+        </section>
+      )}
 
       <MobileBidBar detail={detail} isSignedIn={isSignedIn} onDone={refetch} />
     </main>

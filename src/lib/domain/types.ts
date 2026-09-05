@@ -556,6 +556,36 @@ export type PublicSeller = {
   memberSince: string
 }
 
+/**
+ * لوحة الإعلان كما تُرسم — مشتقّةٌ منه لا منسوخةٌ بحقولها.
+ *
+ * كانت هذه الدالّة مكرّرةً في خدمتين، والثالثة كانت ستُكتب في المحفظة. وحقلٌ
+ * جديد على اللوحة (كنوع الإصدار حين أُضيف) يلزم أن يُضاف في كلّ نسخةٍ منها،
+ * وما يُنسى منها يرسم لوحةً ناقصة.
+ */
+export function toPlate(
+  listing: Pick<
+    Listing,
+    | 'plateType'
+    | 'plateFormat'
+    | 'arabicLetters'
+    | 'latinLetters'
+    | 'plateNumbers'
+    | 'emblem'
+    | 'customEmblemUrl'
+  >,
+): Plate {
+  return {
+    plateType: listing.plateType,
+    plateFormat: listing.plateFormat,
+    arabicLetters: listing.arabicLetters,
+    latinLetters: listing.latinLetters,
+    plateNumbers: listing.plateNumbers,
+    emblem: listing.emblem,
+    customEmblemUrl: listing.customEmblemUrl,
+  }
+}
+
 export type PublicBid = {
   id: string
   bidderName: string
