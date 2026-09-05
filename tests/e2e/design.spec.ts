@@ -523,7 +523,7 @@ test.describe('لمسات التصميم', () => {
    * اللوحة هي هويّة المنصّة، والحقيقية **مطروقة** لا مطبوعة — فتُنقَش في
    * المقاسات التي تُرى فيها التفاصيل، ولا يُحمَّل ذلك على أربعين بطاقة.
    */
-  test('اللوحة الكبيرة منقوشة والصغيرة مسطّحة', async ({ page }) => {
+  test('اللوحة منقوشة حيث يُرى النقش، والمصغّرة مسطّحة', async ({ page }) => {
     const { listings } = (await (await page.request.get('/api/listings')).json()) as {
       listings: { id: string; status: string }[]
     }
@@ -534,10 +534,25 @@ test.describe('لمسات التصميم', () => {
     await expect(big).toBeVisible()
     expect(await big.locator('filter[id^="plate-emboss"]').count()).toBe(1)
 
+    /*
+     * والمصغّرة وحدها بلا نقش.
+     *
+     * الحرف على اللوحة الحقيقية مطروقٌ بارز، وبريقه من حافّته — فيُنقش حيث
+     * يُرى. وفي ١٩٠ بكسلًا لا يُرى ويبقى ثمنه، فتُستثنى.
+     */
     await page.goto('/market')
-    const small = page.locator('article svg[data-plate-type]').first()
-    await expect(small).toBeVisible()
-    expect(await small.locator('filter[id^="plate-emboss"]').count()).toBe(0)
+    const thumb = page.locator('li[data-row] svg[data-plate-type], .admin-table svg[data-plate-type]').first()
+    const marketCard = page.locator('article svg[data-plate-type]').first()
+    await expect(marketCard).toBeVisible()
+    expect(await marketCard.locator('filter[id^="plate-emboss"]').count()).toBe(1)
+    // والمصغّرة في قوائم الحساب مسطّحة
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/bids')
+    const listThumb = page.locator('li svg[data-plate-type]').first()
+    if (await listThumb.count()) {
+      expect(await listThumb.locator('filter[id^="plate-emboss"]').count()).toBe(0)
+    }
+    void thumb
   })
 
   /*

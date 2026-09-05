@@ -115,6 +115,23 @@ type Geometry = {
    * صفٌّ واحد لاتينيّ فقط، والدولة في خانةٍ وسطى لا شريطٍ جانبيّ (الرياضية).
    */
   singleRow?: boolean
+  /**
+   * خاناتٌ منفصلة بأرضيّةٍ سوداء بينها — لا خطوطٌ رفيعة على وجهٍ واحد.
+   *
+   * الاعتيادية المصنوعة أربع لوحاتٍ صغيرة مركّبة داخل إطار: بينها فراغٌ أسود
+   * ولكلٍّ حوافّها المستديرة. ورسمها بخطٍّ فاصلٍ على وجهٍ واحد يعطي شكلًا
+   * آخر — أقرب إلى جدولٍ منه إلى لوحة.
+   */
+  cells?: { x: number; y: number; width: number; height: number }[]
+  cellRadius?: number
+  /**
+   * كتلة الدولة — شعارٌ و«السعودية» و«KSA»، وأرضيّتها زرقاء في لوحات النقل.
+   *
+   * موضعها يختلف بالإصدار: وسطى في الطويلة والرياضية، وجانبيّة في الاعتيادية.
+   * وشكلها يحكم ترتيب ما فيها — الضيّقة تُكدّس K S A رأسيًّا، والعريضة تكتب
+   * «KSA» كلمةً واحدة.
+   */
+  countryBox?: { x: number; y: number; width: number; height: number }
 }
 
 const LONG_GEOMETRY: Geometry = {
@@ -122,15 +139,29 @@ const LONG_GEOMETRY: Geometry = {
   width: 930,
   height: 200,
   frameRadius: 20,
+  /*
+   * سُمك الإطار كما كان قبل الخانات: سبعة لا عشرة.
+   *
+   * الفراغ بين الخانات أسودُ كالإطار، فزيادة الحشو معه تُضاعف ما يُرى سوادًا
+   * حتى تبدو اللوحة مؤطّرةً بحدٍّ ثخين لا مركّبةً من قطع.
+   */
   inset: 7,
-  strip: { x: 858, width: 65 },
-  main: { x: 7, width: 851 },
-  numbers: { center: 210, from: 90, to: 330 },
-  emblem: { center: 460, from: 360, to: 560, size: 132 },
-  letters: { center: 700, from: 600, to: 800 },
-  // الداخل 7..193 (186). الشريطان بارتفاع 72، موضوعان ليتساوى الهامش أعلى وأسفل (~17)
-  rows: { topBand: 24, bottomBand: 104, bandHeight: 72 },
-  fonts: { numbers: 82, letters: 88 },
+  // لا شريط جانبيّ: الدولة كتلةٌ وسطى بارتفاع اللوحة
+  strip: { x: 0, width: 0 },
+  main: { x: 7, width: 916 },
+  numbers: { center: 199, from: 9, to: 389 },
+  emblem: { center: 466, from: 394, to: 539, size: 70 },
+  letters: { center: 732, from: 544, to: 921 },
+  rows: { topBand: 15, bottomBand: 108, bandHeight: 76 },
+  fonts: { numbers: 96, letters: 100 },
+  cellRadius: 10,
+  cells: [
+    { x: 9, y: 9, width: 380, height: 88 },
+    { x: 544, y: 9, width: 377, height: 88 },
+    { x: 9, y: 102, width: 380, height: 88 },
+    { x: 544, y: 102, width: 377, height: 88 },
+  ],
+  countryBox: { x: 394, y: 9, width: 145, height: 181 },
 }
 
 /**
@@ -144,18 +175,24 @@ const STANDARD_GEOMETRY: Geometry = {
   viewBox: '0 0 460 230',
   width: 460,
   height: 230,
-  frameRadius: 18,
+  frameRadius: 20,
   inset: 7,
-  strip: { x: 386, width: 67 },
+  strip: { x: 0, width: 0 },
   main: { x: 7, width: 379 },
-  numbers: { center: 120, from: 20, to: 220 },
-  // لا شعار أوسط
+  // خانة الأرقام أوسع من خانة الحروف — ٥٨٪ إلى ٤٢٪ كما في المصنوعة
+  numbers: { center: 118, from: 9, to: 227 },
   emblem: { center: 240, from: 235, to: 245, size: 0 },
-  letters: { center: 310, from: 245, to: 375 },
-  // الداخل 7..223 (216). شريطان بارتفاع 84 بهامش ~24 أعلى وأسفل
-  rows: { topBand: 26, bottomBand: 122, bandHeight: 84 },
-  fonts: { numbers: 92, letters: 96 },
-  dividers: [240],
+  letters: { center: 309, from: 232, to: 386 },
+  rows: { topBand: 16, bottomBand: 124, bandHeight: 88 },
+  fonts: { numbers: 108, letters: 112 },
+  cellRadius: 10,
+  cells: [
+    { x: 9, y: 9, width: 218, height: 103 },
+    { x: 232, y: 9, width: 154, height: 103 },
+    { x: 9, y: 117, width: 218, height: 103 },
+    { x: 232, y: 117, width: 154, height: 103 },
+  ],
+  countryBox: { x: 391, y: 9, width: 60, height: 211 },
 }
 
 /**
@@ -169,18 +206,22 @@ const SPORT_GEOMETRY: Geometry = {
   viewBox: '0 0 760 200',
   width: 760,
   height: 200,
-  frameRadius: 18,
+  frameRadius: 20,
   inset: 7,
-  // لا شريط جانبيّ — الرقم صفر يُسقط رسمه
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 746 },
-  numbers: { center: 175, from: 30, to: 320 },
-  emblem: { center: 380, from: 330, to: 430, size: 78 },
-  letters: { center: 575, from: 440, to: 720 },
+  numbers: { center: 154, from: 9, to: 299 },
+  emblem: { center: 369, from: 304, to: 434, size: 70 },
+  letters: { center: 594, from: 439, to: 749 },
   // صفٌّ واحد يشغل الوسط
-  rows: { topBand: 0, bottomBand: 40, bandHeight: 120 },
-  fonts: { numbers: 132, letters: 132 },
-  dividers: [330, 430],
+  rows: { topBand: 0, bottomBand: 35, bandHeight: 130 },
+  fonts: { numbers: 152, letters: 152 },
+  cellRadius: 10,
+  cells: [
+    { x: 9, y: 9, width: 290, height: 182 },
+    { x: 439, y: 9, width: 310, height: 182 },
+  ],
+  countryBox: { x: 304, y: 9, width: 130, height: 182 },
   singleRow: true,
 }
 
@@ -197,15 +238,23 @@ const MOTO_GEOMETRY: Geometry = {
   height: 195,
   frameRadius: 16,
   inset: 6,
-  strip: { x: 358, width: 66 },
-  main: { x: 6, width: 352 },
-  numbers: { center: 110, from: 22, to: 198 },
+  strip: { x: 0, width: 0 },
+  main: { x: 6, width: 348 },
+  numbers: { center: 92, from: 8, to: 176 },
   // لا شعار أوسط — الحجم صفر يُسقط رسمه
   emblem: { center: 215, from: 205, to: 225, size: 0 },
-  letters: { center: 275, from: 215, to: 345 },
+  letters: { center: 265, from: 181, to: 349 },
   // الداخل 6..189 (183). شريطان بارتفاع 70 بهامش ~17 أعلى وأسفل
-  rows: { topBand: 23, bottomBand: 101, bandHeight: 70 },
-  fonts: { numbers: 80, letters: 84 },
+  rows: { topBand: 13, bottomBand: 105, bandHeight: 76 },
+  fonts: { numbers: 92, letters: 96 },
+  cellRadius: 8,
+  cells: [
+    { x: 8, y: 8, width: 168, height: 87 },
+    { x: 181, y: 8, width: 168, height: 87 },
+    { x: 8, y: 100, width: 168, height: 87 },
+    { x: 181, y: 100, width: 168, height: 87 },
+  ],
+  countryBox: { x: 354, y: 8, width: 62, height: 179 },
 }
 
 /**
@@ -292,7 +341,6 @@ export function SaudiLicensePlate({
   const [numberSize, latinLetterSize] = bottomRow.sizes
   // حجم صفر يعني أن هذه الهندسة بلا شعار أوسط (لوحة الدراجة)
   const showCenterEmblem = geo.emblem.size > 0
-  const hasStrip = geo.strip.width > 0
   /*
    * خلفية زرقاء لخانة الدولة في لوحات النقل.
    *
@@ -302,6 +350,14 @@ export function SaudiLicensePlate({
    */
   const countryFill = plateType === 'transport' ? '#1d4ed8' : null
   const countryInk = countryFill ? '#FFFFFF' : '#0A0D12'
+  const country = geo.countryBox ?? null
+  // الضيّقة تُكدّس K S A رأسيًّا — «KSA» كلمةً واحدة لا تُقرأ في ستّين بكسلًا
+  const narrowCountry = country ? country.width < country.height * 0.45 : false
+  const cx = country ? country.x + country.width / 2 : 0
+  // الشعار محدودٌ بالبعدين: عرضُ الكتلة يحكمه في الضيّقة وارتفاعُها في العريضة
+  const countrySymbol = country
+    ? Math.min(country.width * (narrowCountry ? 0.74 : 0.44), country.height * 0.26)
+    : 0
   const art = showCenterEmblem && emblem !== 'none' && emblem !== 'custom' ? EMBLEM_ART[emblem] : null
 
   const mirrored = stripSide === 'left'
@@ -311,22 +367,16 @@ export function SaudiLicensePlate({
       geo.singleRow ? ' رياضية' : ''
     } ${geo.singleRow ? latinLetters : arabicLetters} ${western}`
 
-  const stripCenter = geo.strip.x + geo.strip.width / 2
   const ksaLetters = ['K', 'S', 'A']
 
-  // توزيع محتوى الشريط: الرمز أعلاه ثم K S A أسفله بمسافات متساوية
-  const stripSymbolSize = geo.strip.width * 0.62
-  const ksaFontSize = geo.strip.width * 0.42
-  const ksaStep = (geo.height - geo.inset * 2 - stripSymbolSize - geo.height * 0.12) / 3
-  const ksaFirstBaseline = geo.inset + geo.height * 0.055 + stripSymbolSize + ksaStep * 0.85
 
   /*
    * النقش للمقاسات التي تُرى فيها التفاصيل.
    *
-   * و`fill` ليست منها: بطاقات السوق تستعملها لتملأ صندوقها، فتكون لوحةً في
-   * 300px داخل شبكة من أربعين — مرشّحٌ لكلٍّ منها كلفةٌ لا يقابلها ما يُرى.
+   * والحرف على اللوحة الحقيقية **مطروق** بارز، بريقه من حافّته لا من لونه.
+   * فيُنقش في كل مقاسٍ إلّا المصغّر: في 190 بكسلًا لا يُرى النقش ويبقى ثمنه.
    */
-  const embossed = size === 'fullscreen' || size === 'stage'
+  const embossed = size !== 'thumbnail'
 
   return (
     <div className={cn('select-none', SIZE_CLASS[size], className)} data-plate-size={size}>
@@ -355,16 +405,17 @@ export function SaudiLicensePlate({
           {/*
             * النقش: اللوحة الحقيقية **مطروقة** لا مطبوعة.
             *
-            * ظلٌّ أبيض إلى أعلى اليسار وظلٌّ داكن إلى أسفل اليمين يعطيان بروزًا
-            * يُحسّ ولا يُلاحَظ. و`stdDeviation` صفر فلا يفقد الحرف حدّته.
-            *
-            * ولا يُطبَّق إلا على المقاسات الكبيرة: مرشّحٌ لكل لوحة في شبكة من
-            * أربعين بطاقة كلفةٌ لا يقابلها ما يُرى في 190px.
+            * الحرف مطروقٌ من الخلف فيبرز عن وجهها، وحافّته العليا تلمع والسفلى
+            * تُظلّ. وثلاث طبقات لا طبقتان: خطٌّ أبيض حادّ يصنع الحافّة، وظلٌّ
+            * رماديّ قريب يعطي السُّمك، وظلٌّ أبعدُ ناعم يُجلس الحرف على الوجه
+            * بدل أن يطفو عليه. و`stdDeviation` صفر في الأوّلين فلا تفقد الحافّة
+            * حدّتها.
             */}
           {embossed && (
-            <filter id={`plate-emboss-${uid}`} x="-5%" y="-15%" width="110%" height="130%">
-              <feDropShadow dx="-0.9" dy="-1.1" stdDeviation="0" floodColor="#FFFFFF" floodOpacity="0.9" />
-              <feDropShadow dx="0.7" dy="0.9" stdDeviation="0.6" floodColor="#0A0D12" floodOpacity="0.22" />
+            <filter id={`plate-emboss-${uid}`} x="-6%" y="-18%" width="112%" height="136%">
+              <feDropShadow dx="-1.1" dy="-1.3" stdDeviation="0" floodColor="#FFFFFF" floodOpacity="0.95" />
+              <feDropShadow dx="1" dy="1.2" stdDeviation="0" floodColor="#5B6472" floodOpacity="0.55" />
+              <feDropShadow dx="2.2" dy="2.8" stdDeviation="2.2" floodColor="#0A0D12" floodOpacity="0.3" />
             </filter>
           )}
           <linearGradient id={`plate-sheen-${uid}`} x1="0" y1="0" x2="1" y2="1">
@@ -397,123 +448,129 @@ export function SaudiLicensePlate({
           />
 
           <g clipPath={`url(#plate-clip-${uid})`} filter={embossed ? `url(#plate-emboss-${uid})` : undefined}>
-            {/* أرضيّة خانة الدولة — زرقاء في لوحات النقل */}
-            {countryFill && (
-              <rect
-                x={hasStrip ? geo.strip.x : geo.emblem.from}
-                y={geo.inset}
-                width={hasStrip ? geo.width - geo.strip.x - geo.inset : geo.emblem.to - geo.emblem.from}
-                height={geo.height - geo.inset * 2}
-                fill={countryFill}
-              />
-            )}
-
-            {/* الخط الفاصل لشريط الدولة */}
-            {hasStrip && (
-              <rect
-                x={geo.strip.x}
-                y={geo.inset}
-                width={Math.max(2.5, geo.width * 0.003)}
-                height={geo.height - geo.inset * 2}
-                fill="#0A0D12"
-              />
-            )}
-
-            {/* حدود الخانات — ظاهرة في الاعتيادية والرياضية */}
-            {geo.dividers?.map((x) => (
-              <rect
-                key={x}
-                x={x}
-                y={geo.inset}
-                width={Math.max(2.5, geo.width * 0.003)}
-                height={geo.height - geo.inset * 2}
-                fill="#0A0D12"
-              />
-            ))}
-
-            {/* رمز الدولة أعلى الشريط */}
-            {hasStrip && (
-            <Unflip x={stripCenter - geo.strip.width * 0.1} active={mirrored}>
-              <g
-                transform={`translate(${stripCenter - geo.strip.width * 0.1 - stripSymbolSize / 2} ${geo.inset + geo.height * 0.055}) scale(${stripSymbolSize / 100})`}
-              >
-                <EmblemShapes art={STRIP_SYMBOL} monochrome={countryInk} box={100} />
-              </g>
-            </Unflip>
-            )}
-
-            {/* «السعودية» رأسيًا على حافة الشريط.
-                المعامل 0.20 لا 0.12: النصّ يدور 90° فيصير نصف ارتفاعه امتدادًا
-                أفقيًا على الجانبين، وبالمعامل الأصغر كان يتجاوز الإطار ويُقصّ. */}
-            {hasStrip && (
-            <Unflip x={geo.width - geo.inset - geo.strip.width * 0.2} active={mirrored}>
-              <text
-                transform={`rotate(90 ${geo.width - geo.inset - geo.strip.width * 0.2} ${geo.height / 2})`}
-                x={geo.width - geo.inset - geo.strip.width * 0.2}
-                y={geo.height / 2}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={countryInk}
-                fontSize={geo.strip.width * 0.26}
-                fontWeight={500}
-                style={{ fontFamily: 'var(--font-plate-arabic)' }}
-              >
-                السعودية
-              </text>
-            </Unflip>
-            )}
-
-            {/* أحرف KSA رأسيًا */}
-            {hasStrip &&
-              ksaLetters.map((letter, index) => (
-              <Unflip key={letter} x={stripCenter - geo.strip.width * 0.1} active={mirrored}>
-                <text
-                  x={stripCenter - geo.strip.width * 0.1}
-                  y={ksaFirstBaseline + index * ksaStep}
-                  textAnchor="middle"
-                  fill={countryInk}
-                  fontSize={ksaFontSize}
-                  fontWeight={600}
-                  style={{ fontFamily: 'var(--font-plate-latin)' }}
-                >
-                  {letter}
-                </text>
-              </Unflip>
-              ))}
-
             {/*
-              * الرياضية: الدولة في خانةٍ وسطى — شعارٌ فوقه «السعودية» و«KSA».
+              * الخانات المنفصلة: أرضيّةٌ سوداء يُرسم فوقها البياض.
               *
-              * لا شريط جانبيّ فيها، فيُكتب الاسمان أفقيًّا تحت الشعار كما في
-              * اللوحة المصنوعة، لا رأسيًّا على حافّة.
+              * الوجه المرسوم أصلًا أبيضُ كلّه، فلو رُسم الأسود بينها لصار
+              * أربعة مستطيلاتٍ سوداء تُحاذي أربعة بيضاء وتتراكب حوافّها. وطلاء
+              * الأرضيّة أوّلًا ثمّ وضع البياض عليها يُنتج الفراغ نفسه بحدٍّ
+              * واحدٍ نظيف.
               */}
-            {geo.singleRow && (
-              <Unflip x={geo.emblem.center} active={mirrored}>
-                <g>
-                  <text
-                    x={geo.emblem.center}
-                    y={geo.height * 0.72}
-                    textAnchor="middle"
-                    fill={countryInk}
-                    fontSize={geo.height * 0.1}
-                    fontWeight={500}
-                    style={{ fontFamily: 'var(--font-plate-arabic)' }}
-                  >
-                    السعودية
-                  </text>
-                  <text
-                    x={geo.emblem.center}
-                    y={geo.height * 0.9}
-                    textAnchor="middle"
-                    fill={countryInk}
-                    fontSize={geo.height * 0.12}
-                    fontWeight={600}
-                    style={{ fontFamily: 'var(--font-plate-latin)' }}
-                  >
-                    KSA
-                  </text>
-                </g>
-              </Unflip>
+            {geo.cells && (
+              <>
+                <rect
+                  x={geo.inset}
+                  y={geo.inset}
+                  width={geo.width - geo.inset * 2}
+                  height={geo.height - geo.inset * 2}
+                  fill="#0A0D12"
+                />
+                {geo.cells.map((cell) => (
+                  <rect
+                    key={`${cell.x}-${cell.y}`}
+                    x={cell.x}
+                    y={cell.y}
+                    width={cell.width}
+                    height={cell.height}
+                    rx={geo.cellRadius}
+                    fill={`url(#plate-face-${uid})`}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* أرضيّة خانة الدولة — زرقاء في لوحات النقل */}
+            {/*
+              * كتلة الدولة — شعارٌ و«السعودية» و«KSA».
+              *
+              * موضعها يختلف بالإصدار وشكلُها يحكم ترتيبَ ما فيها: الضيّقة
+              * (الاعتيادية) تُكدّس الحروف رأسيًّا لأنّ «KSA» كلمةً واحدة لا
+              * تُقرأ في ستّين بكسلًا، والعريضة (الطويلة والرياضية) تكتبها كما
+              * هي. وأرضيّتها زرقاء في لوحات النقل — علامتها في اللوحة الحقيقية.
+              */}
+            {country && (
+              <>
+                <rect
+                  x={country.x}
+                  y={country.y}
+                  width={country.width}
+                  height={country.height}
+                  rx={geo.cellRadius}
+                  fill={countryFill ?? `url(#plate-face-${uid})`}
+                />
+
+                <Unflip x={country.x + country.width / 2} active={mirrored}>
+                  <g>
+                    {/*
+                      * المواضع نِسبٌ من ارتفاع الكتلة لا مقاديرُ متراكمة.
+                      *
+                      * كان كلٌّ يُحسب بإضافة ما قبله، فيكفي أن يكبر الشعار
+                      * قليلًا حتى ينزل الاسم على «KSA» — وقد وقع. والنِّسب
+                      * تُثبّت كلًّا في حصّته مهما تغيّر جاره.
+                      */}
+                    <g
+                      transform={`translate(${cx - countrySymbol / 2} ${country.y + country.height * 0.05}) scale(${countrySymbol / 100})`}
+                    >
+                      <EmblemShapes art={STRIP_SYMBOL} monochrome={countryInk} box={100} />
+                    </g>
+
+                    <text
+                      x={cx}
+                      y={country.y + country.height * (narrowCountry ? 0.36 : 0.54)}
+                      textAnchor="middle"
+                      fill={countryInk}
+                      fontSize={country.width * (narrowCountry ? 0.26 : 0.19)}
+                      fontWeight={600}
+                      style={{ fontFamily: 'var(--font-plate-arabic)' }}
+                    >
+                      السعودية
+                    </text>
+
+                    {narrowCountry ? (
+                      ksaLetters.map((letter, index) => (
+                        <text
+                          key={letter}
+                          x={cx}
+                          y={country.y + country.height * (0.5 + index * 0.14)}
+                          textAnchor="middle"
+                          fill={countryInk}
+                          fontSize={country.width * 0.44}
+                          fontWeight={700}
+                          style={{ fontFamily: 'var(--font-plate-latin)' }}
+                        >
+                          {letter}
+                        </text>
+                      ))
+                    ) : (
+                      <text
+                        x={cx}
+                        y={country.y + country.height * 0.78}
+                        textAnchor="middle"
+                        fill={countryInk}
+                        fontSize={country.width * 0.32}
+                        fontWeight={700}
+                        letterSpacing={country.width * 0.02}
+                        style={{ fontFamily: 'var(--font-plate-latin)' }}
+                      >
+                        KSA
+                      </text>
+                    )}
+
+                    {/*
+                      * مثلّثٌ أبيض أسفل كتلة النقل.
+                      *
+                      * مطبوعٌ على اللوحة الحقيقية لا ملصقًا عليها، وهو ممّا
+                      * يُميّز النقل الخاصّ في نظرةٍ واحدة.
+                      */}
+                    {countryFill && (
+                      <path
+                        d={`M ${cx - country.width * 0.17} ${country.y + country.height * 0.86} L ${cx + country.width * 0.17} ${country.y + country.height * 0.86} L ${cx} ${country.y + country.height * 0.97} Z`}
+                        fill="#FFFFFF"
+                      />
+                    )}
+                  </g>
+                </Unflip>
+              </>
             )}
 
             {/* الشعار الوسطي */}
