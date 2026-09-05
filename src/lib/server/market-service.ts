@@ -565,10 +565,20 @@ export async function getListingDetail(
    * يعرف ما سيدفعه لو رست عليه الآن، لا ما كان سيدفعه في أول المزاد.
    */
   const commissionSettings = await store.getCommissionSettings()
+  /*
+   * ولكلّ طريقةٍ سعرُها القائم — والسوم كان يسقط بينها.
+   *
+   * `offers` لا سعر افتتاح لها ولا مزايدات، فكانت تقع في فرع المزاد فتُقرأ
+   * `startingPrice` وهي صفرٌ في هذا النوع — والعمولة على صفرٍ صفر. فيقرأ من
+   * يعرض لوحته على السوم أنّ لا عمولة عليه، وتُقتطع منه عند القبول.
+   * و`minimumOffer` هو السعر الوحيد الذي تُعلنه، وهو ما تعرضه به البطاقة.
+   */
   const currentPrice =
     listing.saleType === 'fixed'
       ? listing.price
-      : (highest?.amount ?? listing.startingPrice)
+      : listing.saleType === 'offers'
+        ? (highest?.amount ?? listing.minimumOffer)
+        : (highest?.amount ?? listing.startingPrice)
   const commissionNow = computeCommission(commissionSettings, currentPrice)
 
   return {

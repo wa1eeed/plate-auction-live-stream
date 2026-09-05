@@ -9,7 +9,7 @@ import {
   type CommissionSide,
 } from '@/lib/domain/types'
 import { riyalsToHalalas } from '@/lib/domain/money'
-import { finalizeDueAuctions } from '@/lib/server/market-service'
+import { finalizeDueAuctions, getListingDetail } from '@/lib/server/market-service'
 import type { Order } from '@/lib/domain/types'
 import { getRevenue } from '@/lib/server/admin-service'
 import { startOrderPayment } from '@/lib/server/checkout-service'
@@ -270,5 +270,56 @@ describe('اقتطاع العمولة عند اكتمال الصفقة', () => {
     expect(revenue.totals.vat).toBeGreaterThan(0)
     expect(revenue.totals.due).toBe(0)
     expect(revenue.totals.settled).toBe(revenue.totals.commission + revenue.totals.vat)
+  })
+})
+
+/*
+ * العمولة تُعرض على السعر القائم لكل طريقة بيع — والسوم كان يسقط بينها.
+ *
+ * `offers` لا سعر افتتاح لها ولا مزايدات، فكانت تقع في فرع المزاد فتُقرأ
+ * `startingPrice` وهي صفرٌ في هذا النوع — والعمولة على صفرٍ صفر. فيقرأ من
+ * يعرض لوحته على السوم أنّ لا عمولة عليه، وتُقتطع منه عند القبول.
+ */
+describe('العمولة المعروضة على صفحة اللوحة', () => {
+  beforeEach(async () => {
+    await store.updateCommissionSettings({
+      ...DEFAULT_COMMISSION_SETTINGS,
+      seller: percentSide(2.5),
+      buyer: percentSide(1.5),
+      vatEnabled: true,
+      vatPercent: 15,
+    })
+  })
+
+  it('لوحة على السوم: تُحسب على أقل عرض مقبول لا على صفر', async () => {
+    const listing = db.listings.find(
+      (row) => row.saleType === 'offers' && row.status === 'active' && row.minimumOffer > 0,
+    )!
+    const detail = await getListingDetail(listing.id, null)
+
+    expect(listing.startingPrice, 'البذرة لا تضع سعر افتتاح للسوم').toBe(0)
+    expect(detail.commission.seller.base).toBe(Math.round((listing.minimumOffer * 2.5) / 100))
+    expect(detail.commission.buyer.base).toBe(Math.round((listing.minimumOffer * 1.5) / 100))
+    expect(detail.commission.seller.total).toBeGreaterThan(0)
+  })
+
+  it('البيع المباشر على سعره، والمزاد على أعلى مزايدة قائمة', async () => {
+    const fixed = db.listings.find((row) => row.saleType === 'fixed' && row.status === 'active')!
+    const fixedDetail = await getListingDetail(fixed.id, null)
+    expect(fixedDetail.commission.buyer.base).toBe(Math.round((fixed.price * 1.5) / 100))
+
+    const auction = db.listings.find(
+      (row) => row.saleType === 'auction' && row.status === 'active',
+    )!
+    const auctionDetail = await getListingDetail(auction.id, null)
+    const basis = auctionDetail.highestAmount ?? auction.startingPrice
+    expect(auctionDetail.commission.buyer.base).toBe(Math.round((basis * 1.5) / 100))
+  })
+
+  it('والضريبة على العمولة وحدها لا على قيمة اللوحة', async () => {
+    const fixed = db.listings.find((row) => row.saleType === 'fixed' && row.status === 'active')!
+    const { commission } = await getListingDetail(fixed.id, null)
+    expect(commission.buyer.vat).toBe(Math.round((commission.buyer.base * 15) / 100))
+    expect(commission.buyer.total).toBe(commission.buyer.base + commission.buyer.vat)
   })
 })

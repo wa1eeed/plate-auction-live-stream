@@ -250,16 +250,24 @@ export function ListingView({
                 <Field label="مهلة سداد الفائز" value={`${detail.paymentWindowHours} ساعة`} />
               </>
             )}
+            {/*
+              * العمولة تُفصَّل: أساسُها وضريبتها ومجموعهما.
+              *
+              * كان السطر يجمعها في رقمٍ واحد تحت عنوانٍ يسمّي العمولة وحدها —
+              * فمن ضبطها ألفًا قرأ «١٬١٥٠» وظنّ أنّ ضبطه لم يُحترم، والمئة
+              * والخمسون ضريبةٌ لا زيادةٌ في العمولة. والتفصيل يقول ذلك بلا
+              * أن يُحسب.
+              */}
             {detail.commission.buyer.total > 0 && (
-              <Field
-                label="عمولة المنصّة على المشتري"
-                value={`${formatAmount(detail.commission.buyer.total)} ريال`}
+              <FieldNode
+                label={`عمولة المنصّة على المشتري${detail.saleType === 'auction' ? ' (على السعر الحالي)' : ''}`}
+                value={<CommissionValue breakdown={detail.commission.buyer} vatPercent={detail.commission.vatPercent} />}
               />
             )}
             {detail.isMine && detail.commission.seller.total > 0 && (
-              <Field
-                label="عمولة المنصّة عليك كبائع"
-                value={`${formatAmount(detail.commission.seller.total)} ريال`}
+              <FieldNode
+                label={`عمولة المنصّة عليك كبائع${detail.saleType === 'auction' ? ' (على السعر الحالي)' : ''}`}
+                value={<CommissionValue breakdown={detail.commission.seller} vatPercent={detail.commission.vatPercent} />}
               />
             )}
             <Field label={REFERENCE_LABELS.listing} value={detail.reference} />
@@ -474,6 +482,34 @@ function FieldNode({ label, value }: { label: string; value: React.ReactNode }) 
       <dt className="text-[11px] text-muted">{label}</dt>
       <dd className="mt-0.5 text-sm font-semibold">{value}</dd>
     </div>
+  )
+}
+
+/**
+ * قيمة العمولة مفصَّلةً.
+ *
+ * المجموع أوّلًا لأنّه ما يُدفع، وتحته من أين جاء — فلا يُقارَن بما ضُبط
+ * فيُظنّ مخالفًا له. وبلا ضريبةٍ مفعّلة لا سطر ثانٍ: لا شيء يُفسَّر.
+ */
+function CommissionValue({
+  breakdown,
+  vatPercent,
+}: {
+  breakdown: { base: number; vat: number; total: number }
+  vatPercent: number
+}) {
+  return (
+    <>
+      <span dir="ltr" className="inline-block tabular-nums">
+        {formatAmount(breakdown.total)}
+      </span>{' '}
+      ريال
+      {breakdown.vat > 0 && (
+        <span className="mt-0.5 block text-[11px] font-normal text-muted">
+          {formatAmount(breakdown.base)} عمولة + {formatAmount(breakdown.vat)} ضريبة {vatPercent}٪
+        </span>
+      )}
+    </>
   )
 }
 
