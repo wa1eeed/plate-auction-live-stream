@@ -91,10 +91,18 @@ test.describe('هويّة المنصّة من اللوحة', () => {
     expect(g, `الأخضر لا يغلب في ${bg}`).toBeGreaterThan(r)
     expect(b, `الأزرق لا يغلب الأحمر في ${bg}`).toBeGreaterThan(r)
 
-    // وبطاقة المشاركة: رابطٌ مطلق يجلبه خادم واتساب من الخارج
+    /*
+     * بطاقة المشاركة: رابطٌ **مطلق** يجلبه خادم واتساب من الخارج.
+     *
+     * ويُجلب هنا بمساره لا بمطلقه: المطلق يُبنى من `NEXT_PUBLIC_APP_URL`، وهي
+     * تشير في التطوير إلى خادمٍ آخر غير خادم الاختبار — فيُقاس عندئذٍ شيءٌ لا
+     * علاقة له بما نُشر. والمطلوب إثباتان: أنّ الوسم مطلق (وإلّا لم تصل
+     * البطاقة)، وأنّ الأصل يُخدَم فعلًا.
+     */
     const ogUrl = await page.locator('meta[property="og:image"]').getAttribute('content')
-    expect(ogUrl, 'لا صورة مشاركة').toMatch(/^https?:\/\//)
-    const asset = await page.request.get(ogUrl!)
+    expect(ogUrl, 'الرابط ليس مطلقًا فلا يجلبه واتساب').toMatch(/^https?:\/\//)
+    const { pathname, search } = new URL(ogUrl!)
+    const asset = await page.request.get(pathname + search)
     expect(asset.status()).toBe(200)
     expect(asset.headers()['content-type']).toContain('image/png')
 
@@ -199,5 +207,45 @@ test.describe('الأدمن يصحّح بيانات مستخدم', () => {
       { userId: id, email: other },
     )
     expect(clash).toBe(409)
+  })
+})
+
+test.describe('أقسام الإعدادات', () => {
+  /*
+   * ستّة أقسام لا تتراكم فوق النموذج على الجوال.
+   *
+   * العمود المجمَّع يليق بالشاشة الواسعة، وعلى الضيّقة يمرّ صاحبه على ستّة
+   * أزرار وثلاثة عناوين قبل أن يبلغ أوّل حقل. وشريطٌ أفقيّ ليس بديلًا: ستّة
+   * أسماء عربية تفيض فيصير منطقة سحبٍ باللمس.
+   */
+  test('منتقٍ بسطرٍ واحد على الجوال، وعمودٌ على الواسعة', async ({ page }) => {
+    await loginAdmin(page)
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/admin/settings')
+
+    const picker = page.locator('#settings-picker')
+    await expect(picker).toBeVisible()
+    await expect(page.locator('[role="tablist"]')).toBeHidden()
+
+    // وعناوين المجالات باقية في المنتقي — لا يضيع التصنيف
+    await expect(picker.locator('optgroup')).toHaveCount(3)
+    await expect(picker.locator('option')).toHaveCount(6)
+
+    // ولا تمرير أفقي، وأوّل حقل قريبٌ لا خلف ستّة أزرار
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(1)
+
+    // والتبديل يعمل ويُكتب في الرابط
+    await picker.selectOption('tax')
+    await expect(page.getByRole('heading', { name: 'الفوترة الضريبية' })).toBeVisible()
+    expect(page.url()).toContain('tab=tax')
+
+    // وعلى الواسعة يعود العمود ويختفي المنتقي
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await expect(page.locator('[role="tablist"]')).toBeVisible()
+    await expect(picker).toBeHidden()
   })
 })

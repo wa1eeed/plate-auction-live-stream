@@ -43,7 +43,40 @@ export function SettingsTabs({
   return (
     <div className="grid gap-5 lg:grid-cols-[15rem_1fr] lg:items-start">
       {/*
-        * دورُه دورُ التابات وإن كان عمودًا.
+        * منتقٍ أصليّ على الجوال، وعمودٌ على الشاشة الواسعة.
+        *
+        * ستّة أقسام في عمودٍ على شاشةٍ ضيّقة تتراكم فوق النموذج: يمرّ صاحبها
+        * على ستّة أزرار وثلاثة عناوين قبل أن يبلغ أوّل حقل. وشريطٌ أفقيّ ليس
+        * بديلًا — ستّة أسماء عربية تفيض فيصير الشريط منطقة سحبٍ باللمس.
+        *
+        * و`select` الأصليّ يحلّها بسطرٍ واحد: يفتح منتقي النظام نفسه — عجلةً
+        * في iOS وقائمةً في أندرويد — و`optgroup` يحمل عناوين المجالات كما
+        * هي، فلا يضيع التصنيف الذي يُظهره العمود.
+        */}
+      <div className="lg:hidden">
+        <label htmlFor="settings-picker" className="mb-1.5 block text-xs font-bold text-muted">
+          القسم
+        </label>
+        <select
+          id="settings-picker"
+          value={active}
+          onChange={(event) => open(event.target.value)}
+          className="h-11 w-full rounded-xl border border-ink-600 bg-ink-900 px-3 text-sm font-bold text-paper outline-none focus-visible:border-gold-500"
+        >
+          {groups.map((group) => (
+            <optgroup key={group.title} label={group.title}>
+              {group.tabs.map((tab) => (
+                <option key={tab.key} value={tab.key}>
+                  {tab.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      {/*
+        * ودورُ العمود دورُ التابات وإن كان رأسيًّا.
         *
         * لوحٌ واحد ظاهر في كل لحظة والبقيّة مخفيّة — وهذا هو النمط بعينه مهما
         * كان اتجاهه. و`aria-current="page"` كان خطأً هنا: يقول «هذه الصفحة»
@@ -53,7 +86,7 @@ export function SettingsTabs({
         role="tablist"
         aria-orientation="vertical"
         aria-label="أقسام الإعدادات"
-        className="space-y-4 lg:sticky lg:top-20"
+        className="hidden space-y-4 lg:sticky lg:top-20 lg:block"
       >
         {groups.map((group) => (
           <div key={group.title}>
