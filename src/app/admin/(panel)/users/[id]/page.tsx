@@ -6,6 +6,7 @@ import {
   Bell,
   CreditCard,
   Gavel,
+  HandCoins,
   LayoutList,
   Receipt,
   ShieldAlert,
@@ -23,6 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import {
   DEPOSIT_STATUS_LABELS,
+  OFFER_STATUS_LABELS,
+  type OfferStatus,
   LISTING_STATUS_LABELS,
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
@@ -66,7 +69,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   }
 
   const serverTime = new Date().toISOString()
-  const { user, wallet, ledger, deposits, listings, purchases, sales, bids, payments, notifications, summary } =
+  const { offersMade, offersReceived, user, wallet, ledger, deposits, listings, purchases, sales, bids, payments, notifications, summary } =
     detail
   const statement = buildStatement(ledger, {
     userId: user.id,
@@ -205,6 +208,10 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
           <TabsTrigger value="purchases">
             <ShoppingBag className="size-3.5" />
             مشترياته ({purchases.length})
+          </TabsTrigger>
+          <TabsTrigger value="offers">
+            <HandCoins className="size-3.5" />
+            عروض وسومات ({offersMade.length + offersReceived.length})
           </TabsTrigger>
         </TabsList>
 
@@ -496,6 +503,27 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         <TabsContent value="purchases">
           <OrderSection orders={purchases} side="seller" />
         </TabsContent>
+
+        {/*
+          * عروضه وسوماته — ما أرسله وما ورده.
+          *
+          * قسم «العروض والسومات» في حسابه يعرضها له؛ ولم يكن للإدارة منها شيء
+          * في ملفّه، فمن يحقّق في شكوى سومٍ يبدأ من صاحبه لا من رقم إعلان.
+          */}
+        <TabsContent value="offers" className="space-y-6">
+          <OfferSection
+            title="سومات مرسلة"
+            empty="لم يعرض على لوحة أحد."
+            counterpart="البائع"
+            rows={offersMade.map((row) => ({ ...row, other: row.sellerName }))}
+          />
+          <OfferSection
+            title="سومات واردة"
+            empty="لم يرده سومٌ على لوحاته."
+            counterpart="المُساوم"
+            rows={offersReceived.map((row) => ({ ...row, other: row.buyerName }))}
+          />
+        </TabsContent>
       </Tabs>
     </>
   )
@@ -567,6 +595,66 @@ function Metric({
       </p>
       {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}
     </div>
+  )
+}
+
+function OfferSection({
+  title,
+  rows,
+  empty,
+  counterpart,
+}: {
+  title: string
+  rows: { id: string; amount: number; status: OfferStatus; createdAt: string; message: string | null; plateLabel: string; other: string }[]
+  empty: string
+  counterpart: string
+}) {
+  return (
+    <section>
+      <h2 className="mb-2 text-sm font-bold">{title}</h2>
+      <AdminTable
+        empty={empty}
+        minWidth="42rem"
+        columns={[
+          { label: 'اللوحة', width: '22%', minWidth: '8rem' },
+          { label: counterpart, width: '20%', minWidth: '8rem' },
+          { label: 'المبلغ', numeric: true, width: '18%', minWidth: '7.5rem' },
+          { label: 'الحالة', width: '16%', minWidth: '7rem' },
+          { label: 'التاريخ', width: '24%', minWidth: '10rem' },
+        ]}
+      >
+        {rows.map((row) => (
+          <Tr key={row.id}>
+            <Td className="font-bold">{row.plateLabel}</Td>
+            <Td className="text-xs">{row.other}</Td>
+            <Td numeric>
+              <Money value={row.amount} className="text-sm" />
+            </Td>
+            <Td>
+              <Badge
+                variant={
+                  row.status === 'accepted'
+                    ? 'success'
+                    : row.status === 'pending'
+                      ? 'gold'
+                      : row.status === 'declined'
+                        ? 'danger'
+                        : 'muted'
+                }
+              >
+                {OFFER_STATUS_LABELS[row.status]}
+              </Badge>
+            </Td>
+            <Td className="text-xs text-muted">
+              <LocalTime iso={row.createdAt} mode="datetime" />
+              {row.message && (
+                <span className="mt-0.5 block text-[11px] text-paper">«{row.message}»</span>
+              )}
+            </Td>
+          </Tr>
+        ))}
+      </AdminTable>
+    </section>
   )
 }
 

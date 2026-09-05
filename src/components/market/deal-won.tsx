@@ -55,14 +55,20 @@ export function DealWon({ order, side }: { order: AccountOrder; side: 'buyer' | 
 
       <p className="relative flex items-center gap-2 text-sm font-extrabold text-success">
         <Sparkles className="size-4" />
-        {side === 'buyer' ? 'صارت لك' : 'وصل عائدك'}
+        {side === 'buyer' ? 'صارت لك' : 'تم اكتمال الصفقة'}
       </p>
       <p className="relative mt-1 text-xs text-muted">
+        {/*
+          * البائع يُقال له أين ماله وما يملك أن يفعل به.
+          *
+          * «وصل عائدك» تُخبر أنّ شيئًا وقع ولا تقول أين استقرّ — ومن باع لوحته
+          * يسأل بعدها سؤالًا واحدًا: كيف أُخرجه؟ فيُقال له في السطر نفسه.
+          */}
         {side === 'buyer'
           ? 'تحقّقت الإدارة من النقل وحوّلت المبلغ للبائع، واللوحة باسمك.'
           : fee
-            ? 'وصل إلى محفظتك بعد خصم عمولة المنصّة وضريبتها.'
-            : 'وصل إلى محفظتك كاملًا — لا عمولة على هذه الصفقة.'}
+            ? 'مبلغ البيع تم إيداعه في محفظتك بعد خصم عمولة المنصّة وضريبتها، ويمكنك سحبه لحسابك البنكي.'
+            : 'مبلغ البيع تم إيداعه في محفظتك، ويمكنك سحبه لحسابك البنكي.'}
       </p>
 
       <div className="relative mt-4 grid gap-4 sm:grid-cols-[1.2fr_1fr] sm:items-center">

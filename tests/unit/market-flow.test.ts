@@ -6,6 +6,7 @@ import { resetRateLimits } from '@/lib/server/rate-limit'
 import {
   buyNow,
   closeListing,
+  expireUnpaidOfferOrders,
   finalizeDueAuctions,
   getAccountBids,
   getAccountListings,
@@ -421,5 +422,69 @@ describe('إغلاق الإعلان والسوم القائم عليه', () => {
         `لم يُخبَر ${buyer.displayName} بإغلاق عرضه`,
       ).toBe(true)
     }
+  })
+})
+
+/*
+ * السوم لا يحبس بائعه.
+ *
+ * لا عربون فيه ينتظر قرار أدمن، وحارسُ «قبولٌ واحدٌ قائم» يمنع قبول غيره ما
+ * دامت الصفقة «بانتظار السداد». ولا شيء في المنصّة كان يجعل صفقةً متأخّرة
+ * متخلّفةً تلقائيًا — فمشترٍ قبِل ثمّ اختفى يوقف اللوحة إلى الأبد.
+ */
+describe('انقضاء مهلة السداد في السوم', () => {
+  const offersListing = () =>
+    findBy((l) => l.saleType === 'offers' && l.status === 'active')
+
+  it('تنقضي المهلة فتُغلق الصفقة ويعود البائع يقبل غيره', async () => {
+    const listing = offersListing()
+    const buyers = db.users.filter((u) => u.id !== listing.sellerId)
+    const first = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[0].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+    const second = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[1].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 500,
+    })
+    const { order } = await respondToOffer({
+      offerId: first.id,
+      sellerId: listing.sellerId,
+      decision: 'accept',
+    })
+
+    // ما دامت في مهلتها لا تنقضي، ويبقى الحارس قائمًا
+    expect(await expireUnpaidOfferOrders(store)).toBe(0)
+    await expect(
+      respondToOffer({ offerId: second.id, sellerId: listing.sellerId, decision: 'accept' }),
+    ).rejects.toThrow(/ينتظر سداده/)
+
+    // تُدفع المهلة إلى الماضي كما يفعل الزمن
+    const row = db.orders.find((o) => o.id === order!.id)!
+    row.paymentDueAt = new Date(Date.now() - 60_000).toISOString()
+
+    expect(await expireUnpaidOfferOrders(store)).toBe(1)
+    expect((await store.getOrder(order!.id))?.status).toBe('defaulted')
+
+    // واللوحة لم تُغلق، والسوم الثاني قائم، فيقبله البائع بلا تدخّل إدارة
+    expect((await store.getListing(listing.id))?.status).toBe('active')
+    const retry = await respondToOffer({
+      offerId: second.id,
+      sellerId: listing.sellerId,
+      decision: 'accept',
+    })
+    expect(retry.order).not.toBeNull()
+  })
+
+  it('ولا تمسّ صفقات المزاد — عربونها ينتظر قرارًا لا مرور وقت', async () => {
+    const auctionOrder = db.orders.find((o) => o.source === 'auction')
+    if (!auctionOrder) return
+    auctionOrder.status = 'awaiting_settlement'
+    auctionOrder.paymentDueAt = new Date(Date.now() - 60_000).toISOString()
+
+    await expireUnpaidOfferOrders(store)
+    expect((await store.getOrder(auctionOrder.id))?.status).toBe('awaiting_settlement')
   })
 })

@@ -311,6 +311,14 @@ export type AdminUserDetail = {
   })[]
   purchases: AdminUserOrder[]
   sales: AdminUserOrder[]
+  /**
+   * سومُه — ما أرسله وما ورده.
+   *
+   * قسم «العروض والسومات» في حساب المستخدم يعرضها **له**؛ ولم يكن للإدارة
+   * منها شيء في ملفّه، فمن يحقّق في شكوى سومٍ يبدأ من صاحبه لا من رقم إعلان.
+   */
+  offersMade: (Offer & { plateLabel: string; sellerName: string })[]
+  offersReceived: (Offer & { plateLabel: string; buyerName: string })[]
   /** مزايداته على لوحات غيره — لم تكن معروضة للأدمن من قبل */
   bids: {
     listingId: string
@@ -426,6 +434,34 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
   const payments = await store.listPayments({ userId })
   const notifications = await store.listNotifications(userId, 10)
 
+  // سومُه: ما أرسله على لوحات غيره، وما ورد على لوحاته
+  const nameOf = new Map((await store.listUsers()).map((row) => [row.id, row.displayName]))
+  const plateOfListing = async (listingId: string) => {
+    const row = await store.getListing(listingId)
+    return {
+      label: row ? `${row.arabicLetters} ${row.plateNumbers}` : '—',
+      sellerId: row?.sellerId ?? null,
+    }
+  }
+  const offersMade = []
+  for (const offer of await store.listOffers({ buyerId: userId })) {
+    const info = await plateOfListing(offer.listingId)
+    offersMade.push({
+      ...offer,
+      plateLabel: info.label,
+      sellerName: (info.sellerId && nameOf.get(info.sellerId)) || 'مستخدم',
+    })
+  }
+  const offersReceived = []
+  for (const offer of await store.listOffers({ sellerId: userId })) {
+    const info = await plateOfListing(offer.listingId)
+    offersReceived.push({
+      ...offer,
+      plateLabel: info.label,
+      buyerName: nameOf.get(offer.buyerId) ?? 'مستخدم',
+    })
+  }
+
   // مزايداته على لوحات غيره
   const myBids = (await store.listBidsByBidder(userId)).filter((bid) => bid.status === 'accepted')
   const byListing = new Map<string, Halalas>()
@@ -463,6 +499,8 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
     user,
     wallet: { balance: wallet.balance, held: wallet.held, available: availableBalance(wallet) },
     ledger,
+    offersMade,
+    offersReceived,
     deposits,
     listings,
     purchases,
@@ -1155,6 +1193,17 @@ export type RevenueView = {
     due: Halalas
     /** المُبطَل بتراجع عن مصادرة — لا يُحتسب إيرادًا */
     reversed: Halalas
+    /**
+     * المُحصَّل الذي تملكه المنصّة: عمولات وعرابين مُصادَرة بلا ضريبة.
+     *
+     * وهو الإيراد بمعناه المحاسبيّ. أمّا `settled` فإجماليُّ ما دخل، وفيه
+     * ضريبةٌ ليست لها.
+     */
+    netSettled: Halalas
+    /** ضريبةٌ حُصّلت وتُحمَل أمانةً حتى تُورَّد — التزامٌ لا كسب */
+    vatSettled: Halalas
+    /** ضريبةٌ استحقّت ولم تُحصَّل بعد */
+    vatDue: Halalas
   }
 }
 
@@ -1163,7 +1212,32 @@ export async function getRevenue(): Promise<RevenueView> {
   const store = getStore()
   const entries = await store.listPlatformEntries()
   const rows: RevenueRow[] = []
-  const totals = { commission: 0, vat: 0, forfeits: 0, settled: 0, due: 0, reversed: 0 }
+  /*
+   * الضريبة تُفصل عن الإيراد لأنّها ليست منه.
+   *
+   * ما يُحصَّل من ضريبة القيمة المضافة مالٌ **للهيئة** تحمله المنصّة أمانةً
+   * حتى تورّده — التزامٌ لا كسب. وكان مجموع «المُحصَّل فعلًا» يضمّه، فتُظهر
+   * صفحةٌ اسمها «إيرادات المنصّة» أنّها كسبت أكثر ممّا كسبت بمقدار الضريبة.
+   * والفصل قائمٌ في القيود أصلًا (`vat_*` نوعٌ مستقلّ)، فما نقص إلّا أن
+   * يُقرأ في الجمع.
+   *
+   * فـ`settled`/`due` تبقى إجماليةً — هي ما دخل وما استحقّ فعلًا — ويُشتقّ
+   * منها `netSettled` (إيراد المنصّة وحده) و`vatSettled` (ما تُورّده).
+   */
+  const totals = {
+    commission: 0,
+    vat: 0,
+    forfeits: 0,
+    settled: 0,
+    due: 0,
+    reversed: 0,
+    /** المُحصَّل الذي تملكه المنصّة: عمولات وعرابين مُصادَرة بلا ضريبة */
+    netSettled: 0,
+    /** المُحصَّل الذي تحمله أمانةً وتورّده للهيئة */
+    vatSettled: 0,
+    /** ضريبةٌ استحقّت ولم تُحصَّل بعد — تُورَّد متى حُصّلت */
+    vatDue: 0,
+  }
 
   for (const entry of entries) {
     const user = entry.userId ? await store.findUser(entry.userId) : null
@@ -1172,11 +1246,19 @@ export async function getRevenue(): Promise<RevenueView> {
 
     if (reversed) totals.reversed += entry.amount
     else {
-      if (entry.type.startsWith('vat_')) totals.vat += entry.amount
+      const isVat = entry.type.startsWith('vat_')
+      if (isVat) totals.vat += entry.amount
       else if (entry.type === 'deposit_forfeit') totals.forfeits += entry.amount
       else totals.commission += entry.amount
-      if (entry.settled) totals.settled += entry.amount
-      else totals.due += entry.amount
+
+      if (entry.settled) {
+        totals.settled += entry.amount
+        if (isVat) totals.vatSettled += entry.amount
+        else totals.netSettled += entry.amount
+      } else {
+        totals.due += entry.amount
+        if (isVat) totals.vatDue += entry.amount
+      }
     }
 
     rows.push({
@@ -1194,6 +1276,49 @@ export async function getRevenue(): Promise<RevenueView> {
     })
   }
   return { rows, totals }
+}
+
+/**
+ * كلّ السوم في المنصّة — لصفحة الإدارة.
+ *
+ * كان يظهر في موضعٍ واحد: تبويبٌ داخل صفحة إعلانٍ بعينه. فمن يحقّق في شكوى
+ * سومٍ عليه أن يعرف رقم الإعلان مسبقًا — وهو ما لا يعرفه من يبدأ من شكوى
+ * صاحبه. والمحور الثالث — «كلّ السوم» — لم يكن موجودًا بحال.
+ *
+ * وهي **للقراءة**: القبول والرفض قرار البائع، ومنحُ الإدارة سلطةً عليهما بلا
+ * سببٍ موثّق يفتح بابًا لا يُغلق.
+ */
+export type AdminOfferRow = Offer & {
+  plate: Plate
+  plateLabel: string
+  reference: string
+  listingStatus: Listing['status']
+  buyerName: string
+  sellerName: string
+}
+
+export async function listAdminOffers(): Promise<AdminOfferRow[]> {
+  const store = getStore()
+  const offers = await store.listOffers({})
+  const rows: AdminOfferRow[] = []
+
+  // الأسماء واللوحات تُقرأ مرّةً لكلّ معرّف لا لكلّ سطر
+  const users = new Map((await store.listUsers()).map((user) => [user.id, user.displayName]))
+
+  for (const offer of offers) {
+    const listing = await store.getListing(offer.listingId)
+    if (!listing) continue
+    rows.push({
+      ...offer,
+      plate: toPlate(listing),
+      plateLabel: `${listing.arabicLetters} ${listing.plateNumbers}`,
+      reference: listing.reference,
+      listingStatus: listing.status,
+      buyerName: users.get(offer.buyerId) ?? 'مستخدم',
+      sellerName: users.get(listing.sellerId) ?? 'مستخدم',
+    })
+  }
+  return rows
 }
 
 // ------------------------------------------------------ تفاصيل إعلان للإدارة
@@ -1400,14 +1525,16 @@ export async function getListingAdminDetail(handle: string): Promise<AdminListin
  */
 export async function getNavBadges(): Promise<{
   orders: number
+  offers: number
   deposits: number
   payments: number
   payouts: number
 }> {
   const store = getStore()
   const now = Date.now()
-  const [orders, deposits, payments, payouts] = await Promise.all([
+  const [orders, offers, deposits, payments, payouts] = await Promise.all([
     store.listAllOrders(),
+    store.listOffers({}),
     store.listDeposits({ status: ['held'] }),
     store.listPayments({}),
     store.listDisbursements({ status: ['pending'] }),
@@ -1431,6 +1558,8 @@ export async function getNavBadges(): Promise<{
 
   return {
     orders: needsAdmin.size,
+    // السوم القائم ينتظر بائعه لا الإدارة — والعدد خبرُ نشاطٍ لا نداءُ إجراء
+    offers: offers.filter((offer) => offer.status === 'pending').length,
     // العربون المستحقّ للمصادرة وحده — لا كل محجوز
     deposits: deposits.filter((deposit) => overdueIds.has(deposit.id)).length,
     payments: payments.filter((payment) => payment.status === 'under_review').length,

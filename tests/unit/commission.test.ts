@@ -271,6 +271,46 @@ describe('اقتطاع العمولة عند اكتمال الصفقة', () => {
     expect(revenue.totals.due).toBe(0)
     expect(revenue.totals.settled).toBe(revenue.totals.commission + revenue.totals.vat)
   })
+
+  /*
+   * والضريبة ليست إيرادًا.
+   *
+   * ما يُحصَّل منها مالُ الهيئة تحمله المنصّة أمانةً حتى تورّده — التزامٌ لا
+   * كسب. وكان «المُحصَّل فعلًا» يضمّه، فتُظهر صفحةُ الإيرادات كسبًا أكبر ممّا
+   * كُسب بمقدار الضريبة، ويُبنى على الرقم تسعيرٌ وقرار.
+   */
+
+  it('المُحصَّل الصافي يستثني الضريبة، والإجمالي يضمّها', async () => {
+    await enableCommission()
+    const order = await soldAuction()
+    await settle(order)
+
+    const { totals } = await getRevenue()
+    expect(totals.vat, 'لا ضريبة في القيود').toBeGreaterThan(0)
+
+    // الإجمالي = الصافي + الضريبة، ولا ثالث لهما في المحصَّل
+    expect(totals.settled).toBe(totals.netSettled + totals.vatSettled)
+    expect(totals.netSettled, 'الصافي يضمّ ضريبةً ليست له').toBeLessThan(totals.settled)
+    expect(totals.vatSettled + totals.vatDue).toBe(totals.vat)
+    // وما تملكه المنصّة هو العمولة والعرابين المُصادَرة وحدها
+    expect(totals.netSettled).toBe(totals.commission + totals.forfeits)
+  })
+
+  it('وبلا ضريبة مفعّلة يتساوى الصافي والإجمالي', async () => {
+    await store.updateCommissionSettings({
+      ...DEFAULT_COMMISSION_SETTINGS,
+      seller: percentSide(10),
+      buyer: percentSide(5),
+      vatEnabled: false,
+      vatPercent: 15,
+    })
+    const order = await soldAuction()
+    await settle(order)
+
+    const { totals } = await getRevenue()
+    expect(totals.vatSettled).toBe(0)
+    expect(totals.netSettled).toBe(totals.settled)
+  })
 })
 
 /*
@@ -374,3 +414,11 @@ describe('قاعدة العمولة المرسلة إلى الواجهة', () =>
     ).toBe(0)
   })
 })
+
+/*
+ * الضريبة ليست إيرادًا.
+ *
+ * ما يُحصَّل منها مالُ الهيئة تحمله المنصّة أمانةً حتى تورّده — التزامٌ لا كسب.
+ * وكان مجموع «المُحصَّل فعلًا» يضمّه، فتُظهر صفحةُ الإيرادات كسبًا أكبر ممّا
+ * كُسب بمقدار الضريبة، ويُبنى على الرقم تسعيرٌ وقرار.
+ */

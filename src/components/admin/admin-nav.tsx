@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   FileType,
+  HandCoins,
   HelpCircle,
   Landmark,
   LayoutDashboard,
@@ -32,6 +33,8 @@ import { cn } from '@/lib/utils'
 /** ما يحتاج تصرّفًا الآن — تُحسب في الخادم وتُمرَّر إلى الشارات. */
 export type AdminNavBadges = {
   orders?: number
+  /** سومٌ قائم ينتظر ردّ بائعه — يُعدّ ليُرى بلا فتح الصفحة */
+  offers?: number
   deposits?: number
   payments?: number
   payouts?: number
@@ -62,6 +65,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
       { href: '/admin/users', label: 'المستخدمون', icon: Users },
       { href: '/admin/listings', label: 'الإعلانات', icon: LayoutList },
       { href: '/admin/orders', label: 'الصفقات', icon: Receipt, badge: 'orders' },
+      { href: '/admin/offers', label: 'السوم', icon: HandCoins, badge: 'offers' },
       { href: '/admin/deposits', label: 'العرابين', icon: ShieldAlert, badge: 'deposits' },
     ],
   },

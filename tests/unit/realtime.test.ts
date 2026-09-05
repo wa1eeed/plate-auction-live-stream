@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { emptyDatabase, MemoryStore } from '@/lib/store/memory-store'
+import { seedDatabase } from '@/lib/store/seed'
+import { resetStoreForTests } from '@/lib/store'
+import { resetRateLimits } from '@/lib/server/rate-limit'
+import { placeOffer } from '@/lib/server/market-service'
+import { halalasToRiyals } from '@/lib/domain/money'
 import {
   MARKET_TOPIC,
   getRealtimeRegistry,
@@ -93,5 +99,45 @@ describe('النشر اللحظي', () => {
     expect(topicViewers(listingTopic('lst_1'))).toBe(2)
     expect(topicViewers(MARKET_TOPIC)).toBe(2)
     expect(topicViewers(listingTopic('lst_missing'))).toBe(0)
+  })
+})
+
+/*
+ * مبالغ السوم لا تُبَثّ.
+ *
+ * خادم المقابس يقبل أيّ اشتراكٍ بلا تحقّق هويّة، فمن اشترك في موضوع السوق
+ * قرأ كلّ ما يُبَثّ عليه. والواجهة تُخفي سوم الآخرين عمدًا — كلٌّ يرى سومه
+ * وحده — فبثُّ المبلغ يهدم الحجب من بابٍ آخر.
+ */
+describe('حجب مبالغ السوم عن البثّ', () => {
+  it('حدث السوم يصل موضوع الإعلان بلا مبلغ، ولا يصل موضوع السوق', async () => {
+    const db = emptyDatabase()
+    seedDatabase(db)
+    const store = new MemoryStore(db)
+    resetStoreForTests(store)
+    resetRateLimits()
+
+    const listing = db.listings.find(
+      (row) => row.saleType === 'offers' && row.status === 'active',
+    )!
+    const buyer = db.users.find((user) => user.id !== listing.sellerId)!
+
+    const registry = getRealtimeRegistry()
+    const onMarket = fakeSocket([MARKET_TOPIC])
+    const onListing = fakeSocket([listingTopic(listing.id)])
+    registry.sockets.add(onMarket)
+    registry.sockets.add(onListing)
+
+    await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+
+    expect(onMarket.received, 'سومٌ يُبَثّ على الموضوع العام').toHaveLength(0)
+    expect(onListing.received.length, 'لم يصل الإعلانَ إشعارُ تحديث').toBeGreaterThan(0)
+    for (const message of onListing.received) {
+      expect(message.payload, 'المبلغ غادر الخادم').not.toHaveProperty('amount')
+    }
   })
 })

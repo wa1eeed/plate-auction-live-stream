@@ -30,6 +30,7 @@ import { availableBalance, computeCommission } from '@/lib/domain/types'
 import { buildOrderSettlement, buildOrderTimeline } from '@/lib/domain/order-timeline'
 import {
   assertDepositEligibility,
+  isOverdue,
   isWalletError,
   paymentDueAt,
   requiresDeposit,
@@ -74,6 +75,27 @@ function toPlate(listing: Listing): Plate {
  * يسجّل الحدث ثم يدفعه لحظيًا إلى مشتركي الإعلان ومشتركي السوق معًا،
  * فتتحدّث صفحة الإعلان وشبكة السوق في اللحظة نفسها.
  */
+/**
+ * أحداث السوم لا تُبَثّ بمبالغها ولا على الموضوع العام.
+ *
+ * `publishRealtime` يُرسل إلى موضوع الإعلان وإلى موضوع السوق، وخادم المقابس
+ * يقبل أيّ اشتراكٍ بلا تحقّق هويّة — يفحص أنّ اسم الموضوع نصّ وطولَه ولا شيء
+ * غير ذلك. فكان أيّ زائرٍ بلا حساب يشترك في `market` ويقرأ **كلّ مبلغ سوم
+ * لحظة إرساله**، بينما تُخفيه الواجهة عمدًا: كلٌّ يرى سومه وحده.
+ *
+ * والمزايدة تُقنّع اسم صاحبها في البثّ — فالحرص كان موجودًا والتنفيذ ناقصًا
+ * هنا. والحدث لا يحتاج المبلغ أصلًا: يقول «تبدّل شيء على هذا الإعلان»
+ * فيُعيد العميل الجلب عبر HTTP، وهناك يُطبَّق الحجب لكل قارئ بحسبه.
+ *
+ * والسجلّ يبقى كاملًا: `appendEvent` يحفظ الحمولة بمبلغها للتدقيق — إنّما
+ * لا تغادر الخادم.
+ */
+const SEALED_EVENTS: ReadonlySet<ListingEventType> = new Set([
+  'offer_placed',
+  'offer_accepted',
+  'offer_declined',
+])
+
 async function publish(
   store: AuctionStore,
   listingId: string,
@@ -81,6 +103,12 @@ async function publish(
   payload: Record<string, unknown> = {},
 ): Promise<void> {
   await store.appendEvent({ listingId, eventType, payload })
+
+  if (SEALED_EVENTS.has(eventType)) {
+    // موضوع الإعلان وحده، وبلا مبلغ — إشارةُ تحديثٍ لا خبرُ سعر
+    publishRealtime([listingTopic(listingId)], eventType, { listingId })
+    return
+  }
   publishRealtime([listingTopic(listingId), MARKET_TOPIC], eventType, { ...payload, listingId })
 }
 
@@ -359,6 +387,54 @@ async function ensureDepositHeld(
  * ينهي كل مزاد بلغ وقت نهايته ويحوّل الفائز إلى طلب شراء.
  * يُستدعى عند أي قراءة، فينتهي المزاد في وقته حتى لو لم يفتح أحد الصفحة.
  */
+/**
+ * صفقات السوم التي انقضت مهلتها تُغلق من نفسها.
+ *
+ * لا شيء في المنصّة كان يجعل صفقةً متأخّرة «متخلّفة» تلقائيًا — يقع ذلك بفعل
+ * أدمن وحده (مصادرةً أو إعادةَ إرساء). وكان ذلك محتملًا في المزاد لأنّ عربونًا
+ * محجوزًا ينتظر قرارًا، ولا يُحتمل في السوم: لا عربون فيه، واللوحة تبقى معروضة
+ * حتى يصل المال، وحارسُ «قبولٌ واحدٌ قائم» يمنع البائع من قبول غيره ما دامت
+ * الصفقة «بانتظار السداد». فمشترٍ قبِل ثمّ اختفى **يحبس البائع إلى الأبد**.
+ *
+ * فتُغلق هنا بانقضاء `paymentWindowHours` نفسها المضبوطة في الحوكمة، فيتحرّر
+ * البائع من نفسه ويقبل من بقي سومُه قائمًا — ولا حاجة لآلة «إعادة إرساء»
+ * للسوم: اللوحة لم تُغلق، والسوم لم يسقط، والقبول قرار البائع لا الإدارة.
+ *
+ * والمزاد لا يُمسّ: عربونه محجوز، ومصادرتُه قرارٌ إداريّ لا يقع بمرور الوقت.
+ */
+export async function expireUnpaidOfferOrders(store: AuctionStore): Promise<number> {
+  const now = Date.now()
+  let closed = 0
+
+  for (const order of await store.listAllOrders()) {
+    if (order.source !== 'offer' || !isOverdue(order, now)) continue
+
+    await store.updateOrderStatus(order.id, 'defaulted', now)
+    closed += 1
+
+    const listing = await store.getListing(order.listingId)
+    const plate = listing ? `«${listing.arabicLetters} ${listing.plateNumbers}»` : 'اللوحة'
+
+    await notify(store, {
+      userId: order.buyerId,
+      type: 'order_defaulted',
+      title: 'انقضت مهلة سدادك',
+      body: `لم يصل سدادك عن ${plate} في مهلته، فأُغلقت صفقتك وعادت اللوحة معروضة لغيرك.`,
+      href: '/account/purchases',
+      listingId: order.listingId,
+    })
+    await notify(store, {
+      userId: order.sellerId,
+      type: 'order_defaulted',
+      title: 'لم يسدّد المشتري في مهلته',
+      body: `أُغلقت صفقة ${plate}، ولوحتك ما زالت معروضة — لك أن تقبل سومًا آخر عليها.`,
+      href: '/account/offers',
+      listingId: order.listingId,
+    })
+  }
+  return closed
+}
+
 export async function finalizeDueAuctions(store: AuctionStore): Promise<number> {
   const listings = await store.listListings({ status: ['active', 'scheduled'] })
   const now = Date.now()

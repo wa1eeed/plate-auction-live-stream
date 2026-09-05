@@ -8,7 +8,6 @@ import { Gavel, HandCoins, Info, Loader2, Save, Send, ShieldCheck, Tag } from 'l
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlateEmblemPicker } from '@/components/plate/PlateEmblemPicker'
 import { SaudiLicensePlate, plateShowsEmblem } from '@/components/plate/SaudiLicensePlate'
 import { LetterPicker } from '@/components/plate/letter-picker'
@@ -40,14 +39,21 @@ import {
   normalizePlateNumbers,
   toArabicIndicDigits,
 } from '@/lib/saudi-plate-mapping'
-import { cn } from '@/lib/utils'
+import { cn, formatDayMonth } from '@/lib/utils'
 
+/**
+ * مُدد المزاد — رقمٌ ووحدته، لتُرسم بطاقاتٍ لا سطورَ قائمة.
+ *
+ * الرقم منفصلٌ عن وحدته لأنّ البطاقة تعرضه كبيرًا وتضع الوحدة تحته؛ ولو كان
+ * نصًّا واحدًا («٣ أيام») لتعذّر ذلك بلا تقطيعِ نصٍّ عربيّ في العرض.
+ */
 const DURATION_OPTIONS = [
-  { value: 3600, label: 'ساعة' },
-  { value: 6 * 3600, label: '6 ساعات' },
-  { value: 24 * 3600, label: 'يوم' },
-  { value: 3 * 24 * 3600, label: '3 أيام' },
-  { value: 7 * 24 * 3600, label: 'أسبوع' },
+  { value: 3600, count: 1, unit: 'ساعة' },
+  { value: 6 * 3600, count: 6, unit: 'ساعات' },
+  { value: 24 * 3600, count: 1, unit: 'يوم' },
+  { value: 3 * 24 * 3600, count: 3, unit: 'أيام' },
+  { value: 7 * 24 * 3600, count: 7, unit: 'أيام' },
+  { value: 10 * 24 * 3600, count: 10, unit: 'أيام' },
 ]
 
 const SALE_ICONS: Record<SaleType, typeof Gavel> = { auction: Gavel, fixed: Tag, offers: HandCoins }
@@ -564,22 +570,53 @@ export function ListingForm({
             </ExplainerBox>
 
             <div className="space-y-1.5">
-              <Label>مدة المزاد</Label>
-              <Select
-                value={String(watch('durationSeconds'))}
-                onValueChange={(v) => setValue('durationSeconds', Number(v))}
+              {/*
+                * المدّة بطاقاتٌ لا قائمة منسدلة.
+                *
+                * ما يقرّره البائع ليس «٣ أيام» بل **متى ينتهي مزاده** — والقائمة
+                * تُخفي الخيارات خلف نقرة وتترك الحساب في رأسه. والبطاقة تقول
+                * الرقم كبيرًا وتحته تاريخ الانتهاء محسوبًا من الآن، فيُقارَن
+                * الخياران بالنظر لا بالحساب.
+                */}
+              <Label id="duration-label">مدة المزاد</Label>
+              <div
+                role="group"
+                aria-labelledby="duration-label"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={String(option.value)}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {DURATION_OPTIONS.map((option) => {
+                  const selected = watch('durationSeconds') === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setValue('durationSeconds', option.value, { shouldDirty: true })}
+                      className={cn(
+                        'rounded-xl border px-2 py-3 text-center transition-colors',
+                        selected
+                          ? 'border-gold-500 bg-gold-500/10'
+                          : 'border-ink-600 bg-ink-900 hover:border-ink-500',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'block text-2xl font-extrabold leading-none tabular-nums',
+                          selected ? 'text-gold-500' : 'text-paper',
+                        )}
+                      >
+                        {option.count}
+                      </span>
+                      <span className="mt-1 block text-[11px] font-bold text-muted">
+                        {option.unit}
+                      </span>
+                      <span className="mt-1.5 block text-[10px] leading-tight text-muted">
+                        ينتهي <EndsOn seconds={option.value} />
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
           </div>
@@ -600,11 +637,6 @@ export function ListingForm({
           />
         </div>
       </section>
-
-      <p className="rounded-xl border border-ink-600 bg-ink-800/60 p-4 text-xs leading-relaxed text-muted">
-        معاينة اللوحة رقمية للاستخدام البصري داخل السوق، وليست لوحة رسمية ولا وثيقة حكومية.
-        يُسدَّد الثمن عبر المنصّة ويُحجز أمانةً، ويصلك بعد نقلك الملكية وتحقّق الإدارة منها.
-      </p>
 
       {/*
         * «حفظ ونشر» أوّلًا، و«حفظ كمسودة» بجانبه.
@@ -703,6 +735,21 @@ function NumberField({
       )}
     </div>
   )
+}
+
+/**
+ * تاريخ انتهاء المزاد لو نُشر الآن.
+ *
+ * يُحسب في المتصفّح بعد التركيب لا في التصيير: الخادم والعميل يقرآن ساعتين
+ * مختلفتين، فحسابُه في التصيير يُخرج نصَّين لطابعٍ واحد ويُسقط الترطيب.
+ * ولذلك يبدأ فارغًا ويُملأ فور التركيب.
+ */
+function EndsOn({ seconds }: { seconds: number }) {
+  const [text, setText] = useState('')
+  useEffect(() => {
+    setText(formatDayMonth(new Date(Date.now() + seconds * 1000).toISOString()))
+  }, [seconds])
+  return <span className="font-semibold text-paper">{text || '—'}</span>
 }
 
 /** صندوق شرح لقاعدة قد تُساء فهمها — يُفضَّل على تلميح من سطر واحد. */

@@ -77,6 +77,23 @@ const dayFormat = new Intl.DateTimeFormat(LOCALE, {
   year: 'numeric',
 })
 
+/**
+ * يوم وشهرٌ باسمه: `٤ سبتمبر`.
+ *
+ * للمواضع التي تُقرأ فيها التواريخ مقارنةً لا تدقيقًا — كتاريخ انتهاء مزادٍ
+ * لم يبدأ بعد. والسنة تُسقَط لأنّها لا تُميّز بين خيارات أسبوعٍ واحد.
+ */
+const dayMonthFormat = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: 'numeric',
+  month: 'long',
+})
+
+export function formatDayMonth(iso: string | null): string {
+  if (!iso) return '—'
+  return dayMonthFormat.format(new Date(iso))
+}
+
 export function formatClock(iso: string | null): string {
   if (!iso) return '—'
   return clockFormat.format(new Date(iso))

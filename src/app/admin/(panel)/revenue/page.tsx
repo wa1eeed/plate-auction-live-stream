@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Banknote, Percent, ShieldX, Wallet } from 'lucide-react'
+import { Banknote, Landmark, Percent, ShieldX, Wallet } from 'lucide-react'
 import { TableSearch } from '@/components/admin/table-search'
 import {
   AdminHeader,
@@ -30,16 +30,38 @@ export default async function AdminRevenuePage() {
     <>
       <AdminHeader
         title="إيرادات المنصّة"
-        description="كل ريال دخل المنصّة أو استحقّ لها، بمصدره وحالته — عمولات وضرائب وعرابين مُصادَرة."
+        description="كل ريال دخل المنصّة أو استحقّ لها، بمصدره وحالته. والضريبة تُعرَض على حدة: تحملها المنصّة أمانةً وتورّدها، فليست من إيرادها."
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/*
+          * الإيراد أوّلًا، والضريبة بجانبه لا داخله.
+          *
+          * ما يُحصَّل من الضريبة مالُ الهيئة تحمله المنصّة أمانةً حتى تورّده —
+          * التزامٌ لا كسب. وجمعُه في «المُحصَّل» يُظهر صفحةً اسمها «إيرادات
+          * المنصّة» أنّها كسبت أكثر ممّا كسبت، ويُبنى عليه تسعيرٌ وقرار.
+          */}
         <MetricCard
-          label="المُحصَّل فعلًا"
-          value={formatAmount(totals.settled)}
+          label="إيراد المنصّة المُحصَّل"
+          value={formatAmount(totals.netSettled)}
           tone="success"
           icon={Wallet}
-          hint="ريال — اقتُطع من المحافظ"
+          hint={
+            totals.vatSettled > 0
+              ? `ريال — عمولات وعرابين، بلا الضريبة (${formatAmount(totals.vatSettled)})`
+              : 'ريال — اقتُطع من المحافظ'
+          }
+        />
+        <MetricCard
+          label="ضريبة تُورَّد للهيئة"
+          value={formatAmount(totals.vatSettled)}
+          tone={totals.vatSettled > 0 ? 'gold' : 'default'}
+          icon={Landmark}
+          hint={
+            totals.vatDue > 0
+              ? `ريال — محصَّلة أمانةً · و${formatAmount(totals.vatDue)} استحقّت ولم تُحصَّل`
+              : 'ريال — محصَّلة أمانةً لا إيرادًا'
+          }
         />
         <MetricCard
           label="مستحقّ ولم يُحصَّل"
