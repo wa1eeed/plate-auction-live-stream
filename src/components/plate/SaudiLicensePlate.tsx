@@ -151,12 +151,27 @@ type Geometry = {
 const FRAME_SHARE = 7 / 930
 const frameOf = (width: number) => Math.round(width * FRAME_SHARE * 10) / 10
 
+/*
+ * وتنتهي الخانات عند الإطار، فلا سوادَ بينها وبينه.
+ *
+ * السواد المرئيّ حول الخانات ليس الإطار وحده: أرضيّةٌ سوداء تُطلى من الإطار
+ * إلى حدّ الخانة، وكانت الخانات على بُعد تسع وحدات من الحافّة. فخرج الشريط
+ * الأسود في الاعتيادية ٩ وحدات من ٤٦٠ — ١٫٩٦٪ من العرض — مقابل ٠٫٧٥٪ في
+ * الطويلة ذات الوجه المتّصل، وهو ما يُرى إطارًا عريضًا لا فرقًا في البناء.
+ * وحين تنتهي الخانة عند الإطار يبقى المرئيّ إطارًا واحدًا في اللوحات كلّها،
+ * وتبقى الفواصل بين الخانات كما هي.
+ */
+const STANDARD_FRAME = frameOf(460)
+const MOTO_FRAME = frameOf(430)
+const SPORT_FRAME = frameOf(760)
+const LONG_FRAME = frameOf(930)
+
 const LONG_GEOMETRY: Geometry = {
   viewBox: '0 0 930 200',
   width: 930,
   height: 200,
   frameRadius: 20,
-  inset: frameOf(930),
+  inset: LONG_FRAME,
   strip: { x: 858, width: 65 },
   main: { x: 7, width: 851 },
   numbers: { center: 210, from: 90, to: 330 },
@@ -165,7 +180,7 @@ const LONG_GEOMETRY: Geometry = {
   rows: { topBand: 20, bottomBand: 100, bandHeight: 80 },
   fonts: { numbers: 96, letters: 96 },
   // وجهٌ واحد متّصل بلا خانات — الشعار الأوسط يفصل بصريًّا
-  countryBox: { x: 858, y: 7, width: 65, height: 186 },
+  countryBox: { x: 858, y: LONG_FRAME, width: 65, height: 200 - LONG_FRAME * 2 },
 }
 
 /**
@@ -184,23 +199,23 @@ const LONG_TRANSPORT_GEOMETRY: Geometry = {
   width: 930,
   height: 200,
   frameRadius: 20,
-  inset: frameOf(930),
+  inset: LONG_FRAME,
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 916 },
   numbers: { center: 199, from: 9, to: 389 },
   // لا شعار أوسط — الدولة تشغل الوسط
   emblem: { center: 466, from: 394, to: 539, size: 0 },
   letters: { center: 732, from: 544, to: 921 },
-  rows: { topBand: 15, bottomBand: 108, bandHeight: 76 },
+  rows: { topBand: 14, bottomBand: 109.5, bandHeight: 76 },
   fonts: { numbers: 96, letters: 96 },
   cellRadius: 10,
   cells: [
-    { x: 9, y: 9, width: 380, height: 88 },
-    { x: 544, y: 9, width: 377, height: 88 },
-    { x: 9, y: 102, width: 380, height: 88 },
-    { x: 544, y: 102, width: 377, height: 88 },
+    { x: LONG_FRAME, y: LONG_FRAME, width: 389 - LONG_FRAME, height: 97 - LONG_FRAME },
+    { x: 544, y: LONG_FRAME, width: 930 - LONG_FRAME - 544, height: 97 - LONG_FRAME },
+    { x: LONG_FRAME, y: 102, width: 389 - LONG_FRAME, height: 200 - LONG_FRAME - 102 },
+    { x: 544, y: 102, width: 930 - LONG_FRAME - 544, height: 200 - LONG_FRAME - 102 },
   ],
-  countryBox: { x: 394, y: 9, width: 145, height: 181 },
+  countryBox: { x: 394, y: LONG_FRAME, width: 145, height: 200 - LONG_FRAME * 2 },
 }
 
 /**
@@ -215,23 +230,28 @@ const STANDARD_GEOMETRY: Geometry = {
   width: 460,
   height: 230,
   frameRadius: 20,
-  inset: frameOf(460),
+  inset: STANDARD_FRAME,
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 379 },
   // خانة الأرقام أوسع من خانة الحروف — ٥٨٪ إلى ٤٢٪ كما في المصنوعة
   numbers: { center: 118, from: 9, to: 227 },
   emblem: { center: 240, from: 235, to: 245, size: 0 },
   letters: { center: 309, from: 232, to: 386 },
-  rows: { topBand: 16, bottomBand: 124, bandHeight: 88 },
+  rows: { topBand: 13.75, bottomBand: 127.75, bandHeight: 88 },
   fonts: { numbers: 170, letters: 170 },
   cellRadius: 10,
   cells: [
-    { x: 9, y: 9, width: 218, height: 103 },
-    { x: 232, y: 9, width: 154, height: 103 },
-    { x: 9, y: 117, width: 218, height: 103 },
-    { x: 232, y: 117, width: 154, height: 103 },
+    { x: STANDARD_FRAME, y: STANDARD_FRAME, width: 227 - STANDARD_FRAME, height: 112 - STANDARD_FRAME },
+    { x: 232, y: STANDARD_FRAME, width: 154, height: 112 - STANDARD_FRAME },
+    { x: STANDARD_FRAME, y: 117, width: 227 - STANDARD_FRAME, height: 230 - STANDARD_FRAME - 117 },
+    { x: 232, y: 117, width: 154, height: 230 - STANDARD_FRAME - 117 },
   ],
-  countryBox: { x: 391, y: 9, width: 60, height: 211 },
+  countryBox: {
+    x: 391,
+    y: STANDARD_FRAME,
+    width: 460 - STANDARD_FRAME - 391,
+    height: 230 - STANDARD_FRAME * 2,
+  },
 }
 
 /**
@@ -246,7 +266,7 @@ const SPORT_GEOMETRY: Geometry = {
   width: 760,
   height: 200,
   frameRadius: 20,
-  inset: frameOf(760),
+  inset: SPORT_FRAME,
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 746 },
   numbers: { center: 154, from: 9, to: 299 },
@@ -264,10 +284,10 @@ const SPORT_GEOMETRY: Geometry = {
   fonts: { numbers: 152, letters: 152 },
   cellRadius: 10,
   cells: [
-    { x: 9, y: 9, width: 290, height: 182 },
-    { x: 439, y: 9, width: 310, height: 182 },
+    { x: SPORT_FRAME, y: SPORT_FRAME, width: 299 - SPORT_FRAME, height: 200 - SPORT_FRAME * 2 },
+    { x: 439, y: SPORT_FRAME, width: 760 - SPORT_FRAME - 439, height: 200 - SPORT_FRAME * 2 },
   ],
-  countryBox: { x: 304, y: 9, width: 130, height: 182 },
+  countryBox: { x: 304, y: SPORT_FRAME, width: 130, height: 200 - SPORT_FRAME * 2 },
   singleRow: true,
 }
 
@@ -283,24 +303,52 @@ const MOTO_GEOMETRY: Geometry = {
   width: 430,
   height: 195,
   frameRadius: 16,
-  inset: frameOf(430),
+  inset: MOTO_FRAME,
   strip: { x: 0, width: 0 },
   main: { x: 6, width: 348 },
   numbers: { center: 92, from: 8, to: 176 },
   // لا شعار أوسط — الحجم صفر يُسقط رسمه
   emblem: { center: 215, from: 205, to: 225, size: 0 },
   letters: { center: 265, from: 181, to: 349 },
-  // الداخل 6..189 (183). شريطان بارتفاع 70 بهامش ~17 أعلى وأسفل
-  rows: { topBand: 13, bottomBand: 105, bandHeight: 76 },
+  rows: { topBand: 11.1, bottomBand: 107.9, bandHeight: 76 },
   fonts: { numbers: 145, letters: 145 },
   cellRadius: 8,
   cells: [
-    { x: 8, y: 8, width: 168, height: 87 },
-    { x: 181, y: 8, width: 168, height: 87 },
-    { x: 8, y: 100, width: 168, height: 87 },
-    { x: 181, y: 100, width: 168, height: 87 },
+    { x: MOTO_FRAME, y: MOTO_FRAME, width: 176 - MOTO_FRAME, height: 95 - MOTO_FRAME },
+    { x: 181, y: MOTO_FRAME, width: 168, height: 95 - MOTO_FRAME },
+    { x: MOTO_FRAME, y: 100, width: 176 - MOTO_FRAME, height: 195 - MOTO_FRAME - 100 },
+    { x: 181, y: 100, width: 168, height: 195 - MOTO_FRAME - 100 },
   ],
-  countryBox: { x: 354, y: 8, width: 62, height: 179 },
+  countryBox: {
+    x: 354,
+    y: MOTO_FRAME,
+    width: 430 - MOTO_FRAME - 354,
+    height: 195 - MOTO_FRAME * 2,
+  },
+}
+
+/**
+ * الهندسة من صنف المركبة ونوع الإصدار.
+ *
+ * محوران مستقلّان إلّا في الدراجة: مقاسٌ واحد لا تصدر طويلةً ولا رياضية.
+ * وفي موضعٍ واحد لئلّا يفترق ما يرسمه الراسم عمّا يعرضه النموذج.
+ */
+function geometryOf(plateType: PlateType, plateFormat: PlateFormat): Geometry {
+  if (plateType === 'motorcycle') return MOTO_GEOMETRY
+  if (plateFormat === 'standard') return STANDARD_GEOMETRY
+  if (plateFormat === 'sport') return SPORT_GEOMETRY
+  return plateType === 'transport' ? LONG_TRANSPORT_GEOMETRY : LONG_GEOMETRY
+}
+
+/**
+ * هل لهذه اللوحة شعارٌ أوسط؟
+ *
+ * الطويلة الخصوصية وحدها: الاعتيادية والرياضية لا يتّسع وسطهما، والنقل تشغل
+ * وسطَه كتلةُ الدولة، والدراجة أضيق من أن تحمله. ويقرؤها النموذج فلا يعرض
+ * اختيارًا لا أثر له.
+ */
+export function plateShowsEmblem(plateType: PlateType, plateFormat: PlateFormat): boolean {
+  return geometryOf(plateType, plateFormat).emblem.size > 0
 }
 
 /**
@@ -339,25 +387,18 @@ export function SaudiLicensePlate({
 }: SaudiLicensePlateProps) {
   const western = latinNumbers ?? plateNumbers ?? ''
   const eastern = arabicNumbers ?? toArabicIndicDigits(western)
+  const geo = geometryOf(plateType, plateFormat)
   /*
-   * الشكل من نوع الإصدار، إلا الدراجة فلها شكلها مهما كان الإصدار.
+   * معرّفٌ ثابت مشتقّ من كلّ ما يُغيّر تعريفات اللوحة — متطابق بين الخادم
+   * والعميل.
    *
-   * نوع المركبة ونوع الإصدار محوران مستقلّان — لكنّ لوحة الدراجة مقاسٌ واحد
-   * لا تصدر طويلةً ولا رياضية.
+   * ويجب أن يضمّ الإصدار والمقاس لا المحتوى وحده: بطاقات اختيار الإصدار
+   * الثلاث تحمل الحروف والأرقام نفسها، فخرجت بمعرّفٍ واحد وتضاربت
+   * `clipPath` فيها. والمتصفّح يحلّ `url(#id)` إلى **أوّل** تعريف، فقُصّت
+   * الطويلة والرياضية على مقاس الاعتيادية (٤٦٠) وسقط منهما كلّ ما بعده:
+   * الحروف وشريط الدولة.
    */
-  const geo =
-    plateType === 'motorcycle'
-      ? MOTO_GEOMETRY
-      : plateFormat === 'standard'
-        ? STANDARD_GEOMETRY
-        : plateFormat === 'sport'
-          ? SPORT_GEOMETRY
-          : plateType === 'transport'
-            ? LONG_TRANSPORT_GEOMETRY
-            : LONG_GEOMETRY
-  // معرّف ثابت مشتقّ من المحتوى: متطابق بين الخادم والعميل، ولا يتضارب
-  // مع لوحة أخرى مختلفة المحتوى.
-  const uid = stableUid([plateType, arabicLetters, latinLetters, western, emblem])
+  const uid = stableUid([plateType, plateFormat, size, arabicLetters, latinLetters, western, emblem])
 
   const letterCount = Array.from(arabicLetters).length
 

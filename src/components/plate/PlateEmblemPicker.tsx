@@ -1,38 +1,43 @@
 'use client'
 
-import { Ban, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { EmblemIcon } from './EmblemGraphic'
-import { SaudiLicensePlate } from './SaudiLicensePlate'
-import { PLATE_EMBLEMS, PLATE_EMBLEM_LABELS, type PlateEmblem, type PlateType } from '@/lib/domain/types'
+import { PLATE_EMBLEMS, PLATE_EMBLEM_LABELS, type PlateEmblem } from '@/lib/domain/types'
 
 type Props = {
   value: PlateEmblem
   onChange: (value: PlateEmblem) => void
-  plateType: PlateType
-  arabicLetters: string
-  latinLetters: string
-  plateNumbers: string
   customUrl?: string | null
   onCustomUrlChange?: (value: string) => void
   allowCustom?: boolean
 }
 
-/** اختيار الشعار الوسطي: مصغّرة + اسم + معاينة فورية على اللوحة. */
+/**
+ * اختيار الشعار الوسطي: مصغّرة واسم.
+ *
+ * ولا معاينة هنا: اللوحة في رأس النموذج تُري أثر الاختيار فورًا، ولوحتان في
+ * صفحةٍ واحدة تسألان أيّهما الحقيقية.
+ */
 export function PlateEmblemPicker({
   value,
   onChange,
-  plateType,
-  arabicLetters,
-  latinLetters,
-  plateNumbers,
   customUrl,
   onCustomUrlChange,
   allowCustom = true,
 }: Props) {
-  const options = PLATE_EMBLEMS.filter((key) => allowCustom || key !== 'custom')
+  /*
+   * لا خيار «بلا شعار».
+   *
+   * الاختيار لا يُعرض أصلًا إلّا للطويلة الخصوصية، وهي وحدها التي يُرسم في
+   * وسطها شعار. فوسطٌ فارغ ليس إصدارًا من إصداراتها، وعرضه يدعو إلى لوحةٍ
+   * ناقصة. وتبقى `none` في النطاق لأنّ لوحاتٍ محفوظة قد تحملها.
+   */
+  const options = PLATE_EMBLEMS.filter(
+    (key) => key !== 'none' && (allowCustom || key !== 'custom'),
+  )
 
   return (
     <div className="space-y-3">
@@ -56,9 +61,7 @@ export function PlateEmblemPicker({
               {/* المربّع يحاكي وجه اللوحة الأبيض، فلونه ثابت لا يتبع رمز النص:
                   `bg-paper` ينقلب أسود في السمة الفاتحة فيختفي الشعار الأسود. */}
               <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-600 bg-white">
-                {key === 'none' ? (
-                  <Ban className="size-5 text-muted" />
-                ) : key === 'custom' ? (
+                {key === 'custom' ? (
                   <Upload className="size-5 text-muted" />
                 ) : (
                   <EmblemIcon emblem={key} className="h-8 w-8" />
@@ -85,18 +88,6 @@ export function PlateEmblemPicker({
         </div>
       )}
 
-      <div className="rounded-xl border border-ink-600 bg-ink-900/60 p-3">
-        <p className="mb-2 text-xs text-muted">معاينة فورية</p>
-        <SaudiLicensePlate
-          plateType={plateType}
-          arabicLetters={arabicLetters}
-          latinLetters={latinLetters}
-          plateNumbers={plateNumbers}
-          emblem={value}
-          customEmblemUrl={customUrl ?? null}
-          size="fullscreen"
-        />
-      </div>
     </div>
   )
 }

@@ -10,7 +10,7 @@ import { Input, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlateEmblemPicker } from '@/components/plate/PlateEmblemPicker'
-import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
+import { SaudiLicensePlate, plateShowsEmblem } from '@/components/plate/SaudiLicensePlate'
 import { LetterPicker } from '@/components/plate/letter-picker'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import {
@@ -49,6 +49,9 @@ const DURATION_OPTIONS = [
 ]
 
 const SALE_ICONS: Record<SaleType, typeof Gavel> = { auction: Gavel, fixed: Tag, offers: HandCoins }
+
+/** لوحة الدراجة مقاسٌ واحد — لا طويلة ولا رياضية. */
+const MOTORCYCLE_FORMATS: readonly PlateFormat[] = ['standard']
 
 type FormValues = {
   plateType: PlateType
@@ -100,8 +103,8 @@ export function ListingForm({
   const form = useForm<FormValues>({
     defaultValues: listing
       ? {
-  plateType: listing.plateType,
-  plateFormat: listing.plateFormat,
+          plateType: listing.plateType,
+          plateFormat: listing.plateFormat,
           arabicLetters: listing.arabicLetters,
           latinLetters: listing.latinLetters,
           plateNumbers: listing.plateNumbers,
@@ -136,6 +139,41 @@ export function ListingForm({
   useEffect(() => {
     setValue('latinLetters', lettersToLatin(normalizedLetters))
   }, [normalizedLetters, setValue])
+
+  /*
+   * الدراجة النارية مقاسٌ واحد.
+   *
+   * نوع الإصدار محورٌ مستقلّ عن صنف المركبة إلّا هنا: لوحة الدراجة لا تصدر
+   * طويلةً ولا رياضية، والراسم يتجاهل الإصدار فيها ويرسم مقاسها وحده. فعرضُ
+   * الخيارين يَعِد بما لا يقع — ومن اختار «رياضية» ثمّ «دراجة» رأى لوحته
+   * تعود اعتيادية بلا سبب ظاهر.
+   */
+  const formats = plateType === 'motorcycle' ? MOTORCYCLE_FORMATS : PLATE_FORMATS
+  /*
+   * الشعار الأوسط لا يُعرض إلّا حيث يُرسم.
+   *
+   * الطويلة الخصوصية وحدها تحمله: الاعتيادية والرياضية لا يتّسع وسطهما،
+   * والنقل تشغل وسطَه كتلةُ الدولة، والدراجة أضيق. وكان الاختيار معروضًا
+   * دائمًا، فيختار البائع شعارًا ثمّ لا يجده على لوحته ولا يُقال له لماذا.
+   */
+  const showsEmblem = plateShowsEmblem(plateType, plateFormat)
+  useEffect(() => {
+    if (plateType === 'motorcycle' && plateFormat !== 'standard') {
+      setValue('plateFormat', 'standard', { shouldDirty: true })
+    }
+  }, [plateType, plateFormat, setValue])
+
+  /*
+   * اللوحة في رأس النموذج تُرى قبل أن تكتمل.
+   *
+   * فالحقول فارغة أوّل ما تُفتح الصفحة، ولوحةٌ بلا حرفٍ ولا رقم لا تُري
+   * البائعَ شيئًا يحكم عليه. فتُملأ بقيمٍ افتراضية ويُقال إنّها افتراضية،
+   * ويحلّ محلّها ما يُدخله حرفًا حرفًا.
+   */
+  const draft = !normalizedLetters && !normalizedNumbers
+  const previewLetters = normalizedLetters || 'ابح'
+  const previewLatin = (normalizedLetters ? watch('latinLetters') : lettersToLatin('ابح')) || 'ABH'
+  const previewNumbers = normalizedNumbers || '1234'
 
   const onSubmit = handleSubmit(async (values) => {
     const payload = {
@@ -177,60 +215,126 @@ export function ListingForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* ------------------------------------------------ اللوحة */}
+      {/* ------------------------------------------------ رأس النموذج: اللوحة */}
+      {/*
+        * اللوحة أوّل ما يُرى، وتبقى مرئيّةً وأنت تملأ.
+        *
+        * كانت المعاينة تقع أسفل النموذج بين الحقول، فمن يبدّل نوع الإصدار أو
+        * يختار حرفًا لا يرى أثر اختياره إلّا أن ينزل إليها ثمّ يعود. وهي
+        * الشيء الوحيد الذي يُصنع هنا، فمكانها الرأس. و`sticky` تحت الترويسة
+        * (ارتفاعها 16) تُبقيها معك إلى آخر حقل.
+        */}
+      <section className="sticky top-16 z-20 rounded-2xl border border-ink-600 bg-ink-800/95 p-4 shadow-lg shadow-black/25 backdrop-blur">
+        {/*
+          * ارتفاعٌ واحد لكلّ الإصدارات، وعرضٌ يتّسع لأعرضها.
+          *
+          * `fill` تحفظ النسبة داخل الارتفاع، فلا يقفز رأس الصفحة عند تبديل
+          * الإصدار. والحبر نسبةٌ من ارتفاع اللوحة، فارتفاعٌ واحد يعني حرفًا
+          * بمقاسٍ واحد في الإصدارات كلّها. ويجب أن يتّسع العرض لأعرضها
+          * (الطويلة، ٤٫٦٥:١) وإلّا حدّها العرض فانكمشت وحدها وبدت حروف
+          * الدراجة أكبر من المعتاد إلى جانبها.
+          */}
+        <div className="mx-auto flex h-[72px] w-full max-w-[560px] items-center justify-center sm:h-[96px]">
+          <SaudiLicensePlate
+            plateType={plateType}
+            plateFormat={plateFormat}
+            arabicLetters={previewLetters}
+            latinLetters={previewLatin}
+            plateNumbers={previewNumbers}
+            emblem={emblem}
+            customEmblemUrl={customEmblemUrl || null}
+            size="fill"
+            showReflection={false}
+          />
+        </div>
+        <p className="mt-2.5 text-center text-[11px] leading-relaxed text-muted">
+          {draft ? (
+            <>لوحةٌ افتراضية للعرض — اختر الحروف والأرقام لترى لوحتك</>
+          ) : (
+            <>
+              <span className="font-bold text-paper">{PLATE_TYPE_LABELS[plateType]}</span>
+              {' · '}
+              {PLATE_FORMAT_LABELS[plateFormat]}
+            </>
+          )}
+        </p>
+      </section>
+
+      {/* ------------------------------------------------ الشكل */}
       <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
-        <h2 className="font-bold">بيانات اللوحة</h2>
+        <h2 className="font-bold">شكل اللوحة</h2>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>نوع اللوحة</Label>
-            <Select value={plateType} onValueChange={(v) => setValue('plateType', v as PlateType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PLATE_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {PLATE_TYPE_LABELS[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/*
+          * صنف المركبة بالأزرار لا بقائمة منسدلة.
+          *
+          * ثلاثة خيارات لا تُخفى خلف نقرة، وأثرها يظهر في اللوحة أعلاه فور
+          * الضغط — والقائمة تُخفي الخيارات وتُبعد اليد على الجوال.
+          */}
+        <div className="space-y-2">
+          <Label id="plate-type-label">نوع اللوحة</Label>
+          <div role="group" aria-labelledby="plate-type-label" className="grid grid-cols-3 gap-2">
+            {PLATE_TYPES.map((type) => {
+              const selected = plateType === type
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setValue('plateType', type, { shouldDirty: true })}
+                  className={cn(
+                    'rounded-xl border px-2 py-2.5 text-xs font-bold transition-colors sm:text-sm',
+                    selected
+                      ? 'border-gold-500 bg-gold-500/10 text-paper'
+                      : 'border-ink-600 bg-ink-900 text-muted hover:border-ink-500 hover:text-paper',
+                  )}
+                >
+                  {PLATE_TYPE_LABELS[type]}
+                </button>
+              )
+            })}
           </div>
+        </div>
 
-          {/*
-            * نوع الإصدار — شكل اللوحة لا صنف مركبتها.
-            *
-            * محورٌ مستقلّ: لوحةٌ خصوصية قد تصدر طويلةً أو اعتيادية أو رياضية.
-            * والاختيار بالبطاقات لا بقائمة منسدلة: الفرق شكليّ، فيُرى لا
-            * يُوصف — ومن يقرأ «طويلة» و«اعتيادية» في قائمة لا يعرف أيّهما أراد.
-            */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>نوع الإصدار</Label>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {PLATE_FORMATS.map((format) => (
+        {/*
+          * نوع الإصدار — شكل اللوحة لا صنف مركبتها.
+          *
+          * محورٌ مستقلّ: لوحةٌ خصوصية قد تصدر طويلةً أو اعتيادية أو رياضية.
+          * والاختيار بالبطاقات لا بقائمة منسدلة: الفرق شكليّ، فيُرى لا
+          * يُوصف — ومن يقرأ «طويلة» و«اعتيادية» في قائمة لا يعرف أيّهما أراد.
+          */}
+        <div className="space-y-2">
+          <Label id="plate-format-label">نوع الإصدار</Label>
+          <div
+            role="group"
+            aria-labelledby="plate-format-label"
+            className="grid gap-2 sm:grid-cols-3"
+          >
+            {formats.map((format) => {
+              const selected = plateFormat === format
+              return (
                 <button
                   key={format}
                   type="button"
+                  aria-pressed={selected}
                   onClick={() => setValue('plateFormat', format, { shouldValidate: true })}
                   className={cn(
                     'rounded-xl border p-3 text-start transition-colors',
-                    plateFormat === format
-                      ? 'border-gold-600 bg-gold-500/10'
+                    selected
+                      ? 'border-gold-500 bg-gold-500/10'
                       : 'border-ink-600 bg-ink-900/40 hover:border-gold-600/40',
                   )}
                 >
-                  <span className="mb-2 flex h-12 items-center justify-center">
+                  <span className="mb-2 flex h-10 items-center justify-center">
                     <SaudiLicensePlate
                       plateType={plateType}
                       plateFormat={format}
-                      arabicLetters={watch('arabicLetters') || 'ا ب ج'}
-                      latinLetters={watch('latinLetters') || 'ABJ'}
-                      plateNumbers={watch('plateNumbers') || '1234'}
+                      arabicLetters={previewLetters}
+                      latinLetters={previewLatin}
+                      plateNumbers={previewNumbers}
                       emblem={emblem}
                       size="fill"
                       showReflection={false}
-                      className="h-12"
+                      className="h-10"
                     />
                   </span>
                   <span className="block text-xs font-bold">{PLATE_FORMAT_LABELS[format]}</span>
@@ -238,10 +342,30 @@ export function ListingForm({
                     {PLATE_FORMAT_HINTS[format]}
                   </span>
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
+        </div>
+      </section>
 
+      {/* ------------------------------------------------ الحروف والأرقام */}
+      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+        <h2 className="font-bold">الحروف والأرقام</h2>
+
+        {/*
+          * الحروف تُدخَل عربيةً ولو كانت اللوحة رياضية.
+          *
+          * اللوحة السعودية تُسجَّل بحروفها العربية أيًّا كان إصدارها،
+          * واللاتينية تُشتقّ منها بجدول المرور المعتمد. والرياضية لا تطبع
+          * إلّا اللاتينية — فما يتغيّر هو **ما يُطبَع** لا ما يُدخَل.
+          */}
+        <LetterPicker
+          value={normalizedLetters}
+          onChange={(letters) => setValue('arabicLetters', letters, { shouldDirty: true })}
+          maxLetters={maxLetters}
+        />
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="plateNumbers">أرقام اللوحة (1–4)</Label>
             {/*
@@ -273,19 +397,6 @@ export function ListingForm({
             </p>
           </div>
 
-          {/*
-            * الحروف تُدخَل عربيةً ولو كانت اللوحة رياضية.
-            *
-            * اللوحة السعودية تُسجَّل بحروفها العربية أيًّا كان إصدارها،
-            * واللاتينية تُشتقّ منها بجدول المرور المعتمد. والرياضية لا تطبع
-            * إلّا اللاتينية — فما يتغيّر هو **ما يُطبَع** لا ما يُدخَل.
-            */}
-          <LetterPicker
-            value={normalizedLetters}
-            onChange={(letters) => setValue('arabicLetters', letters, { shouldDirty: true })}
-            maxLetters={maxLetters}
-          />
-
           <div className="space-y-1.5">
             {/* <output> لا <div>: قيمة محسوبة لا يكتبها المستخدم، و`htmlFor`
                 يربط التسمية بها فيقرؤها قارئ الشاشة كحقل له اسم */}
@@ -310,17 +421,20 @@ export function ListingForm({
             </p>
           </div>
         </div>
+      </section>
 
-        <PlateEmblemPicker
-          value={emblem}
-          onChange={setEmblem}
-          plateType={plateType}
-          arabicLetters={normalizedLetters || 'ا'}
-          latinLetters={watch('latinLetters') || 'A'}
-          plateNumbers={normalizedNumbers || '1'}
-          customUrl={customEmblemUrl}
-          onCustomUrlChange={setCustomEmblemUrl}
-        />
+      {/* ------------------------------------------------ الشعار والوصف */}
+      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+        <h2 className="font-bold">{showsEmblem ? 'الشعار والوصف' : 'وصف اللوحة'}</h2>
+
+        {showsEmblem && (
+          <PlateEmblemPicker
+            value={emblem}
+            onChange={setEmblem}
+            customUrl={customEmblemUrl}
+            onCustomUrlChange={setCustomEmblemUrl}
+          />
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="description">وصف اللوحة</Label>
