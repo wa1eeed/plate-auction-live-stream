@@ -94,7 +94,8 @@ export function StatementTable({ statement }: { statement: Statement }) {
          * الكشف يفرض 720px داخل تمرير أفقي: على 360px يظهر عمودان من ستّة،
          * والمبلغ والرصيد — وهما المقصودان — خلف الحافّة. فيُصيَّر بالقواعد نفسها
          * التي تُصيّر جداول الإدارة: بطاقةٌ لكل قيد تحت `sm`، واسم العمود بجانب
-         * قيمته من `--col-N`.
+         * قيمته من `--col-N`. وصفّ الإجماليّ بطاقةٌ آخِرها، أسماؤها في
+         * `data-label` لأن ترتيب خلاياه غير ترتيب الأعمدة.
          */
         <div
           style={
@@ -177,10 +178,10 @@ export function StatementTable({ statement }: { statement: Statement }) {
                   <td className="px-3 py-2.5 text-xs text-muted" colSpan={3}>
                     {filtered ? `إجمالي المعروض (${shown.length})` : 'الإجمالي'}
                   </td>
-                  <Total value={debit} className="text-danger" />
-                  <Total value={credit} className="text-success" />
+                  <Total label="إجمالي المدين" value={debit} className="text-danger" />
+                  <Total label="إجمالي الدائن" value={credit} className="text-success" />
                   {/* الرصيد الختامي رصيدُ الحساب لا مجموعَ ما بقي على الشاشة */}
-                  <Total value={statement.closingBalance} />
+                  <Total label="الرصيد الختامي" value={statement.closingBalance} />
                 </tr>
               </tfoot>
             </table>
@@ -203,8 +204,25 @@ export function StatementTable({ statement }: { statement: Statement }) {
   )
 }
 
-function Total({ value, className }: { value: number; className?: string }) {
+/**
+ * مجموعٌ في ذيل الكشف.
+ *
+ * `label` اسمُه على الجوال حيث ينقلب الصفّ بطاقةً: أعمدة الترويسة لا تصلح
+ * له — خليّته الأولى تمتدّ ثلاثًا فتزيح ما بعدها عن ترتيبها — ولأنّ المجموع
+ * غير القيد، فـ«مدين» في سطرٍ هو «إجمالي المدين» في الذيل.
+ */
+function Total({
+  value,
+  label,
+  className,
+}: {
+  value: number
+  label: string
+  className?: string
+}) {
   return (
-    <td className={cn('px-3 py-2.5 text-end tabular-nums', className)}>{formatAmount(value)}</td>
+    <td data-label={label} className={cn('px-3 py-2.5 text-end tabular-nums', className)}>
+      {formatAmount(value)}
+    </td>
   )
 }

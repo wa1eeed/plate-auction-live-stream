@@ -518,6 +518,45 @@ test.describe('الجوال عند 360px', () => {
     // والرصيد — وهو آخر عمود — مرئي لا خلف حافّة
     await expect(page.getByText('الرصيد').first()).toBeVisible()
   })
+
+  /*
+   * وصفّ الإجماليّ بطاقةٌ كبقيّتها.
+   *
+   * كان `tfoot` يبقى `table-footer-group` في جدولٍ صار `display:block`، فيلفّه
+   * المتصفّح بجدولٍ ضمنيّ يشرنق نفسه صندوقًا ضيّقًا خارج نسق البطاقات. وخلاياه
+   * كانت تأخذ أسماء أعمدةٍ ليست لها — أوّلها يمتدّ ثلاثة أعمدة فيزيح ما بعده —
+   * فيُقرأ مجموعُ المدين «التاريخ» ومجموعُ الدائن «البيان». وهما رقمان لا
+   * يحملهما الشريط الذي تحته، فلا مقروءَ سواه.
+   */
+  test('صفّ الإجماليّ في الكشف بطاقةٌ بأسماء مجاميعه', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginUser(page, USERS.majed)
+    await page.goto('/account/wallet')
+    await expect(page.locator('.admin-table tfoot tr')).toBeVisible()
+
+    const foot = await page.evaluate(() => {
+      const row = document.querySelector('.admin-table tfoot tr')!
+      const card = document.querySelector('.admin-table tbody tr')!
+      return {
+        labels: [...row.querySelectorAll('td')].map(
+          (td) => getComputedStyle(td, '::before').content,
+        ),
+        width: row.getBoundingClientRect().width,
+        cardWidth: card.getBoundingClientRect().width,
+      }
+    })
+
+    // بعرض البطاقات، لا صندوقًا يشرنق نفسه
+    expect(Math.abs(foot.width - foot.cardWidth), 'صفّ الإجماليّ خارج نسق البطاقات')
+      .toBeLessThanOrEqual(1)
+    // وعنوانه بلا اسمٍ قبله، ومجاميعه بأسمائها هي لا بأسماء الأعمدة
+    expect(foot.labels[0], 'عنوان الإجماليّ سُمّي باسم عمود').toBe('none')
+    expect(foot.labels.slice(1)).toEqual([
+      '"إجمالي المدين"',
+      '"إجمالي الدائن"',
+      '"الرصيد الختامي"',
+    ])
+  })
 })
 
 /*
