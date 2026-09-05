@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
+  PLATE_FORMAT_LABELS,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
   isClosedListing,
@@ -143,6 +144,15 @@ export function ListingCard({
               {closed ? LISTING_STATUS_LABELS[card.status] : SALE_TYPE_LABELS[card.saleType]}
             </CardTag>
             <CardTag tone="muted">{PLATE_TYPE_LABELS[card.plate.plateType]}</CardTag>
+            {/*
+              * الرياضية وحدها تُوسَم.
+              *
+              * هي منتجٌ مختلف: لا عربية فيها أصلًا. والاعتيادية والطويلة
+              * شكلان لما هو معتاد، فوسمُهما يُثقل البطاقة بما لا يُقرَّر به.
+              */}
+            {card.plate.plateFormat === 'sport' && (
+              <CardTag tone="sky">{PLATE_FORMAT_LABELS.sport}</CardTag>
+            )}
           </div>
         </div>
 
@@ -168,6 +178,9 @@ export function ListingCard({
               {SALE_TYPE_LABELS[card.saleType]}
             </Badge>
             <Badge variant="muted">{PLATE_TYPE_LABELS[card.plate.plateType]}</Badge>
+            {card.plate.plateFormat === 'sport' && (
+              <Badge variant="default">{PLATE_FORMAT_LABELS.sport}</Badge>
+            )}
             {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[card.status]}</Badge>}
           </div>
 

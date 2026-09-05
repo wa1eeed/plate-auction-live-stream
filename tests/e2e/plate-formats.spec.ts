@@ -67,4 +67,53 @@ test.describe('نوع إصدار اللوحة', () => {
     expect(found.transportBlue).toBe(found.transport)
     expect(found.privateBlue, 'الأزرق على لوحة خصوصي').toBe(0)
   })
+
+  test('الرياضية تُوسَم في البطاقة، ولا يُوسَم ما هو معتاد', async ({ page }) => {
+    /*
+     * هي منتجٌ مختلف: لا عربية فيها أصلًا، فيُقال ذلك قبل فتحها. والاعتيادية
+     * والطويلة شكلان لما هو معتاد، فوسمُهما يُثقل البطاقة بما لا يُقرَّر به.
+     */
+    await page.goto('/market')
+    await expect(page.locator('article').first()).toBeVisible()
+
+    const sportCards = page.locator('article', { hasText: 'لوحة رياضية' })
+    expect(await sportCards.count(), 'لا لوحة رياضية موسومة').toBeGreaterThan(0)
+
+    // وبطاقة الرياضية هي التي تحمل لوحةً بلا عربية
+    const hasArabic = await sportCards.first().locator('svg[data-plate-type]').evaluate((svg) =>
+      [...svg.querySelectorAll('text')]
+        .map((t) => t.textContent ?? '')
+        .filter((t) => t !== 'السعودية' && t !== 'KSA')
+        .some((t) => /[؀-ۿ]/.test(t)),
+    )
+    expect(hasArabic, 'عربية في لوحةٍ موسومة رياضية').toBe(false)
+
+    await expect(page.getByText('لوحة اعتيادية')).toHaveCount(0)
+    await expect(page.getByText('لوحة طويلة')).toHaveCount(0)
+  })
+
+  /*
+   * شعارٌ واحد في اللوحة لا شعاران.
+   *
+   * حيث تشغل كتلةُ الدولة الوسط — الرياضية والاعتيادية والطويلة للنقل — لا
+   * موضع لشعارٍ أوسطَ ثانٍ. وحجمُه غيرُ الصفر كان يرسمه فوقها، فيجتمع في
+   * موضعٍ واحد شعاران ويتكرّر السيفان والنخلة إن كان هو المختار. رُصد حيًّا.
+   */
+  test('لا يتكرّر الشعار حيث تشغل الدولة الوسط', async ({ page }) => {
+    await page.goto('/market')
+    await expect(page.locator('svg[data-plate-type]').first()).toBeVisible()
+
+    const doubled = await page.evaluate(() =>
+      [...document.querySelectorAll('svg[data-plate-type]')]
+        .map((svg) => ({
+          box: svg.getAttribute('viewBox'),
+          // الشعار الأوسط موسومٌ، وشعار كتلة الدولة غيرُ موسوم
+          centre: svg.querySelectorAll('[data-plate-emblem="center"]').length,
+          hasCountryCell: svg.querySelectorAll('rect[rx="10"], rect[rx="8"]').length > 0,
+        }))
+        .filter((plate) => plate.hasCountryCell && plate.centre > 0),
+    )
+
+    expect(doubled, `شعاران في: ${doubled.map((d) => d.box).join(' · ')}`).toHaveLength(0)
+  })
 })

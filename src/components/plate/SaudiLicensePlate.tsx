@@ -58,26 +58,35 @@ function isolateArabic(letters: string): string {
 }
 
 /**
- * أحجام الخط لكل عدد أحرف/أرقام.
- * الهدف: بقاء كل نص داخل مساحته مهما تغيّر المحتوى مع ثبات المحاذاة —
- * المعاملات محسوبة على العرض الفعلي للحروف (اللاتينية أعرض من العربية).
+ * حجمٌ واحد للحرف والرقم، ولا يصغر إلّا إذا ضاق به عرضه.
+ *
+ * كانت الأحجام سلالمَ حسب عدد المحارف: حرفٌ واحد يأخذ الأساس كاملًا، وثلاثةٌ
+ * تأخذ ٦٠٪ منه. فتخرج لوحةُ «A» بحرفٍ ضخم ولوحةُ «NTU» بحروفٍ صغيرة، ويختلف
+ * الرقم عن الحرف في اللوحة الواحدة — وهو ما لا يقع في المصنوعة: مقاس الحرف
+ * فيها ثابت، وإنّما تتّسع اللوحة لما تحمل.
+ *
+ * فصار الحجم واحدًا يُقاس، ولا يُنقص إلّا حين يتجاوز النصُّ عرض خانته. والعرض
+ * يُقدَّر بمتوسّط تقدّم المحرف — لا حاجة إلى دقّةٍ أكثر، فالغرض حارسٌ لا مقياس.
  */
-function arabicLettersFontSize(count: number, base: number): number {
-  if (count <= 1) return base
-  if (count === 2) return base * 0.86
-  return base * 0.68
-}
+const ADVANCE = {
+  /** أرقام لاتينية وعربية — عرضها ثابت في خطوط اللوحات */
+  digits: 0.6,
+  /** حروف لاتينية كبيرة بمتوسّط A–Z */
+  latin: 0.72,
+  /** حروف عربية معزولة، ومعها فراغ الفصل بينها */
+  arabic: 0.82,
+} as const
 
-function latinLettersFontSize(count: number, base: number): number {
-  if (count <= 1) return base
-  if (count === 2) return base * 0.8
-  return base * 0.6
-}
-
-function numbersFontSize(count: number, base: number): number {
-  if (count <= 2) return base
-  if (count === 3) return base * 0.9
-  return base * 0.82
+function fitFontSize(
+  count: number,
+  base: number,
+  available: number,
+  advance: number,
+  spacing = 0,
+): number {
+  if (count <= 0) return base
+  const natural = count * base * (advance + spacing)
+  return natural <= available ? base : (available / natural) * base
 }
 
 /*
@@ -139,21 +148,43 @@ const LONG_GEOMETRY: Geometry = {
   width: 930,
   height: 200,
   frameRadius: 20,
-  /*
-   * سُمك الإطار كما كان قبل الخانات: سبعة لا عشرة.
-   *
-   * الفراغ بين الخانات أسودُ كالإطار، فزيادة الحشو معه تُضاعف ما يُرى سوادًا
-   * حتى تبدو اللوحة مؤطّرةً بحدٍّ ثخين لا مركّبةً من قطع.
-   */
   inset: 7,
-  // لا شريط جانبيّ: الدولة كتلةٌ وسطى بارتفاع اللوحة
+  strip: { x: 858, width: 65 },
+  main: { x: 7, width: 851 },
+  numbers: { center: 210, from: 90, to: 330 },
+  emblem: { center: 460, from: 360, to: 560, size: 132 },
+  letters: { center: 700, from: 600, to: 800 },
+  rows: { topBand: 20, bottomBand: 100, bandHeight: 80 },
+  fonts: { numbers: 96, letters: 96 },
+  // وجهٌ واحد متّصل بلا خانات — الشعار الأوسط يفصل بصريًّا
+  countryBox: { x: 858, y: 7, width: 65, height: 186 },
+}
+
+/**
+ * الطويلة للنقل الخاصّ.
+ *
+ * تختلف عن أختها في بنيتها لا في لونها وحده: خاناتٌ منفصلة، والدولة كتلةٌ
+ * **وسطى** زرقاء لا شريطٌ على الحافّة — كما في المصنوعة. ولا شعار أوسط فيها:
+ * موضعه شغلته الدولة.
+ *
+ * ولذلك لا يجوز جعل الطويلة كلّها خانات: الشعار الأوسط في الخصوصية يقع في
+ * موضع كتلة الدولة، فيجتمع في الوسط شعاران — والسيفان والنخلة يتكرّران إن
+ * كان هو المختار.
+ */
+const LONG_TRANSPORT_GEOMETRY: Geometry = {
+  viewBox: '0 0 930 200',
+  width: 930,
+  height: 200,
+  frameRadius: 20,
+  inset: 7,
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 916 },
   numbers: { center: 199, from: 9, to: 389 },
-  emblem: { center: 466, from: 394, to: 539, size: 70 },
+  // لا شعار أوسط — الدولة تشغل الوسط
+  emblem: { center: 466, from: 394, to: 539, size: 0 },
   letters: { center: 732, from: 544, to: 921 },
   rows: { topBand: 15, bottomBand: 108, bandHeight: 76 },
-  fonts: { numbers: 96, letters: 100 },
+  fonts: { numbers: 96, letters: 96 },
   cellRadius: 10,
   cells: [
     { x: 9, y: 9, width: 380, height: 88 },
@@ -184,7 +215,7 @@ const STANDARD_GEOMETRY: Geometry = {
   emblem: { center: 240, from: 235, to: 245, size: 0 },
   letters: { center: 309, from: 232, to: 386 },
   rows: { topBand: 16, bottomBand: 124, bandHeight: 88 },
-  fonts: { numbers: 108, letters: 112 },
+  fonts: { numbers: 108, letters: 108 },
   cellRadius: 10,
   cells: [
     { x: 9, y: 9, width: 218, height: 103 },
@@ -211,7 +242,14 @@ const SPORT_GEOMETRY: Geometry = {
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 746 },
   numbers: { center: 154, from: 9, to: 299 },
-  emblem: { center: 369, from: 304, to: 434, size: 70 },
+  /*
+   * لا شعار أوسط: الدولة تشغل الوسط.
+   *
+   * كان بحجمٍ غير صفر، فيُرسم الشعار المختار في موضع كتلة الدولة ويجتمع
+   * فيها شعاران — والسيفان والنخلة يتكرّران إن كان هو المختار. وهو ما وقع
+   * في الرياضية بعد أن صُحّح في الطويلة.
+   */
+  emblem: { center: 369, from: 304, to: 434, size: 0 },
   letters: { center: 594, from: 439, to: 749 },
   // صفٌّ واحد يشغل الوسط
   rows: { topBand: 0, bottomBand: 35, bandHeight: 130 },
@@ -246,7 +284,7 @@ const MOTO_GEOMETRY: Geometry = {
   letters: { center: 265, from: 181, to: 349 },
   // الداخل 6..189 (183). شريطان بارتفاع 70 بهامش ~17 أعلى وأسفل
   rows: { topBand: 13, bottomBand: 105, bandHeight: 76 },
-  fonts: { numbers: 92, letters: 96 },
+  fonts: { numbers: 92, letters: 92 },
   cellRadius: 8,
   cells: [
     { x: 8, y: 8, width: 168, height: 87 },
@@ -306,17 +344,43 @@ export function SaudiLicensePlate({
         ? STANDARD_GEOMETRY
         : plateFormat === 'sport'
           ? SPORT_GEOMETRY
-          : LONG_GEOMETRY
+          : plateType === 'transport'
+            ? LONG_TRANSPORT_GEOMETRY
+            : LONG_GEOMETRY
   // معرّف ثابت مشتقّ من المحتوى: متطابق بين الخادم والعميل، ولا يتضارب
   // مع لوحة أخرى مختلفة المحتوى.
   const uid = stableUid([plateType, arabicLetters, latinLetters, western, emblem])
 
   const letterCount = Array.from(arabicLetters).length
 
-  // حدود العرض: تمنع تجاوز النصّ مساحته أفقيًا مع كثرة المحارف
-  const numberWidthLimit = numbersFontSize(western.length, geo.fonts.numbers)
-  const arabicLetterWidthLimit = arabicLettersFontSize(letterCount, geo.fonts.letters)
-  const latinLetterWidthLimit = latinLettersFontSize(letterCount, geo.fonts.letters)
+  /*
+   * العرض المتاح لكل خانة — منه يُحسب الحدّ، لا من عدد المحارف.
+   *
+   * و`0.86` هامشٌ داخل الخانة: الحرف لا يلامس حدّها في المصنوعة.
+   */
+  const numbersRoom = (geo.numbers.to - geo.numbers.from) * 0.86
+  const lettersRoom = (geo.letters.to - geo.letters.from) * 0.86
+
+  const numberWidthLimit = fitFontSize(
+    western.length,
+    geo.fonts.numbers,
+    numbersRoom,
+    ADVANCE.digits,
+    0.08,
+  )
+  const arabicLetterWidthLimit = fitFontSize(
+    letterCount,
+    geo.fonts.letters,
+    lettersRoom,
+    ADVANCE.arabic,
+  )
+  const latinLetterWidthLimit = fitFontSize(
+    letterCount,
+    geo.fonts.letters,
+    lettersRoom,
+    ADVANCE.latin,
+    0.1,
+  )
 
   // ثم يقيّد الشريط الرأسي كل عنصر بحبره الحقيقي، فيتساوى الارتفاع المرئي
   const topRow = layoutRow(
@@ -328,13 +392,22 @@ export function SaudiLicensePlate({
     geo.rows.bandHeight,
     ARABIC_ASCENT_SHARE,
   )
+  /*
+   * الصفّ اللاتينيّ أصغر قليلًا من العربيّ.
+   *
+   * الحبران متساويان في المقياس — `0.7188` مقابل `0.7236` — فيخرجان بارتفاعٍ
+   * واحد. لكنّ العين تقرأ اللاتينيّ أضخم: حروفه أعرض وأثخن، فتملأ مساحتها
+   * بينما يترك العربيّ فراغًا حوله. والمعامل يردّ التوازن الذي يُرى لا الذي
+   * يُقاس، ويبقى الصفّ داخل شريطه فلا يمسّ حدًّا.
+   */
+  const LATIN_SCALE = 0.88
   const bottomRow = layoutRow(
     [
-      { widthLimit: numberWidthLimit, ink: LATIN_DIGIT_INK },
-      { widthLimit: latinLetterWidthLimit, ink: LATIN_CAP_INK },
+      { widthLimit: numberWidthLimit * LATIN_SCALE, ink: LATIN_DIGIT_INK },
+      { widthLimit: latinLetterWidthLimit * LATIN_SCALE, ink: LATIN_CAP_INK },
     ],
-    geo.rows.bottomBand,
-    geo.rows.bandHeight,
+    geo.rows.bottomBand + (geo.rows.bandHeight * (1 - LATIN_SCALE)) / 2,
+    geo.rows.bandHeight * LATIN_SCALE,
     LATIN_ASCENT_SHARE,
   )
   const [arabicNumberSize, arabicLetterSize] = topRow.sizes

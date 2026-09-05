@@ -9,6 +9,7 @@ import { formatAmount } from '@/lib/domain/money'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import {
   LISTING_STATUS_LABELS,
+  PLATE_FORMAT_LABELS,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
   isClosedListing,
@@ -145,6 +146,9 @@ export function MyListingCard({
               {SALE_TYPE_LABELS[listing.saleType]}
             </CardTag>
             <CardTag tone="muted">{PLATE_TYPE_LABELS[listing.plateType]}</CardTag>
+            {listing.plateFormat === 'sport' && (
+              <CardTag tone="sky">{PLATE_FORMAT_LABELS.sport}</CardTag>
+            )}
           </div>
         </Link>
 
