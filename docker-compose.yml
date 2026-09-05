@@ -48,6 +48,15 @@ services:
       retries: 3
       start_period: 40s
 
+    # ما تضبطه الإدارة يُكتب في `PLATFORM_DATA_DIR` (يضبطه Dockerfile على
+    # /app/data). و`VOLUME` في الصورة حجمٌ **مجهول** يُنشأ باسمٍ عشوائي مع كل
+    # حاوية، فيضيع الضبط مع أوّل `down`/إعادة بناء. والحجم المسمّى يبقى.
+    volumes:
+      - plate-data:/app/data
+
     logging:
       driver: json-file
       options: { max-size: '10m', max-file: '3' }
+
+volumes:
+  plate-data:

@@ -753,7 +753,24 @@ test.describe('تصفّح السوق على دفعات', () => {
   test('تغيير الفلتر يعيد العدّ إلى أوّله', async ({ page }) => {
     await page.goto('/market')
     await page.locator('article').first().waitFor()
-    await page.getByRole('button', { name: 'عرض المزيد' }).click()
+
+    /*
+     * يُنتظر الزرّ ثمّ يُنتظر أثرُه — والنقر بينهما كان يقع في فجوة الترطيب.
+     *
+     * الصفحة تُرسَل مصيَّرةً من الخادم ثمّ تُرطَّب، فأوّلُ `article` يظهر قبل
+     * أن يتعلّق السلوك بالزرّ. والنقر هناك يقع على زرٍّ يستبدله أوّلُ تصيير في
+     * العميل، فيُفصَل من الشجرة في أثناء النقر: «element was detached from the
+     * DOM» ثمّ مهلةٌ تنقضي. سقط اثنان من ثلاثة تشغيلات.
+     *
+     * و`grown` كان يُقرأ عقب النقر مباشرةً — قبل أن تُصيَّر الدفعة الجديدة —
+     * فيساوي ما قبله، ويصير الفحص الأخير يقارن بعددٍ لم ينمُ: أخضرُ لا يحرس
+     * شيئًا. فيُنتظر النموّ ثمّ يُقرأ.
+     */
+    const more = page.getByRole('button', { name: 'عرض المزيد' })
+    await expect(more).toBeVisible()
+    const first = await page.locator('article').count()
+    await more.click()
+    await expect.poll(() => page.locator('article').count()).toBeGreaterThan(first)
     const grown = await page.locator('article').count()
 
     await page.getByRole('tab', { name: 'مزاد' }).click()
