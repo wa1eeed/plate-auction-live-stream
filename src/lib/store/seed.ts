@@ -465,6 +465,9 @@ export function seedDatabase(db: MemoryDatabase): void {
     city: demo.city,
     social: { ...demo.social },
     payout: { ...demo.payout },
+    // معرّفٌ علنيّ في البذرة: الروابط تُشارَك في العرض ولا تُملى بمعرّف داخليّ
+    handle: demo.email.split('@')[0],
+    showcaseUsesHandle: false,
     avatarUrl: null,
     createdAt: iso(-(30 - index) * 86_400_000),
     passwordHash: hashPassword(demo.password),

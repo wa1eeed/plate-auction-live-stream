@@ -4,6 +4,7 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PageShell } from '@/components/layout/page-shell'
 import { getListingDetail, getSellerShowcase, isServiceError } from '@/lib/server/market-service'
+import { showcasePath } from '@/lib/domain/reference'
 import { getCurrentUser } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
 import { formatAmount } from '@/lib/domain/money'
@@ -63,7 +64,7 @@ export default async function ListingPage({
    */
   const origin = from ? await getSellerShowcase(from) : null
   const backTo = origin
-    ? { href: `/u/${origin.seller.id}`, label: `لوحات ${origin.seller.displayName}` }
+    ? { href: showcasePath(origin.seller.id), label: `لوحات ${origin.seller.displayName}` }
     : { href: '/market', label: 'السوق' }
 
   return (

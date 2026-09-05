@@ -128,3 +128,15 @@ export function matchesReference(value: string, query: string): boolean {
   const parsed = parseReference(query)
   return parsed !== null && parsed.canonical === value
 }
+
+/**
+ * مسار معرض البائع.
+ *
+ * `@` ما دام له معرّف علنيّ، و`/u/<id>` وإلّا. وتُبنى في موضعٍ واحد كي لا
+ * يفترق ما يُنسخ عمّا يُربَط: رابطٌ يعرضه الحساب ورابطٌ آخر يعود إليه الزائر
+ * يجعلان الصفحة تبدو صفحتين.
+ */
+export function showcasePath(idOrHandle: string): string {
+  // المعرّف الداخليّ وحده يبدأ بـ`usr_` — وما عداه معرّفٌ اختاره صاحبه
+  return idOrHandle.startsWith('usr_') ? `/u/${idOrHandle}` : `/@${idOrHandle}`
+}

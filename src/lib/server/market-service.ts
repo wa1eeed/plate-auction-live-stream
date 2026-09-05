@@ -485,15 +485,24 @@ export async function getMarketListings(sellerId?: string): Promise<ListingCard[
  * والمعرّف في الرابط هو `id` العشوائي لا الرقم المرجعي: لا يُخمَّن ولا يُعدّ.
  */
 export async function getSellerShowcase(
-  sellerId: string,
+  idOrHandle: string,
 ): Promise<{ seller: PublicSeller; cards: ListingCard[] } | null> {
-  const user = await getStore().findUser(sellerId)
+  const store = getStore()
+  /*
+   * يُقبل المعرّف العلنيّ والداخليّ معًا.
+   *
+   * الروابط تُشارَك في مجموعات وتُحفظ، فمن غيّر معرّفه لا تنكسر عليه روابطٌ
+   * أُرسلت — ومن لم يختر معرّفًا بعد يبقى رابطه بمعرّفه الداخليّ عاملًا.
+   */
+  const user = (await store.findUserByHandle(idOrHandle)) ?? (await store.findUser(idOrHandle))
   if (!user) return null
 
   return {
     seller: {
-      id: user.id,
-      displayName: user.displayName,
+      // الرابط الأقصر ما دام موجودًا — هو ما يُملى ويُكتب
+      id: user.handle ?? user.id,
+      // ما يُعرض: اسمه أو معرّفه — والاختيار له لا للمنصّة
+      displayName: user.showcaseUsesHandle && user.handle ? `@${user.handle}` : user.displayName,
       city: user.city,
       memberSince: user.createdAt,
     },

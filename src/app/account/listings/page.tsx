@@ -24,15 +24,15 @@ export default async function MyListingsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/*
-            * معرضه العامّ — يُشارَك كما هو.
+            * إلى صفحة معرضه لا إلى المعرض نفسه.
             *
-            * هذه الصفحة للإدارة: مسوّداته وأسعاره الاحتياطية وأزرار الإلغاء.
-            * وما يُرسله لغيره شيءٌ آخر — لوحاته المعروضة وحدها ببطاقات السوق.
+            * هذه الصفحة للإدارة، وتلك لضبط المعرض ونسخ رابطه — وبينهما فرقٌ
+            * يجب أن يُرى: ما هنا لا يراه أحد سواه، وما هناك يُنشَر.
             */}
           <Button asChild variant="outline">
-            <Link href={`/u/${userId}`} target="_blank" rel="noopener noreferrer">
+            <Link href="/account/showcase">
               <Store className="size-4" />
-              معرضي العام
+              معرض لوحاتي
             </Link>
           </Button>
           <Button asChild>

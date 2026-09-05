@@ -123,6 +123,7 @@ export interface AuctionStore {
   readonly kind: 'memory' | 'supabase'
 
   // ---- المستخدمون
+  findUserByHandle(handle: string): Promise<User | null>
   findUserByEmail(email: string): Promise<UserAccount | null>
   findUser(id: string): Promise<User | null>
   createUser(input: {

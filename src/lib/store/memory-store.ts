@@ -191,6 +191,13 @@ export class MemoryStore implements AuctionStore {
 
   // ------------------------------------------------------------- المستخدمون
 
+  /** بالمعرّف العلنيّ — يُطبَّع كما يُطبَّع عند الحفظ فيُقبل كيفما كُتب. */
+  async findUserByHandle(handle: string): Promise<User | null> {
+    const normalized = handle.trim().toLowerCase()
+    if (!normalized) return null
+    return clone(this.db.users.find((u) => u.handle === normalized) ?? null)
+  }
+
   async findUserByEmail(email: string): Promise<UserAccount | null> {
     const normalized = email.trim().toLowerCase()
     return clone(this.db.users.find((u) => u.email === normalized) ?? null)
@@ -220,6 +227,9 @@ export class MemoryStore implements AuctionStore {
       email,
       displayName: input.displayName,
       phone: input.phone,
+      // بلا معرّف علنيّ حتى يختاره: رابطه بمعرّفه الداخليّ إلى أن يفعل
+      handle: null,
+      showcaseUsesHandle: false,
       city: null,
       avatarUrl: null,
       social: { ...EMPTY_SOCIAL, ...input.social },

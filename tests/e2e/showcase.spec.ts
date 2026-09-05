@@ -15,8 +15,20 @@ test.describe('معرض البائع العام', () => {
     // العنوان صار «إدارة لوحاتي» — تمييزًا عن المعرض الذي يُشارَك
     await expect(page.getByRole('heading', { name: 'إدارة لوحاتي' })).toBeVisible()
 
-    const showcase = await page.getByRole('link', { name: /معرضي العام/ }).getAttribute('href')
-    expect(showcase, 'لا رابط للمعرض').toMatch(/^\/u\//)
+    // بابٌ مستقلّ في القائمة، لا زرًّا في صفحة الإدارة
+    await page.getByRole('link', { name: 'معرض لوحاتي' }).first().click()
+    await expect(page.getByRole('heading', { name: 'معرض لوحاتي' })).toBeVisible()
+
+    /*
+     * `/@<المعرّف>` لا `/u/<رقم>`.
+     *
+     * الرابط يُملى في مجلس ويُكتب في وصف حساب، فكلّ حرفٍ زائد فيه يُقرأ. و`@`
+     * وحدها تقول إنّ ما بعدها شخص.
+     */
+    const showcase = await page
+      .getByRole('link', { name: 'معاينة' })
+      .getAttribute('href')
+    expect(showcase, 'الرابط ليس بصيغة @').toMatch(/^\/@/)
 
     /*
      * يُزار بلا حساب: هو صفحةٌ عامّة تُشارَك مع من لا يعرف المنصّة أصلًا.
@@ -44,8 +56,8 @@ test.describe('معرض البائع العام', () => {
 
   test('الرجوع من اللوحة يعود إلى المعرض لا إلى السوق', async ({ page }) => {
     await loginUser(page, USERS.waleed)
-    await page.goto('/account/listings')
-    const showcase = (await page.getByRole('link', { name: /معرضي العام/ }).getAttribute('href'))!
+    await page.goto('/account/showcase')
+    const showcase = (await page.getByRole('link', { name: 'معاينة' }).getAttribute('href'))!
 
     await page.goto(showcase)
     const first = page.locator('article a').first()
@@ -69,5 +81,14 @@ test.describe('معرض البائع العام', () => {
     // و`from` لمعرضٍ لا وجود له لا يصنع رابطًا مكسورًا
     await page.goto(`${href!.split('?')[0]}?from=usr_none`)
     await expect(page.locator('main a').first()).toHaveAttribute('href', '/market')
+
+    /*
+     * والصيغة القديمة `/u/<x>` تبقى عاملة.
+     *
+     * الروابط تُشارَك في مجموعات وتُحفظ، فمن غيّر معرّفه — أو أرسل رابطًا قبل
+     * أن يختار واحدًا — لا تنكسر عليه.
+     */
+    await page.goto(showcase.replace('/@', '/u/'))
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(USERS.waleed.name)
   })
 })

@@ -38,3 +38,15 @@ describe('اشتقاق لون المنصّة', () => {
     expect(css).toMatch(/\[data-theme='light'\]\[data-theme\]/)
   })
 })
+
+describe('مسار المعرض', () => {
+  /*
+   * `@` ما دام له معرّف علنيّ، و`/u/<id>` وإلّا. وتُبنى في موضعٍ واحد كي لا
+   * يفترق ما يُنسخ في الحساب عمّا يعود إليه الزائر من صفحة اللوحة.
+   */
+  it('يختصر بالمعرّف العلنيّ ويحتفظ بالداخليّ', async () => {
+    const { showcasePath } = await import('@/lib/domain/reference')
+    expect(showcasePath('waleed')).toBe('/@waleed')
+    expect(showcasePath('usr_17c8063b77a146f1a137')).toBe('/u/usr_17c8063b77a146f1a137')
+  })
+})
