@@ -1,5 +1,7 @@
 import { Store } from 'lucide-react'
 import { ShowcaseForm } from './showcase-form'
+import { ListingCard } from '@/components/market/listing-card'
+import { EmptyState } from '@/components/market/plate-row'
 import { getStore } from '@/lib/store'
 import { requireUserId } from '@/lib/server/require-user'
 import { appUrl } from '@/lib/config'
@@ -26,9 +28,11 @@ export default async function ShowcasePage() {
   const user = await getStore().findUser(userId)
   if (!user) throw new Error('المستخدم غير موجود')
 
-  const published = (await getMarketListings(userId, userId)).filter(
+  const cards = (await getMarketListings(userId, userId)).filter(
     (card) => card.status === 'active',
-  ).length
+  )
+  const published = cards.length
+  const serverTime = new Date().toISOString()
 
   return (
     <div className="space-y-5">
@@ -66,6 +70,26 @@ export default async function ShowcasePage() {
         usesHandle={user.showcaseUsesHandle}
         displayName={user.displayName}
         origin={appUrl()}
+        preview={
+          /*
+           * ما يراه الزائر، ببطاقات السوق نفسها.
+           *
+           * صاحبها يشارك رابطًا لا يعرف ما فيه إلّا أن يفتحه — وبطاقةٌ ثانية
+           * تُبنى لهذا الموضع تفترق عن بطاقة السوق أوّل ما يتغيّر حقل.
+           */
+          cards.length === 0 ? (
+            <EmptyState
+              title="لا لوحة معروضة في معرضك"
+              hint="انشر لوحةً في السوق فتظهر هنا تلقائيًّا."
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {cards.map((card) => (
+                <ListingCard key={card.id} card={card} serverTime={serverTime} />
+              ))}
+            </div>
+          )
+        }
       />
     </div>
   )

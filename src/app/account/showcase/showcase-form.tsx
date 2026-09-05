@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AtSign, Check, Copy, ExternalLink, Loader2, Save, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HandleField } from '@/components/market/handle-field'
 import { showcasePath } from '@/lib/domain/reference'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ export function ShowcaseForm({
   usesHandle: initialUses,
   displayName,
   origin,
+  preview,
 }: {
   userId: string
   handle: string | null
@@ -27,6 +29,8 @@ export function ShowcaseForm({
   displayName: string
   /** أصل العنوان كما ضبطته الإدارة — الرابط يُشارَك فلا يُبنى من `localhost` */
   origin: string
+  /** لوحاته المنشورة كما يراها الزائر — تُبنى على الخادم وتُمرَّر */
+  preview: React.ReactNode
 }) {
   const router = useRouter()
   const [handle, setHandle] = useState(initialHandle ?? '')
@@ -86,7 +90,20 @@ export function ShowcaseForm({
   }
 
   return (
-    <div className="space-y-5">
+    /*
+     * المعرض أوّلًا، وضبطُه تابٌ خلفه.
+     *
+     * كان الاثنان في عمودٍ واحد، فيقرأ صاحبه رابطه ثمّ حقلَ معرّفه ثمّ اسمه
+     * المعروض قبل أن يرى لوحاته — وصفحةٌ اسمها «معرض لوحاتي» أوّلُ ما يُطلب
+     * منها المعرض. والضبط يُفتح مرّةً ويُترك، فلا يزاحم ما يُفتح كل مرّة.
+     */
+    <Tabs defaultValue="gallery" className="space-y-5">
+      <TabsList>
+        <TabsTrigger value="gallery">معرض لوحاتي</TabsTrigger>
+        <TabsTrigger value="settings">إعدادات معرض لوحاتي</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="gallery" className="space-y-5">
       {/* الرابط أوّلًا: هذه الصفحة تُفتح لتُنسخ منها */}
       <section className="rounded-2xl border border-gold-600/45 bg-gold-500/[0.06] p-5">
         <p className="text-xs font-bold text-muted">رابط معرضك — شاركه كما هو</p>
@@ -120,6 +137,10 @@ export function ShowcaseForm({
         </p>
       </section>
 
+      {preview}
+      </TabsContent>
+
+      <TabsContent value="settings">
       <form onSubmit={submit} className="space-y-5">
         <section className="surface rounded-2xl p-5">
           <h2 className="flex items-center gap-2 text-sm font-extrabold">
@@ -186,6 +207,7 @@ export function ShowcaseForm({
           </Button>
         </div>
       </form>
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }

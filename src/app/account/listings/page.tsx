@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Store } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { ProgressiveList } from '@/components/market/progressive-list'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/market/plate-row'
@@ -24,17 +24,12 @@ export default async function MyListingsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/*
-            * إلى صفحة معرضه لا إلى المعرض نفسه.
+            * ولا زرَّ للمعرض هنا.
             *
-            * هذه الصفحة للإدارة، وتلك لضبط المعرض ونسخ رابطه — وبينهما فرقٌ
-            * يجب أن يُرى: ما هنا لا يراه أحد سواه، وما هناك يُنشَر.
+            * المعرض بابٌ قائم في قائمة الحساب، وزرٌّ ثانٍ إليه من صفحة الإدارة
+            * يجعل له مدخلين لشيءٍ واحد — ومن ضغطه ظنّه إجراءً من إجراءات هذه
+            * الصفحة لا وجهةً أخرى. وما هنا للإدارة وحدها.
             */}
-          <Button asChild variant="outline">
-            <Link href="/account/showcase">
-              <Store className="size-4" />
-              معرض لوحاتي
-            </Link>
-          </Button>
           <Button asChild>
             <Link href="/account/listings/new">
               <Plus className="size-4" />

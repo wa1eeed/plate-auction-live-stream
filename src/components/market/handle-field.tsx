@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 type State =
   | { kind: 'idle' }
   | { kind: 'checking' }
-  | { kind: 'free' }
+  | { kind: 'free'; reason?: string }
   | { kind: 'taken'; reason: string }
 
 /**
@@ -60,7 +60,7 @@ export function HandleField({
         const data = (await response.json()) as { available: boolean; reason?: string }
         setState(
           data.available
-            ? { kind: 'free' }
+            ? { kind: 'free', reason: data.reason }
             : { kind: 'taken', reason: data.reason ?? 'غير متاح' },
         )
       } catch {
@@ -108,7 +108,12 @@ export function HandleField({
         <p className="text-xs font-semibold text-danger">{state.reason}</p>
       ) : state.kind === 'free' ? (
         <p className="text-xs font-semibold text-success">
-          متاح — معرضك سيكون على <span dir="ltr">/@{value}</span>
+          {/* معرّفُه هو لا يُبشَّر بأنّه «سيكون» — هو كائنٌ الآن */}
+          {state.reason ?? (
+            <>
+              متاح — معرضك سيكون على <span dir="ltr">/@{value}</span>
+            </>
+          )}
         </p>
       ) : (
         <p className="text-[11px] leading-relaxed text-muted">{hint}</p>

@@ -128,4 +128,28 @@ test.describe('المعرّف العلنيّ عند التسجيل', () => {
     await page.goto(`/@${fresh}`)
     await expect(page.getByRole('heading', { level: 1 })).toContainText('سعد التجريبي')
   })
+
+  /*
+   * ومعرّفُك ليس مأخوذًا منك.
+   *
+   * الفحص كان يسأل «هل لهذا المعرّف صاحب؟» ولا يسأل «ومن يسأل؟» — فمن حجز
+   * معرّفه ثمّ فتح إعدادات معرضه وجد حقله موسومًا «مأخوذ — جرّب غيره». والحفظ
+   * كان يمرّ، فالخلل في الطمأنة وحدها — وهو أسوأ: يُرى ولا يُفسَّر.
+   */
+  test('صاحب المعرّف لا يُقال له إنّ معرّفه مأخوذ', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/showcase')
+
+    // المعرض أوّلًا، والضبط تابٌ خلفه
+    await page.getByRole('tab', { name: 'إعدادات معرض لوحاتي' }).click()
+
+    const handle = page.getByLabel('المعرّف', { exact: true })
+    await expect(handle).toHaveValue('waleed')
+    await expect(page.getByText('هذا معرّفك الحاليّ')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('مأخوذ — جرّب غيره')).toBeHidden()
+
+    // ومعرّف غيره يبقى مأخوذًا
+    await handle.fill('sara')
+    await expect(page.getByText('مأخوذ — جرّب غيره')).toBeVisible({ timeout: 15_000 })
+  })
 })
