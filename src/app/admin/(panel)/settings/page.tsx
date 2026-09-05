@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react'
 import { AdminHeader } from '@/components/admin/admin-ui'
 import { PaymentSettingsForm } from '@/components/admin/payment-settings-form'
 import { AuctionSettingsForm } from '@/components/admin/auction-settings-form'
@@ -9,6 +10,7 @@ import { SettingsTabs } from '@/components/admin/settings-tabs'
 import { getPaymentSettings, tapConfiguration } from '@/lib/server/payment-service'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { getStore } from '@/lib/store'
+import { settingsPersisted } from '@/lib/store/settings-file'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +67,28 @@ export default async function AdminSettingsPage() {
         title="الإعدادات"
         description="هويّة المنصّة وأرشفتها، وقواعد المزاد والعمولة، وبوابات الدفع والفوترة الضريبية."
       />
+
+      {/*
+        * يُقال لمن يضبط أيبقى ضبطه أم لا.
+        *
+        * المخزن في الذاكرة، فبلا مجلّدٍ دائم يعود كلُّ ما هنا افتراضيًّا مع
+        * أوّل إعادة تشغيل — ولا شيء في الشاشة كان يقول ذلك. فيُبدَّل الاسم
+        * واللون والشعار وتُضبط العمولة، ثمّ تُنشر النسخة التالية فيعود كلُّ
+        * شيء كما كان: عيبٌ يبدو **عطلًا في الحفظ** وليس منه.
+        */}
+      {!settingsPersisted() && (
+        <p className="mb-5 flex items-start gap-2.5 rounded-2xl border border-gold-600/40 bg-gold-500/[0.06] p-4 text-xs leading-relaxed text-muted">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gold-500" />
+          <span>
+            ما تضبطه هنا <b className="text-paper">لا يبقى بعد إعادة التشغيل</b> — لا مجلّد
+            دائم مضبوط، والإعدادات في الذاكرة. اضبط{' '}
+            <code className="rounded bg-ink-900 px-1 py-0.5 text-[11px] text-paper">
+              PLATFORM_DATA_DIR
+            </code>{' '}
+            على مجلّدٍ دائم، فيُكتب ضبطك فيه ويُقرأ عند كلّ إقلاع.
+          </span>
+        </p>
+      )}
 
       <SettingsTabs groups={GROUPS}>
         {{

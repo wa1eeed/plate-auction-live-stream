@@ -94,6 +94,23 @@ test.describe('لوحة الإدارة', () => {
     await userContext.close()
   })
 
+  /*
+   * يُقال لمن يضبط أيبقى ضبطه أم لا.
+   *
+   * المخزن في الذاكرة، فبلا `PLATFORM_DATA_DIR` يعود كلُّ ما في «الإعدادات»
+   * افتراضيًّا مع أوّل إعادة تشغيل — ولا شيء في الشاشة كان يقول ذلك، فتُقرأ
+   * عودتُه عطلًا في الحفظ. والاختبار يعمل بلا ضبط المتغيّر، فالتنبيه واجبٌ هنا.
+   */
+  test('الإعدادات تقول إنّ ضبطها لا يبقى بلا مجلّد دائم', async ({ page }) => {
+    await loginAdmin(page)
+    await page.goto('/admin/settings')
+
+    const notice = page.getByText('لا يبقى بعد إعادة التشغيل')
+    await expect(notice).toBeVisible()
+    // ويسمّي المتغيّر: تنبيهٌ بلا ما يُفعل نصفُ تنبيه
+    await expect(page.getByText('PLATFORM_DATA_DIR')).toBeVisible()
+  })
+
   test('إضافة سؤال شائع تُظهره في الصفحة العامة', async ({ page }) => {
     await loginAdmin(page)
     await page.goto('/admin/faq')

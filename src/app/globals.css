@@ -374,6 +374,16 @@ body:has([data-theme='light']) {
     display: grid;
     gap: 0.625rem;
   }
+  /*
+   * وصفّ الإجماليّ بطاقةٌ تاليةٌ لها.
+   *
+   * `tfoot` يبقى `table-footer-group` في جدولٍ صار `display:block`، فيلفّه
+   * المتصفّح بجدولٍ ضمنيّ يشرنق نفسه صندوقًا ضيّقًا خارج نسق البطاقات.
+   */
+  .admin-table tfoot {
+    display: block;
+    margin-top: 0.625rem;
+  }
   .admin-table tr {
     display: block;
     border: 1px solid var(--color-ink-600);
@@ -398,18 +408,26 @@ body:has([data-theme='light']) {
     font-weight: 700;
     white-space: nowrap;
   }
-  .admin-table td:nth-child(1)::before { content: var(--col-1, ''); }
-  .admin-table td:nth-child(2)::before { content: var(--col-2, ''); }
-  .admin-table td:nth-child(3)::before { content: var(--col-3, ''); }
-  .admin-table td:nth-child(4)::before { content: var(--col-4, ''); }
-  .admin-table td:nth-child(5)::before { content: var(--col-5, ''); }
-  .admin-table td:nth-child(6)::before { content: var(--col-6, ''); }
-  .admin-table td:nth-child(7)::before { content: var(--col-7, ''); }
-  .admin-table td:nth-child(8)::before { content: var(--col-8, ''); }
-  .admin-table td:nth-child(9)::before { content: var(--col-9, ''); }
-  .admin-table td:nth-child(10)::before { content: var(--col-10, ''); }
-  .admin-table td:nth-child(11)::before { content: var(--col-11, ''); }
-  .admin-table td:nth-child(12)::before { content: var(--col-12, ''); }
+  /*
+   * و`--col-N` تُقرأ بترتيب الخليّة، فهي لصفوف `tbody` وحدها.
+   *
+   * صفّ الإجماليّ تركيبه غير تركيبها: خليّةٌ بـ`colSpan` ثمّ مجاميع، فترتيب
+   * خلاياه لا يوافق ترتيب الأعمدة — ولو عمّت القاعدة لقُرئ مجموعُ المدين
+   * «التاريخ» ومجموعُ الدائن «البيان». فخلاياه تحمل أسماءها في `data-label`.
+   */
+  .admin-table tbody td:nth-child(1)::before { content: var(--col-1, ''); }
+  .admin-table tbody td:nth-child(2)::before { content: var(--col-2, ''); }
+  .admin-table tbody td:nth-child(3)::before { content: var(--col-3, ''); }
+  .admin-table tbody td:nth-child(4)::before { content: var(--col-4, ''); }
+  .admin-table tbody td:nth-child(5)::before { content: var(--col-5, ''); }
+  .admin-table tbody td:nth-child(6)::before { content: var(--col-6, ''); }
+  .admin-table tbody td:nth-child(7)::before { content: var(--col-7, ''); }
+  .admin-table tbody td:nth-child(8)::before { content: var(--col-8, ''); }
+  .admin-table tbody td:nth-child(9)::before { content: var(--col-9, ''); }
+  .admin-table tbody td:nth-child(10)::before { content: var(--col-10, ''); }
+  .admin-table tbody td:nth-child(11)::before { content: var(--col-11, ''); }
+  .admin-table tbody td:nth-child(12)::before { content: var(--col-12, ''); }
+  .admin-table tfoot td[data-label]::before { content: attr(data-label); }
   /* خليّة الإجراءات بلا اسم — تُمنح السطر كلّه */
   .admin-table td:has(> :is(button, a, div)):not(:has(::before)) {
     justify-content: flex-start;

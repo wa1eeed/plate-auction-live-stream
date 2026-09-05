@@ -518,6 +518,45 @@ test.describe('الجوال عند 360px', () => {
     // والرصيد — وهو آخر عمود — مرئي لا خلف حافّة
     await expect(page.getByText('الرصيد').first()).toBeVisible()
   })
+
+  /*
+   * وصفّ الإجماليّ بطاقةٌ كبقيّتها.
+   *
+   * كان `tfoot` يبقى `table-footer-group` في جدولٍ صار `display:block`، فيلفّه
+   * المتصفّح بجدولٍ ضمنيّ يشرنق نفسه صندوقًا ضيّقًا خارج نسق البطاقات. وخلاياه
+   * كانت تأخذ أسماء أعمدةٍ ليست لها — أوّلها يمتدّ ثلاثة أعمدة فيزيح ما بعده —
+   * فيُقرأ مجموعُ المدين «التاريخ» ومجموعُ الدائن «البيان». وهما رقمان لا
+   * يحملهما الشريط الذي تحته، فلا مقروءَ سواه.
+   */
+  test('صفّ الإجماليّ في الكشف بطاقةٌ بأسماء مجاميعه', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginUser(page, USERS.majed)
+    await page.goto('/account/wallet')
+    await expect(page.locator('.admin-table tfoot tr')).toBeVisible()
+
+    const foot = await page.evaluate(() => {
+      const row = document.querySelector('.admin-table tfoot tr')!
+      const card = document.querySelector('.admin-table tbody tr')!
+      return {
+        labels: [...row.querySelectorAll('td')].map(
+          (td) => getComputedStyle(td, '::before').content,
+        ),
+        width: row.getBoundingClientRect().width,
+        cardWidth: card.getBoundingClientRect().width,
+      }
+    })
+
+    // بعرض البطاقات، لا صندوقًا يشرنق نفسه
+    expect(Math.abs(foot.width - foot.cardWidth), 'صفّ الإجماليّ خارج نسق البطاقات')
+      .toBeLessThanOrEqual(1)
+    // وعنوانه بلا اسمٍ قبله، ومجاميعه بأسمائها هي لا بأسماء الأعمدة
+    expect(foot.labels[0], 'عنوان الإجماليّ سُمّي باسم عمود').toBe('none')
+    expect(foot.labels.slice(1)).toEqual([
+      '"إجمالي المدين"',
+      '"إجمالي الدائن"',
+      '"الرصيد الختامي"',
+    ])
+  })
 })
 
 /*
@@ -714,7 +753,24 @@ test.describe('تصفّح السوق على دفعات', () => {
   test('تغيير الفلتر يعيد العدّ إلى أوّله', async ({ page }) => {
     await page.goto('/market')
     await page.locator('article').first().waitFor()
-    await page.getByRole('button', { name: 'عرض المزيد' }).click()
+
+    /*
+     * يُنتظر الزرّ ثمّ يُنتظر أثرُه — والنقر بينهما كان يقع في فجوة الترطيب.
+     *
+     * الصفحة تُرسَل مصيَّرةً من الخادم ثمّ تُرطَّب، فأوّلُ `article` يظهر قبل
+     * أن يتعلّق السلوك بالزرّ. والنقر هناك يقع على زرٍّ يستبدله أوّلُ تصيير في
+     * العميل، فيُفصَل من الشجرة في أثناء النقر: «element was detached from the
+     * DOM» ثمّ مهلةٌ تنقضي. سقط اثنان من ثلاثة تشغيلات.
+     *
+     * و`grown` كان يُقرأ عقب النقر مباشرةً — قبل أن تُصيَّر الدفعة الجديدة —
+     * فيساوي ما قبله، ويصير الفحص الأخير يقارن بعددٍ لم ينمُ: أخضرُ لا يحرس
+     * شيئًا. فيُنتظر النموّ ثمّ يُقرأ.
+     */
+    const more = page.getByRole('button', { name: 'عرض المزيد' })
+    await expect(more).toBeVisible()
+    const first = await page.locator('article').count()
+    await more.click()
+    await expect.poll(() => page.locator('article').count()).toBeGreaterThan(first)
     const grown = await page.locator('article').count()
 
     await page.getByRole('tab', { name: 'مزاد' }).click()
