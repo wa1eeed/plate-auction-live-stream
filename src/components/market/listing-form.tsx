@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Gavel, HandCoins, Info, Loader2, Save, ShieldCheck, Tag } from 'lucide-react'
+import { Gavel, HandCoins, Info, Loader2, Save, Send, ShieldCheck, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlateEmblemPicker } from '@/components/plate/PlateEmblemPicker'
 import { SaudiLicensePlate, plateShowsEmblem } from '@/components/plate/SaudiLicensePlate'
 import { LetterPicker } from '@/components/plate/letter-picker'
+import { ListingPublishedDialog } from './listing-published-dialog'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import {
   PLATE_TYPES,
@@ -99,6 +100,15 @@ export function ListingForm({
   const router = useRouter()
   const [emblem, setEmblem] = useState<PlateEmblem>(listing?.emblem ?? 'palm-swords-black')
   const [customEmblemUrl, setCustomEmblemUrl] = useState(listing?.customEmblemUrl ?? '')
+  /*
+   * النيّة تُقرأ من الزرّ المضغوط لا من حالةٍ سابقة.
+   *
+   * الزرّان يُرسلان النموذج نفسه ويختلفان فيما بعد الحفظ، فتُسجَّل النيّة عند
+   * الضغط وتُقرأ في المعالج. و`formState.isSubmitting` وحدها لا تكفي لبيان
+   * أيّهما يعمل، فيدور المؤشّر على الزرّين معًا.
+   */
+  const [intent, setIntent] = useState<'draft' | 'publish'>('draft')
+  const [published, setPublished] = useState<Listing | null>(null)
 
   const form = useForm<FormValues>({
     defaultValues: listing
@@ -157,6 +167,14 @@ export function ListingForm({
    * دائمًا، فيختار البائع شعارًا ثمّ لا يجده على لوحته ولا يُقال له لماذا.
    */
   const showsEmblem = plateShowsEmblem(plateType, plateFormat)
+
+  /*
+   * النشر من النموذج للمسودّات وحدها.
+   *
+   * الإعلان المنشور يُعدَّل ولا يُنشر مرّةً أخرى — والخادم يردّ «منشور مسبقًا».
+   */
+  const canPublish = !listing || listing.status === 'draft'
+  const busy = formState.isSubmitting ? intent : null
   useEffect(() => {
     if (plateType === 'motorcycle' && plateFormat !== 'standard') {
       setValue('plateFormat', 'standard', { shouldDirty: true })
@@ -203,8 +221,35 @@ export function ListingForm({
         toast.error(data?.error?.message ?? 'تعذّر حفظ اللوحة')
         return
       }
-      toast.success(listing ? 'حُفظت التعديلات' : 'أُضيفت اللوحة كمسودة — انشرها لتظهر في السوق')
-      router.push('/account/listings')
+
+      if (intent === 'draft') {
+        toast.success(listing ? 'حُفظت التعديلات' : 'أُضيفت اللوحة كمسودة — انشرها لتظهر في السوق')
+        router.push('/account/listings')
+        router.refresh()
+        return
+      }
+
+      /*
+       * النشر خطوتان: الحفظ ثمّ الأمر.
+       *
+       * الخادم يُنشئ كلّ إعلان مسودّةً ثمّ يُنشره بأمرٍ مستقلّ — وهو ما يضبط
+       * وقت البدء والانتهاء ويكتب حدث النشر. فالزرّ يجمع الخطوتين للبائع ولا
+       * يختصر إحداهما، وإن سقطت الثانية بقيت اللوحة مسودّةً محفوظة لا ضائعة.
+       */
+      const saved = data.listing as Listing
+      const publish = await fetch(`/api/listings/${saved.id}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'publish' }),
+      })
+      const result = await publish.json().catch(() => null)
+      if (!publish.ok) {
+        toast.error(result?.error?.message ?? 'حُفظت اللوحة ولم تُنشر — انشرها من إدارة لوحاتك')
+        router.push('/account/listings')
+        router.refresh()
+        return
+      }
+      setPublished(result.listing as Listing)
       router.refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
@@ -560,15 +605,47 @@ export function ListingForm({
         يُسدَّد الثمن عبر المنصّة ويُحجز أمانةً، ويصلك بعد نقلك الملكية وتحقّق الإدارة منها.
       </p>
 
+      {/*
+        * «حفظ ونشر» أوّلًا، و«حفظ كمسودة» بجانبه.
+        *
+        * الطريق المعتاد أن تُعرض اللوحة لا أن تُركن مسودّة، وكان لا سبيل إلى
+        * السوق إلّا بحفظٍ ثمّ ذهابٍ إلى قائمة اللوحات ثمّ نشرٍ من هناك.
+        * والمسودّة تبقى لمن يريد أن يُتمّ لاحقًا.
+        */}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="lg" disabled={formState.isSubmitting}>
-          {formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+        {canPublish && (
+          <Button
+            type="submit"
+            size="lg"
+            onClick={() => setIntent('publish')}
+            disabled={formState.isSubmitting}
+          >
+            {busy === 'publish' ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            حفظ ونشر
+          </Button>
+        )}
+        <Button
+          type="submit"
+          size="lg"
+          variant={canPublish ? 'outline' : 'default'}
+          onClick={() => setIntent('draft')}
+          disabled={formState.isSubmitting}
+        >
+          {busy === 'draft' ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           {listing ? 'حفظ التعديلات' : 'حفظ كمسودة'}
         </Button>
         <Button type="button" variant="ghost" size="lg" onClick={() => router.back()}>
           إلغاء
         </Button>
       </div>
+
+      <ListingPublishedDialog
+        listing={published}
+        onDismiss={() => {
+          setPublished(null)
+          router.push('/account/listings')
+        }}
+      />
     </form>
   )
 }

@@ -162,6 +162,47 @@ test.describe('سوق تداول اللوحات', () => {
     await expect(page.locator('article')).toHaveCount(1)
   })
 
+  test('«حفظ ونشر» يضع اللوحة في السوق مباشرةً ويفتح بشارتها', async ({ page }) => {
+    await login(page, USERS.waleed)
+    await page.goto('/account/listings/new')
+
+    for (const [slot, letter] of [
+      ['الحرف 1', /ن\s*N/],
+      ['الحرف 2', /و\s*U/],
+      ['الحرف 3', /ر\s*R/],
+    ] as const) {
+      await page.getByLabel(slot).click()
+      await page.getByRole('option', { name: letter }).click()
+    }
+    await page.getByLabel(/أرقام اللوحة/).fill('6161')
+
+    /*
+     * الطريق المعتاد أن تُعرض اللوحة لا أن تُركن مسودّة.
+     *
+     * وكان لا سبيل إلى السوق إلّا بحفظٍ ثمّ ذهابٍ إلى قائمة اللوحات ثمّ نشرٍ
+     * من هناك — ثلاث خطوات لأمرٍ واحد.
+     */
+    await page.getByRole('button', { name: 'حفظ ونشر' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('نُشرت لوحتك في السوق', { timeout: 15_000 })
+    await expect(dialog).toContainText('6161')
+
+    // ورابط المعاينة يفتح لسانًا جديدًا: البائع لا يزال في مسار الإضافة
+    const view = dialog.getByRole('link', { name: /شاهد لوحتك في السوق/ })
+    await expect(view).toHaveAttribute('target', '_blank')
+    await expect(view).toHaveAttribute('href', /^\/market\//)
+
+    await dialog.getByRole('link', { name: /إدارة لوحاتي/ }).click()
+    await page.waitForURL('**/account/listings')
+    // «معروض» لا «مسودة»: النشر وقع فعلًا لا الحفظ وحده
+    await expect(page.getByText('6161').first()).toBeVisible({ timeout: 15_000 })
+
+    await page.goto('/market')
+    await page.getByLabel('بحث في السوق').fill('6161')
+    await expect(page.locator('article')).toHaveCount(1)
+  })
+
   test('صفحات الحساب متجاوبة مع الجوال', async ({ page }) => {
     await page.setViewportSize({ width: 380, height: 820 })
     await login(page, USERS.waleed)

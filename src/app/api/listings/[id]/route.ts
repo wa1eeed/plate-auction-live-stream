@@ -57,6 +57,9 @@ export async function PATCH(request: Request, context: Ctx) {
     const maxLetters = PLATE_TYPE_MAX_LETTERS[input.plateType]
     const updated = await store.updateListing(id, {
       plateType: input.plateType,
+      // نوع الإصدار يُحفظ كما يُحفظ الصنف: كان يسقط في التعديل وحده، فيعود
+      // من عدّل لوحته الرياضية إلى إصدارها القديم بلا خبر
+      plateFormat: input.plateFormat,
       arabicLetters: normalizeArabicLetters(input.arabicLetters, maxLetters),
       latinLetters: input.latinLetters.toUpperCase(),
       plateNumbers: normalizePlateNumbers(input.plateNumbers, 4),

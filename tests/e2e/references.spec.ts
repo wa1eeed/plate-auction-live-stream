@@ -101,7 +101,7 @@ test.describe('رقم العضوية', () => {
 })
 
 test.describe('الأرقام في لوحة الإدارة', () => {
-  test('عمود أول في جدولَي المستخدمين والإعلانات، والبحث يجدها', async ({ page }) => {
+  test('الرقم بارزٌ في بطاقات المستخدمين والإعلانات، والبحث يجده', async ({ page }) => {
     await loginAdmin(page)
 
     /*
@@ -116,11 +116,13 @@ test.describe('الأرقام في لوحة الإدارة', () => {
     await page.getByLabel(/ابحث/).fill(userRef!)
     await expect(page.locator('li[data-row]:visible')).toHaveCount(1)
 
+    // والإعلانات بطاقاتٌ كذلك — رقمها في رأس البطاقة لا في عمودٍ يُمرَّر إليه
     await page.goto('/admin/listings')
-    await expect(page.getByRole('columnheader', { name: 'رقم الإعلان' })).toBeVisible()
-    const listingRef = (await page.locator('tbody tr').first().textContent())?.match(/L\d{2}-\d{5}/)?.[0]
+    const firstListing = page.locator('li[data-row]').first()
+    const listingRef = (await firstListing.textContent())?.match(/L\d{2}-\d{5}/)?.[0]
+    expect(listingRef, 'لا رقم إعلان في البطاقة').toBeTruthy()
     await page.getByLabel(/ابحث/).fill(listingRef!)
-    await expect(page.locator('tbody tr:visible')).toHaveCount(1)
+    await expect(page.locator('li[data-row]:visible')).toHaveCount(1)
   })
 
   test('صفحة المستخدم: الرابط بالرقم المرجعي والرقم بارز قابل للنسخ', async ({ page }) => {

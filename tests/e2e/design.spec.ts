@@ -335,12 +335,28 @@ test.describe('الجوال عند 360px', () => {
       expect(overflow, `تمرير أفقي في ${path}`).toBeLessThanOrEqual(1)
     }
     // واسم العمود يظهر بجانب قيمته في ما بقي جدولًا — وجدولٌ فيه صفوف
-    await page.goto('/admin/listings')
+    await page.goto('/admin/deposits')
     const label = await page.evaluate(() => {
       const td = document.querySelector('.admin-table td')
       return td ? getComputedStyle(td, '::before').content : ''
     })
     expect(label.length).toBeGreaterThan(2)
+
+    /*
+     * والإعلانات بطاقاتٌ اللوحةُ عنوانها.
+     *
+     * كان جدولًا عرضه ٦٢rem يُمرَّر أفقيًّا، فتُقرأ اللوحة في عمودٍ والسعر في
+     * عمودٍ لا يُريان معًا. والمشغّل يبحث عن إعلانٍ بعينه يعرفه بصورة لوحته.
+     */
+    await page.goto('/admin/listings')
+    const listingCard = page.locator('li[data-row]').first()
+    await expect(listingCard).toBeVisible()
+    await expect(listingCard.locator('svg[data-plate-type]')).toBeVisible()
+    expect(await page.locator('.admin-table').count()).toBe(0)
+    const listingsOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    )
+    expect(listingsOverflow, 'تمرير أفقي في /admin/listings').toBeLessThanOrEqual(1)
 
     /*
      * والمستخدمون بطاقات كذلك — ولا بريد فيها.
