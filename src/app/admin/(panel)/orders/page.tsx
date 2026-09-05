@@ -175,6 +175,28 @@ export default async function AdminOrdersPage() {
                       </span>
                     )}
                   </p>
+
+                  {/*
+                    * الاعتراض يُرى بختمه لا بحالة الصفقة.
+                    *
+                    * `openDispute` لا يُجمّد إلّا ما كان ماله محجوزًا، فاعتراضٌ
+                    * على صفقةٍ لم تُسدَّد بعدُ يُسجَّل ولا تتبدّل حالتها — وكان
+                    * لا يظهر في هذا الجدول بحال، فيكتبه صاحبه ولا تراه الإدارة.
+                    * وهو أخطر ما في الباب: بابٌ يُفتح على لا أحد.
+                    */}
+                  {row.disputedAt && (
+                    <p className="mt-2 rounded-lg border border-danger/40 bg-danger/[0.07] px-2.5 py-2 text-[11px] leading-relaxed">
+                      <span className="font-bold text-danger">
+                        اعتراض {formatTimestamp(row.disputedAt)}
+                        {row.status !== 'disputed' && ' — والمال لم يُجمَّد (لم يُسدَّد بعد)'}
+                      </span>
+                      {row.disputeReason && (
+                        <span className="mt-1 block whitespace-pre-line text-paper">
+                          «{row.disputeReason}»
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">

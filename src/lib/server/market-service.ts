@@ -898,7 +898,20 @@ export async function getAccountListings(userId: string): Promise<AccountListing
   const store = getStore()
   await finalizeDueAuctions(store)
 
-  const listings = await store.listListings({ sellerId: userId, includeDrafts: true })
+  /*
+   * المباعة تغادر الإدارة إلى «مبيعاتي».
+   *
+   * هذه الصفحة لما يُدار: تُنشَر وتُسعَّر وتُلغى وتُعاد. واللوحة إذا بيعت لم
+   * يبقَ فيها ما يُدار — بقي ما يُتابَع: نقل الملكية والسداد وإفراج المبلغ،
+   * وذاك كلّه في «مبيعاتي» بأدواته. فبقاؤها هنا يُطيل القائمة بما لا يُفعل
+   * فيه شيء، ويُخفي المسوّدة الجديدة خلف صفقاتٍ انتهت.
+   *
+   * ولا تُحذف من مكانٍ آخر: `getSales` يقرأ الإعلانات نفسها، فهي محفوظة
+   * كاملةً وإنّما تُعرض حيث يُتصرَّف فيها.
+   */
+  const listings = (await store.listListings({ sellerId: userId, includeDrafts: true })).filter(
+    (listing) => listing.status !== 'sold',
+  )
   const result: AccountListing[] = []
 
   for (const listing of listings) {

@@ -333,6 +333,34 @@ function ClosedSummary({ detail }: { detail: ListingDetail }) {
         {formatAmount(value)}
         <span className="ms-2 text-sm font-bold">ريال</span>
       </p>
+      {/*
+        * ما يدفعه المشتري فعلًا، حيث يقرأ السعر لا في ذيل التفاصيل.
+        *
+        * العمولة كانت سطرًا في قائمة أسفل الصفحة، فيقرأ من يشتري مباشرةً
+        * «28,000» ويضغط «اشترِ الآن» ثمّ يجد في صفحة السداد رقمًا أكبر —
+        * ورسمٌ يُكتشف بعد الالتزام يُفسد الثقة أكثر ممّا يجمع. والمبلغ هنا
+        * معلوم قبل الضغط لأنّ السعر ثابت؛ وفي المزاد لا يُعلم حتى تُعرف
+        * المزايدة الفائزة، فيبقى في التفاصيل.
+        */}
+      {!done && detail.saleType === 'fixed' && detail.commission.buyer.total > 0 && (
+        <div className="mt-3 space-y-1 border-t border-gold-600/25 pt-3 text-xs text-muted">
+          <p className="flex items-center justify-between gap-3">
+            <span>
+              عمولة المنصّة
+              {detail.commission.vatEnabled && ` + ضريبة ${detail.commission.vatPercent}٪`}
+            </span>
+            <span dir="ltr" className="font-bold tabular-nums text-paper">
+              {formatAmount(detail.commission.buyer.total)}
+            </span>
+          </p>
+          <p className="flex items-center justify-between gap-3 font-bold text-paper">
+            <span>الإجمالي عند الشراء</span>
+            <span dir="ltr" className="tabular-nums text-gold-500">
+              {formatAmount(detail.price + detail.commission.buyer.total)} ريال
+            </span>
+          </p>
+        </div>
+      )}
       {done && (
         <p className="mt-3 flex items-center gap-1.5 border-t border-ink-600/70 pt-3 text-xs text-muted">
           <Clock3 className="size-3.5" />

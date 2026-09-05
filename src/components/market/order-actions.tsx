@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { isFinalOrderStatus, type AccountOrder } from '@/lib/domain/types'
+import { LocalTime } from './local-time'
 
 async function post(url: string, body?: Record<string, unknown>) {
   const response = await fetch(url, {
@@ -44,7 +45,15 @@ export function OrderEscrowActions({
   side: 'buyer' | 'seller'
 }) {
   const settled = isFinalOrderStatus(order.status)
-  const disputed = order.status === 'disputed'
+  /*
+   * الاعتراض قائمٌ بختمه لا بحالة الصفقة.
+   *
+   * `openDispute` لا يُجمّد إلّا ما كان ماله محجوزًا؛ وما دونه يُسجَّل ويُرفع
+   * ولا تتبدّل حالته. وكان الزرّ يُخفى بـ`status === 'disputed'` وحدها، فمن
+   * اعترض على صفقةٍ لم تُسدَّد بعدُ رأى زرّه كما كان — لا أثر لما كتب ولا
+   * موضعَ متابعة — فيكتبه ثانيةً فيحلّ محلّ الأوّل بلا خبر.
+   */
+  const disputed = order.disputedAt !== null
 
   // مهلة النقل انقضت ولم يرفع البائع إثباتًا: للمشتري أن يطلب الاسترداد صراحةً
   const transferLate =
@@ -62,10 +71,51 @@ export function OrderEscrowActions({
       {!settled && !disputed && (
         <DisputeDialog
           orderId={order.id}
+          side={side}
           label={transferLate ? 'اطلب الاسترداد' : 'استفسار أو اعتراض'}
         />
       )}
+
+      {disputed && <StandingDispute order={order} side={side} />}
     </>
+  )
+}
+
+/**
+ * الاعتراض المرفوع — نصّه وختمه وأثره.
+ *
+ * من رفع اعتراضًا لا يجد بعده شيئًا يقرؤه: لا ما كتب ولا متى، فيظنّه ضاع.
+ * والسطر هنا يقوم مقام صفحة متابعة: يقول ما قيل، ومن قاله، وما أثره في المال.
+ */
+function StandingDispute({ order, side }: { order: AccountOrder; side: 'buyer' | 'seller' }) {
+  const mine = order.disputedBy
+    ? (side === 'buyer' && order.disputedBy === order.buyerId) ||
+      (side === 'seller' && order.disputedBy === order.sellerId)
+    : false
+  const frozen = order.status === 'disputed'
+
+  return (
+    <div className="w-full rounded-xl border border-danger/45 bg-danger/[0.07] p-3 text-start">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-danger">
+        <ShieldAlert className="size-3.5" />
+        {mine ? 'اعتراضك مرفوع إلى الإدارة' : 'رُفع اعتراض على هذه الصفقة'}
+        {order.disputedAt && (
+          <span className="font-semibold text-muted">
+            <LocalTime iso={order.disputedAt} mode="datetime" />
+          </span>
+        )}
+      </p>
+      {order.disputeReason && (
+        <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-paper">
+          «{order.disputeReason}»
+        </p>
+      )}
+      <p className="mt-2 text-[11px] leading-relaxed text-muted">
+        {frozen
+          ? 'لا يخرج المبلغ لأحد حتى تفصل الإدارة، وتصلك النتيجة إشعارًا.'
+          : 'رُفع إلى الإدارة والصفقة تمضي في مسارها، وتصلك النتيجة إشعارًا.'}
+      </p>
+    </div>
   )
 }
 
@@ -134,7 +184,16 @@ function TransferProofDialog({ orderId }: { orderId: string }) {
   )
 }
 
-function DisputeDialog({ orderId, label }: { orderId: string; label: string }) {
+function DisputeDialog({
+  orderId,
+  label,
+  side,
+}: {
+  orderId: string
+  label: string
+  /** المثال يتبع صاحبه: ما يشكو منه المشتري ليس ما يشكو منه البائع */
+  side: 'buyer' | 'seller'
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -186,7 +245,11 @@ function DisputeDialog({ orderId, label }: { orderId: string; label: string }) {
               id={`dispute-${orderId}`}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="مثال: لم تُنقل الملكية باسمي حتى الآن"
+              placeholder={
+                side === 'buyer'
+                  ? 'مثال: لم تُنقل الملكية باسمي حتى الآن'
+                  : 'مثال: نقلت الملكية ولم يصلني المبلغ'
+              }
               minLength={5}
               maxLength={500}
               required

@@ -18,6 +18,7 @@ import {
   type Offer,
   type Deposit,
   type Disbursement,
+  isFinalOrderStatus,
   type FaqItem,
   type SaleType,
   type TaxInvoice,
@@ -1269,8 +1270,21 @@ export async function getNavBadges(): Promise<{
   const overdue = orders.filter((order) => isOverdue(order, now))
   const overdueIds = new Set(overdue.map((order) => order.depositId).filter(Boolean))
 
+  /*
+   * والاعتراض القائم ينتظر الإدارة كما ينتظرها المتأخّر.
+   *
+   * وكان لا يُعدّ أصلًا: `openDispute` لا يُجمّد إلّا ما كان ماله محجوزًا،
+   * فاعتراضٌ على صفقةٍ لم تُسدَّد يُسجَّل بلا حالةٍ تدلّ عليه ولا رقمٍ يشير
+   * إليه — يكتبه صاحبه وينتظر ردًّا من أحدٍ لا يعلم به. والعدّاد على «الصفقات»
+   * هو ما يقود إليه.
+   */
+  const standingDisputes = orders.filter(
+    (order) => order.disputedAt !== null && !isFinalOrderStatus(order.status),
+  )
+  const needsAdmin = new Set([...overdue, ...standingDisputes].map((order) => order.id))
+
   return {
-    orders: overdue.length,
+    orders: needsAdmin.size,
     // العربون المستحقّ للمصادرة وحده — لا كل محجوز
     deposits: deposits.filter((deposit) => overdueIds.has(deposit.id)).length,
     payments: payments.filter((payment) => payment.status === 'under_review').length,

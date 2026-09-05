@@ -80,3 +80,32 @@ describe('الختم الزمني للأحداث', () => {
     expect(formatTimestamp(null, now)).toBe('—')
   })
 })
+
+/*
+ * التقويم ميلاديّ مهما كان جهاز القارئ.
+ *
+ * تقويم `ar-SA` الافتراضيّ في CLDR أمّ القرى، وكلّ محرّك يحسمه ببيانات ICU
+ * التي بُني بها — فيُقرأ التاريخ نفسه ميلاديًّا هنا وهجريًّا هناك. وأسوأ منه
+ * أنّ الخادم يرسم بتقويمه والعميل يعيد الرسم بتقويمه فيسقط الترطيب.
+ */
+describe('تقويم المنصّة', () => {
+  it('ميلاديّ مثبَّت لا يتبع المحرّك', () => {
+    expect(formatTimestamp('2026-09-05T09:00:00.000Z')).toContain('2026')
+    // ٢٠٢٦ ميلاديّة تقابل ١٤٤٧–١٤٤٨ هجريّة، فظهورها نفيٌ للهجريّ
+    expect(formatTimestamp('2026-09-05T09:00:00.000Z')).not.toContain('1447')
+    expect(formatTimestamp('2026-09-05T09:00:00.000Z')).not.toContain('1448')
+  })
+
+  it('يوافق ما يرسمه المتصفّح بالتقويم نفسه — فلا يختلف الخادم عن العميل', () => {
+    const iso = '2026-09-05T09:00:00.000Z'
+    const pinned = new Intl.DateTimeFormat('ar-SA-u-nu-latn-ca-gregory', {
+      timeZone: 'Asia/Riyadh',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    expect(pinned.resolvedOptions().calendar).toBe('gregory')
+    // `formatTimestamp` يضمّ الساعة، فيُقارَن الجزء التاريخيّ منه
+    expect(formatTimestamp(iso).startsWith(pinned.format(new Date(iso)))).toBe(true)
+  })
+})

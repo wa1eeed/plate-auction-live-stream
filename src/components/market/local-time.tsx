@@ -58,7 +58,9 @@ export function LocalTime({
             hour12: true,
           }
 
-  const formatted = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
+  // ميلاديّ مثبَّتًا: هذا المكوّن يرسم بمنطقة الجهاز وبـICU الجهاز، وتقويم
+  // `ar-SA` الافتراضيّ أمّ القرى في CLDR — فيُحسم هنا ولا يُترك للمحرّك
+  const formatted = new Intl.DateTimeFormat('ar-SA-u-nu-latn-ca-gregory', {
     ...options,
     timeZone: zone,
   }).format(date)
