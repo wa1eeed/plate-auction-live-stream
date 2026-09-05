@@ -180,14 +180,34 @@ export async function listUserRows(): Promise<AdminUserRow[]> {
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
+/**
+ * صفقة في ملفّ المستخدم — ومعها مصير عربونها.
+ *
+ * الحالة وحدها لا تكفي من يحقّق في شكوى: «بانتظار السداد» لا تقول أمالُ
+ * المزايد محجوزٌ عنده أم عاد إلى محفظته، وهو أوّل ما يُسأل عنه.
+ */
+export type AdminUserOrder = Order & {
+  plate: Plate
+  counterpartName: string
+  overdue: boolean
+  depositAmount: Halalas
+  depositStatus: DepositStatus | null
+}
+
 export type AdminUserDetail = {
   user: User
   wallet: { balance: number; held: number; available: number }
   ledger: LedgerEntry[]
   deposits: (Deposit & { plateLabel: string })[]
-  listings: (Listing & { plate: Plate; bidCount: number; highestAmount: number | null })[]
-  purchases: (Order & { plate: Plate; counterpartName: string; overdue: boolean })[]
-  sales: (Order & { plate: Plate; counterpartName: string; overdue: boolean })[]
+  listings: (Listing & {
+    plate: Plate
+    bidCount: number
+    highestAmount: number | null
+    /** من رست عليه — للمباعة وحدها */
+    buyerName: string | null
+  })[]
+  purchases: AdminUserOrder[]
+  sales: AdminUserOrder[]
   /** مزايداته على لوحات غيره — لم تكن معروضة للأدمن من قبل */
   bids: {
     listingId: string
@@ -198,6 +218,9 @@ export type AdminUserDetail = {
     isHighest: boolean
     listingStatus: Listing['status']
     endsAt: string | null
+    /** عربونه على هذه اللوحة: كم هو، وأمحجوزٌ هو أم عاد */
+    depositAmount: Halalas
+    depositStatus: DepositStatus | null
   }[]
   payments: Payment[]
   notifications: Notification[]
@@ -258,11 +281,14 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
   for (const listing of rawListings) {
     const bids = (await store.listBids(listing.id)).filter((b) => b.status === 'accepted')
     const highest = findHighestBid(bids)
+    // من رست عليه اللوحة — الإدارة تحقّق في صفقةٍ فتحتاج طرفيها لا أحدهما
+    const buyer = listing.soldToUserId ? await store.findUser(listing.soldToUserId) : null
     listings.push({
       ...listing,
       plate: toPlate(listing),
       bidCount: bids.length,
       highestAmount: highest?.amount ?? null,
+      buyerName: buyer?.displayName ?? null,
     })
   }
 
@@ -272,11 +298,14 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
       const listing = await store.getListing(order.listingId)
       if (!listing) continue
       const other = await store.findUser(side === 'buyer' ? order.sellerId : order.buyerId)
+      const bond = order.depositId ? await store.getDeposit(order.depositId) : null
       out.push({
         ...order,
         plate: toPlate(listing),
         counterpartName: other?.displayName ?? 'مستخدم',
         overdue: isOverdue(order, now),
+        depositAmount: bond?.amount ?? 0,
+        depositStatus: bond?.status ?? null,
       })
     }
     return out
@@ -300,6 +329,7 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
     const highest = findHighestBid(
       (await store.listBids(listingId)).filter((bid) => bid.status === 'accepted'),
     )
+    const bond = deposits.find((row) => row.listingId === listingId) ?? null
     bids.push({
       listingId,
       plate: toPlate(target),
@@ -309,6 +339,8 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
       isHighest: highest?.bidderId === userId,
       listingStatus: target.status,
       endsAt: target.endsAt,
+      depositAmount: bond?.amount ?? 0,
+      depositStatus: bond?.status ?? null,
     })
   }
   bids.sort((a, b) => Number(b.isHighest) - Number(a.isHighest))

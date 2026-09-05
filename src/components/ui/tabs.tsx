@@ -4,7 +4,23 @@ import * as React from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { cn } from '@/lib/utils'
 
-const Tabs = TabsPrimitive.Root
+/**
+ * التابات عربيّة الاتجاه ما لم يُطلب غيره.
+ *
+ * جذر Radix يفترض `ltr` حين لا يُقال له شيء، **ويكتبها سِمةً على عنصره** —
+ * فينقلب كل ما في اللوح: الجداول تبدأ أعمدتها من اليسار، وشريط التمرير الأفقي
+ * يفتح على آخر عمودٍ لا أوّله، وكشف الحساب يُقرأ معكوسًا. والصفحة كلّها `rtl`
+ * فوقه، فلا يظهر السبب في تنسيقٍ ولا في قاعدة CSS — يظهر في سِمةٍ يكتبها
+ * المكوّن نفسه.
+ *
+ * والإصلاح هنا لا في كل موضع: التابات في السوق وفي الحساب وفي الإدارة كلّها
+ * تمرّ بهذا الجذر، وإصلاحُ موضعٍ يترك البقيّة.
+ */
+const Tabs = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>
+>(({ dir = 'rtl', ...props }, ref) => <TabsPrimitive.Root ref={ref} dir={dir} {...props} />)
+Tabs.displayName = TabsPrimitive.Root.displayName
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,

@@ -29,45 +29,95 @@ export default async function WalletPage() {
 
   return (
     <>
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold sm:text-2xl">محفظتي</h1>
-          <p className="mt-1 text-sm text-muted">
-            رصيدك وكشف حسابك والعرابين المحجوزة في المزادات.
-          </p>
-        </div>
-        <TopUpDialog options={options} />
+      <header className="mb-4">
+        <h1 className="text-xl font-extrabold sm:text-2xl">محفظتي</h1>
+        <p className="mt-1 text-sm text-muted">
+          رصيدك وكشف حسابك والعرابين المحجوزة في المزادات.
+        </p>
       </header>
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted">
-            <WalletIcon className="size-3.5" />
-            الرصيد الكلي
-          </p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums">
-            {formatAmount(wallet.balance)}
-            <span className="ms-1 text-sm font-normal text-muted">ريال</span>
-          </p>
+      {/*
+        * بطاقةٌ واحدة تحمل الرصيد، كما تفعل تطبيقات البنوك.
+        *
+        * كانت ثلاث بطاقات متساوية الوزن: الكلي والمحجوز والمتاح — والعين لا
+        * تعرف أيّها الرقم الذي يعنيها. والذي يعني المزايد **المتاح**: هو ما
+        * يستطيع أن يزايد به الآن، والكلي رقمٌ لا يُنفَق منه شيءٌ محجوز.
+        *
+        * فصار المتاح هو العنوان، والكلي والمحجوز سطرًا تحته، وبينهما شريطٌ
+        * يُري النسبة — فيُعرف بنظرةٍ كم من المال معلّقٌ في مزادات جارية.
+        */}
+      <section className="mb-6 overflow-hidden rounded-3xl border border-gold-600/35 bg-gradient-to-bl from-gold-500/[0.14] via-ink-800 to-ink-800 shadow-lg shadow-black/10">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-muted">
+              <WalletIcon className="size-3.5 text-gold-500" />
+              المتاح للمزايدة
+            </p>
+            <p className="mt-1.5 text-4xl font-extrabold leading-none tabular-nums text-paper sm:text-5xl">
+              {formatAmount(wallet.available)}
+              <span className="ms-2 text-base font-bold text-muted">ريال</span>
+            </p>
+          </div>
+          <TopUpDialog options={options} />
         </div>
 
-        <div className="rounded-2xl border border-gold-600/40 bg-gold-500/[0.07] p-4">
-          <p className="text-xs font-semibold text-muted">محجوز كعرابين</p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums text-gold-500">
-            {formatAmount(wallet.held)}
-            <span className="ms-1 text-sm font-normal text-muted">ريال</span>
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted">
-            ما زال ملكك — لكنه غير متاح حتى تنتهي مزاداته
-          </p>
-        </div>
+        {/*
+          * الشريط يُقاس بالكلي لا بمجموع الجزأين.
+          *
+          * ورصيدٌ صفرٌ يقسم على صفر، فيُحرس القاسم — والشريط عندئذٍ فارغٌ كما
+          * ينبغي لمحفظةٍ فارغة.
+          */}
+        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+          <div
+            className="flex h-2 overflow-hidden rounded-full bg-ink-900"
+            role="img"
+            aria-label={`المتاح ${formatAmount(wallet.available)} من أصل ${formatAmount(wallet.balance)} ريال`}
+          >
+            <span
+              className="bg-success/80"
+              style={{
+                width: `${wallet.balance > 0 ? (wallet.available / wallet.balance) * 100 : 0}%`,
+              }}
+            />
+            <span
+              className="bg-gold-500/80"
+              style={{
+                width: `${wallet.balance > 0 ? (wallet.held / wallet.balance) * 100 : 0}%`,
+              }}
+            />
+          </div>
 
-        <div className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
-          <p className="text-xs font-semibold text-muted">المتاح للمزايدة</p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums text-success">
-            {formatAmount(wallet.available)}
-            <span className="ms-1 text-sm font-normal text-muted">ريال</span>
-          </p>
+          <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div>
+              {/* «المتاح» لا «المتاح للمزايدة»: العنوان فوقه قالها، وتكرارها في
+                  دليل الشريط حشوٌ يُقرأ مرّتين */}
+              <dt className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+                <span className="size-2 rounded-full bg-success/80" />
+                المتاح
+              </dt>
+              <dd className="mt-0.5 font-extrabold tabular-nums text-success">
+                {formatAmount(wallet.available)}
+              </dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+                <span className="size-2 rounded-full bg-gold-500/80" />
+                محجوز كعرابين
+              </dt>
+              <dd className="mt-0.5 font-extrabold tabular-nums text-gold-500">
+                {formatAmount(wallet.held)}
+              </dd>
+              <dd className="text-[10px] leading-relaxed text-muted">
+                ملكك، غير متاح حتى تنتهي مزاداته
+              </dd>
+            </div>
+            <div className="col-span-2 border-t border-ink-600/60 pt-2 sm:col-span-1 sm:border-0 sm:pt-0">
+              <dt className="text-[11px] font-semibold text-muted">الرصيد الكلي</dt>
+              <dd className="mt-0.5 font-extrabold tabular-nums text-paper">
+                {formatAmount(wallet.balance)}
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 

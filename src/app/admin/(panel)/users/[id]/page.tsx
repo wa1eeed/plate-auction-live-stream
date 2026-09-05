@@ -9,6 +9,7 @@ import {
   LayoutList,
   Receipt,
   ShieldAlert,
+  ShoppingBag,
   Wallet,
   ExternalLink,
 } from 'lucide-react'
@@ -195,9 +196,13 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             <LayoutList className="size-3.5" />
             لوحاته ({listings.length})
           </TabsTrigger>
-          <TabsTrigger value="orders">
+          <TabsTrigger value="sales">
             <Receipt className="size-3.5" />
-            صفقاته ({purchases.length + sales.length})
+            مبيعاته ({sales.length})
+          </TabsTrigger>
+          <TabsTrigger value="purchases">
+            <ShoppingBag className="size-3.5" />
+            مشترياته ({purchases.length})
           </TabsTrigger>
         </TabsList>
 
@@ -209,18 +214,29 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               empty="لم يزايد على أي لوحة."
               minWidth="44rem"
               columns={[
-                { label: 'اللوحة', width: '28%', minWidth: '9rem' },
-                { label: 'أعلى مزايدة له', numeric: true, width: '18%', minWidth: '8rem' },
-                { label: 'الأعلى حاليًا', numeric: true, width: '18%', minWidth: '8rem' },
-                { label: 'موقفه', width: '18%', minWidth: '7rem' },
-                { label: 'حالة الإعلان', width: '18%', minWidth: '7rem' },
+                { label: 'اللوحة', width: '10rem', minWidth: '10rem' },
+                { label: 'أعلى مزايدة له', numeric: true, width: '15%', minWidth: '8rem' },
+                { label: 'الأعلى حاليًا', numeric: true, width: '15%', minWidth: '8rem' },
+                { label: 'عربونه', numeric: true, width: '18%', minWidth: '9rem' },
+                { label: 'موقفه', width: '14%', minWidth: '7rem' },
+                { label: 'حالة الإعلان', width: '14%', minWidth: '7rem' },
               ]}
             >
               {bids.map((bid) => (
                 <Tr key={bid.listingId}>
+                  {/*
+                    * اللوحة تُرى لا تُقرأ.
+                    *
+                    * «ا ب ج 1234» نصٌّ يُفكّ حرفًا حرفًا، والصورة تُعرف بنظرة —
+                    * ومن يحقّق في نزاع يمرّ على عشرة أسطر لا سطرٍ واحد. والنصّ
+                    * باقٍ في `aria-label` داخل الرسم، فلا يضيع على قارئ الشاشة
+                    * ولا على بحث الصفحة.
+                    */}
                   <Td>
-                    <Link href={`/admin/listings/${bid.listingId}`} className="font-bold hover:underline">
-                      {bid.plateLabel}
+                    <Link href={`/admin/listings/${bid.listingId}`} className="block w-[120px]">
+                      <span className="flex aspect-[16/7] items-center justify-center rounded-lg bg-ink-700/45 p-1.5">
+                        <SaudiLicensePlate {...bid.plate} size="fill" showReflection={false} />
+                      </span>
                     </Link>
                   </Td>
                   <Td numeric>
@@ -231,6 +247,34 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
                       <Money value={bid.currentHighest} className="text-sm" />
                     ) : (
                       <span className="text-muted">—</span>
+                    )}
+                  </Td>
+                  {/*
+                    * العربون: مبلغُه وأين هو.
+                    *
+                    * أوّل ما يُسأل عنه في شكوى مزايد: أمالي محجوزٌ عندكم أم عاد؟
+                    * وكان الجواب في تابٍ آخر يُقارَن سطرًا بسطر.
+                    */}
+                  <Td numeric>
+                    {bid.depositAmount > 0 ? (
+                      <span className="flex flex-col items-end gap-0.5">
+                        <Money value={bid.depositAmount} className="text-sm" />
+                        {bid.depositStatus && (
+                          <Badge
+                            variant={
+                              bid.depositStatus === 'held'
+                                ? 'gold'
+                                : bid.depositStatus === 'forfeited'
+                                  ? 'danger'
+                                  : 'muted'
+                            }
+                          >
+                            {DEPOSIT_STATUS_LABELS[bid.depositStatus]}
+                          </Badge>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted">بلا عربون</span>
                     )}
                   </Td>
                   <Td>
@@ -382,7 +426,8 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               { label: 'مزايدات', numeric: true, width: '10%', minWidth: '5.5rem' },
               { label: 'أعلى مزايدة', numeric: true, width: '16%', minWidth: '8rem' },
               { label: 'الاحتياطي', numeric: true, width: '16%', minWidth: '8rem' },
-              { label: 'العربون', numeric: true, width: '16%', minWidth: '8rem' },
+              { label: 'العربون', numeric: true, width: '14%', minWidth: '8rem' },
+              { label: 'المشتري', width: '14%', minWidth: '7rem' },
             ]}
           >
             {listings.map((listing) => (
@@ -422,15 +467,28 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
                     <span className="text-muted">—</span>
                   )}
                 </Td>
+                {/* من رست عليه — الإدارة تحقّق في صفقةٍ فتحتاج طرفيها لا أحدهما */}
+                <Td className="text-xs">
+                  {listing.buyerName ?? <span className="text-muted">—</span>}
+                </Td>
               </Tr>
             ))}
           </AdminTable>
         </TabsContent>
 
-        {/* صفقاته */}
-        <TabsContent value="orders" className="grid gap-6 xl:grid-cols-2">
-          <OrderSection title="مشترياته" orders={purchases} side="seller" />
-          <OrderSection title="مبيعاته" orders={sales} side="buyer" />
+        {/*
+          * مبيعاته ومشترياته تابان لا عمودان.
+          *
+          * كانا جدولين متجاورين، فيضيق كلٌّ منهما إلى نصف العرض وتُقصّ أعمدته
+          * — ودورُ المستخدم في الصفقتين مختلف: في المبيع ينقل الملكية ويقبض،
+          * وفي الشراء يسدّد وينتظر. فما يُقرأ في كلٍّ غيرُ ما يُقرأ في الآخر.
+          */}
+        <TabsContent value="sales">
+          <OrderSection orders={sales} side="buyer" />
+        </TabsContent>
+
+        <TabsContent value="purchases">
+          <OrderSection orders={purchases} side="seller" />
         </TabsContent>
       </Tabs>
     </>
@@ -507,36 +565,59 @@ function Metric({
 }
 
 function OrderSection({
-  title,
   orders,
   side,
 }: {
-  title: string
   orders: Awaited<ReturnType<typeof getUserDetail>>['purchases']
   side: 'buyer' | 'seller'
 }) {
   return (
     <section>
-      <h2 className="mb-2 text-sm font-bold">{title}</h2>
       <AdminTable
         empty="لا صفقات."
         minWidth="42rem"
         columns={[
-          { label: 'اللوحة', width: '20%', minWidth: '7rem' },
-          { label: side === 'seller' ? 'البائع' : 'المشتري', width: '22%', minWidth: '8rem' },
+          { label: 'اللوحة', width: '10rem', minWidth: '10rem' },
+          { label: side === 'seller' ? 'البائع' : 'المشتري', width: '18%', minWidth: '8rem' },
           { label: 'المبلغ', numeric: true, width: '18%', minWidth: '7.5rem' },
-          { label: 'مهلة السداد', width: '24%', minWidth: '10rem' },
+          { label: 'العربون', numeric: true, width: '18%', minWidth: '9rem' },
+          { label: 'مهلة السداد', width: '20%', minWidth: '10rem' },
           { label: 'الحالة', width: '16%', minWidth: '7rem' },
         ]}
       >
         {orders.map((order) => (
           <Tr key={order.id}>
-            <Td className="font-bold">
-              {order.plate.arabicLetters} {order.plate.plateNumbers}
+            <Td>
+              <span className="flex aspect-[16/7] w-[120px] items-center justify-center rounded-lg bg-ink-700/45 p-1.5">
+                <SaudiLicensePlate {...order.plate} size="fill" showReflection={false} />
+              </span>
             </Td>
             <Td className="text-xs">{order.counterpartName}</Td>
             <Td numeric>
               <Money value={order.amount} className="text-sm" />
+            </Td>
+            {/* مصير العربون: الحالة وحدها لا تقول أمحجوزٌ هو أم عاد للمحفظة */}
+            <Td numeric>
+              {order.depositAmount > 0 ? (
+                <span className="flex flex-col items-end gap-0.5">
+                  <Money value={order.depositAmount} className="text-sm" />
+                  {order.depositStatus && (
+                    <Badge
+                      variant={
+                        order.depositStatus === 'held'
+                          ? 'gold'
+                          : order.depositStatus === 'forfeited'
+                            ? 'danger'
+                            : 'muted'
+                      }
+                    >
+                      {DEPOSIT_STATUS_LABELS[order.depositStatus]}
+                    </Badge>
+                  )}
+                </span>
+              ) : (
+                <span className="text-muted">بلا عربون</span>
+              )}
             </Td>
             <Td className="text-xs text-muted">
               {order.paymentDueAt ? <LocalTime iso={order.paymentDueAt} mode="datetime" /> : '—'}
