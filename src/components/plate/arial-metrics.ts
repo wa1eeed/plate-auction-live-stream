@@ -69,6 +69,18 @@ export type RowLayout = {
   sizes: number[]
 }
 
+export type RowOptions = {
+  /**
+   * يُوسّط حبر الصفّ في شريطه بدل تثبيت قاعدته في أسفله.
+   *
+   * القاعدة الثابتة تلزم حيث يتجاور صفّان: العربيّ فوق واللاتينيّ تحت، ولو
+   * تحرّك أحدهما بحجم حروفه اختلّ ما بينهما. أمّا الصفّ الوحيد — الرياضية —
+   * فلا جار له يُحاذيه، وحجمه يحدّه العرض لا الارتفاع، فيخرج أقصر من شريطه
+   * ويتجمّع الفائض كلّه فوقه هامشًا. والتوسيط يقسم الفائض نصفين.
+   */
+  center?: boolean
+}
+
 /**
  * نصيب ما فوق خطّ القاعدة من ارتفاع الشريط، لكل صفّ حسب حاجته الحقيقية.
  *
@@ -92,6 +104,7 @@ export function layoutRow(
   bandTop: number,
   bandHeight: number,
   ascentShare: number,
+  options: RowOptions = {},
 ): RowLayout {
   const ascBudget = bandHeight * ascentShare
   const descBudget = bandHeight - ascBudget
@@ -102,5 +115,17 @@ export function layoutRow(
     return Math.min(item.widthLimit, byAscent, byDescent)
   })
 
-  return { baseline: bandTop + ascBudget, sizes }
+  if (!options.center) return { baseline: bandTop + ascBudget, sizes }
+
+  /*
+   * التوسيط يقيس الحبر الخارج لا الميزانية المرصودة.
+   *
+   * القاعدة تُحسب بعد أن استقرّت الأحجام: أعلى صعودٍ بينها وأعمق نزول هما
+   * علوّ الكتلة الحقيقيّ، فتُنزَل في وسط الشريط. والقاعدة تبقى واحدة لكل
+   * العناصر — لو وُسّط كلٌّ على حدة لتفاوتت قواعد الأرقام والحروف في الصفّ.
+   */
+  const inkAbove = Math.max(...items.map((item, index) => item.ink.asc * sizes[index]))
+  const inkBelow = Math.max(...items.map((item, index) => item.ink.desc * sizes[index]))
+  const slack = bandHeight - (inkAbove + inkBelow)
+  return { baseline: bandTop + slack / 2 + inkAbove, sizes }
 }

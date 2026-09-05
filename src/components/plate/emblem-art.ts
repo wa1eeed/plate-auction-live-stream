@@ -1,10 +1,12 @@
 /**
- * رسومات الشعارات الوسطية للوحة — أصلية بالكامل ومرسومة كمسارات SVG نظيفة.
- * هذا الملف هو المصدر الوحيد للرسم: يستخدمه مكوّن React مباشرةً، ويولّد منه
- * السكربت `scripts/generate-emblems.mjs` ملفات `/public/plate-emblems/*.svg`.
+ * سجلّ الشعارات الوسطية للوحة — كلّها اليوم صورٌ مخبوزة الشفافية.
  *
- * ملاحظة: هذه رسومات زخرفية للاستخدام البصري داخل المزاد، وليست شعارات رسمية
- * ولا تمثيلًا حكوميًا.
+ * كانت رؤية ٢٠٣٠ والزخرفة التراثية مسارات SVG نرسمها بأنفسنا: أقواسٌ ودرجاتٌ
+ * تُشبه المعنى ولا تُشبه الشعار، فبدت مشوّهةً إلى جانب النخلة والسيفين. وقد
+ * حلّت محلّها صور الشعارات الحقيقية، تمرّ على `scripts/bake-logo.py` فيسقط
+ * بياضها ويُقصّ هامشها، ثمّ تُرسم كما هي بلا قناعٍ ولا مرشِّح.
+ *
+ * ملاحظة: تُعرض داخل المزاد تمييزًا بصريًا للوحات، لا تمثيلًا حكوميًا.
  */
 
 export type EmblemRole = 'primary' | 'accent'
@@ -69,11 +71,24 @@ const PALM_IMAGE = {
   imageRatio: 368 / 390,
 }
 
-const path = (d: string, role: EmblemRole = 'primary', opacity?: number): EmblemShape => ({
-  kind: 'path',
-  d,
-  role,
-  opacity,
+/**
+ * شعارٌ صوريّ مقصوصٌ على حدّ رسمه.
+ *
+ * `content` يملأ الصندوق كلّه لأنّ `bake-logo.py` قصّ الهامش أصلًا، و`tint`
+ * لونٌ يمثّله في القوائم المصغّرة لا يُصبغ به الرسم.
+ */
+const photo = (
+  href: string,
+  title: string,
+  tint: string,
+  imageRatio: number,
+): EmblemImageArt => ({
+  kind: 'image',
+  href,
+  title,
+  tint,
+  content: { x: 0, y: 0, width: 1, height: 1 },
+  imageRatio,
 })
 
 // ------------------------------------------------------------------ التصدير
@@ -91,50 +106,14 @@ export const EMBLEM_ART: Record<string, EmblemArt> = {
     title: 'النخلة والسيفان — ذهبي',
     tint: '#B8860B',
   },
-  'vision-2030': {
-    viewBox: '0 0 100 100',
-    title: 'رؤية 2030 — تمثيل زخرفي',
-    colors: { primary: '#0E7C56', accent: '#C9A227' },
-    groups: [
-      {
-        shapes: [
-          // قوس صاعد يرمز إلى التقدّم
-          path('M8 72 C26 90 74 90 92 72 L92 80.5 C72 98 28 98 8 80.5 Z'),
-          // ثلاث درجات صاعدة
-          path('M26 60 L34 60 L34 46 L26 46 Z', 'accent'),
-          path('M46 60 L54 60 L54 36 L46 36 Z', 'accent'),
-          path('M66 60 L74 60 L74 26 L66 26 Z', 'accent'),
-        ],
-      },
-      {
-        shapes: [
-          { kind: 'text', text: '2030', x: 50, y: 22, size: 19, role: 'primary', letterSpacing: 1 },
-        ],
-      },
-    ],
-  },
-  'heritage-arch': {
-    viewBox: '0 0 100 100',
-    title: 'زخرفة تراثية نجدية',
-    colors: { primary: '#8A6A2F', accent: '#C9A227' },
-    groups: [
-      {
-        shapes: [
-          // قوس مدبّب بأسلوب العمارة النجدية
-          path(
-            'M18 84 L18 42 L50 12 L82 42 L82 84 L69 84 L69 47.5 L50 29.5 L31 47.5 L31 84 Z',
-          ),
-          // مثلثات التهوية التقليدية
-          path('M38 66 L44.5 78 L31.5 78 Z', 'accent'),
-          path('M50 60 L56.5 72 L43.5 72 Z', 'accent'),
-          path('M62 66 L68.5 78 L55.5 78 Z', 'accent'),
-          // شريط علوي
-          path('M18 36.5 L26 29 L26 34 L18 41 Z', 'accent', 0.85),
-          path('M82 36.5 L74 29 L74 34 L82 41 Z', 'accent', 0.85),
-        ],
-      },
-    ],
-  },
+  'vision-2030': photo(
+    '/plate-emblems/vision-2030.png',
+    'رؤية السعودية 2030',
+    '#4EA84C',
+    383 / 384,
+  ),
+  dereyah: photo('/plate-emblems/dereyah.png', 'الدرعية', '#A9714B', 160 / 165),
+  madaen: photo('/plate-emblems/madaen.png', 'مدائن صالح', '#8C7A63', 133 / 162),
 }
 
 /** الشعار الصغير المستخدم داخل الشريط الرأسي (رمز الدولة). */

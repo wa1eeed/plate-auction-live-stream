@@ -16,6 +16,12 @@
   # على macOS:  sips -s format png public/plate-emblems/palm.jpeg --out /tmp/palm.png
 """
 
+import pathlib
+import struct
+import sys
+import zlib
+
+
 def read_png(path):
     data = pathlib.Path(path).read_bytes()
     pos, idat, w, h, ct = 8, b'', 0, 0, 0

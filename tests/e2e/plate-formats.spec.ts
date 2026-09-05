@@ -116,4 +116,46 @@ test.describe('نوع إصدار اللوحة', () => {
 
     expect(doubled, `شعاران في: ${doubled.map((d) => d.box).join(' · ')}`).toHaveLength(0)
   })
+
+  test('الرياضية: الحروف والأرقام في وسط اللوحة لا في أسفلها', async ({ page }) => {
+    await page.goto('/market')
+    await expect(page.locator('svg[data-plate-type]').first()).toBeVisible()
+
+    /*
+     * الصفّ الوحيد يُوسَّط، ولا تكفي شهادةُ `layoutRow` وحدها.
+     *
+     * فالحساب صحيحٌ في اختبار الوحدة وقد يبقى الوصل مقطوعًا: تكفي هندسةٌ
+     * جديدة تنسى `singleRow` حتى يعود الحبر إلى أسفل شريطه ويتجمّع الفائض
+     * فوقه هامشًا — وهو العيب الذي رآه الناظر قبل أن يراه أي اختبار.
+     */
+    const plates = await page.evaluate(() =>
+      [...document.querySelectorAll('svg[data-plate-type]')]
+        .map((svg) => {
+          const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number)
+          const glyphs = [...svg.querySelectorAll('text')].filter((t) => {
+            const text = t.textContent ?? ''
+            return text !== 'السعودية' && !['K', 'S', 'A', 'KSA'].includes(text)
+          })
+          if (w / h < 3.7 || !glyphs.length) return null
+          const boxes = glyphs.map((g) => (g as SVGGraphicsElement).getBBox())
+          const top = Math.min(...boxes.map((b) => b.y))
+          const bottom = Math.max(...boxes.map((b) => b.y + b.height))
+          return { height: h, drift: (top + bottom) / 2 - h / 2, ink: glyphs.map((g) => g.textContent).join(' ') }
+        })
+        .filter(Boolean),
+    )
+
+    expect(plates.length, 'لا لوحة رياضية في البذرة').toBeGreaterThan(0)
+    for (const plate of plates!) {
+      /*
+       * الحدّ ٥٪ لا صفر: `getBBox` يقيس صندوق الخطّ لا حدّ الحبر، فيضمّ نزولًا
+       * لا تشغله الأرقام والحروف الكبيرة ويميل به قليلًا إلى أسفل. وحين كان
+       * الحبر عالقًا في أسفل شريطه تجاوز الميل ٨٪.
+       */
+      expect(
+        Math.abs(plate!.drift),
+        `«${plate!.ink}» منزاحة ${plate!.drift.toFixed(1)} عن وسط اللوحة`,
+      ).toBeLessThanOrEqual(plate!.height * 0.05)
+    }
+  })
 })

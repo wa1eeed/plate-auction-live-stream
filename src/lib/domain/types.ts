@@ -53,14 +53,16 @@ export type PlateEmblem =
   | 'palm-swords-black'
   | 'palm-swords-gold'
   | 'vision-2030'
-  | 'heritage-arch'
+  | 'dereyah'
+  | 'madaen'
   | 'custom'
 
 export const PLATE_EMBLEMS: readonly PlateEmblem[] = [
   'palm-swords-black',
   'palm-swords-gold',
   'vision-2030',
-  'heritage-arch',
+  'dereyah',
+  'madaen',
   'none',
   'custom',
 ]
@@ -69,7 +71,8 @@ export const PLATE_EMBLEM_LABELS: Record<PlateEmblem, string> = {
   'palm-swords-black': 'النخلة والسيفان (الافتراضي)',
   'palm-swords-gold': 'النخلة والسيفان — ذهبي',
   'vision-2030': 'رؤية السعودية 2030',
-  'heritage-arch': 'زخرفة تراثية سعودية',
+  dereyah: 'الدرعية',
+  madaen: 'مدائن صالح',
   none: 'بدون شعار وسطي',
   custom: 'شعار مخصص (رفع صورة)',
 }

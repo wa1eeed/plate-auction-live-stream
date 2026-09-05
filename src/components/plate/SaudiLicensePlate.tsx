@@ -409,6 +409,8 @@ export function SaudiLicensePlate({
     geo.rows.bottomBand + (geo.rows.bandHeight * (1 - LATIN_SCALE)) / 2,
     geo.rows.bandHeight * LATIN_SCALE,
     LATIN_ASCENT_SHARE,
+    // الرياضية صفٌّ وحيد لا جار له، فيُوسّط في شريطه بدل أن يعلق في أسفله
+    { center: geo.singleRow },
   )
   const [arabicNumberSize, arabicLetterSize] = topRow.sizes
   const [numberSize, latinLetterSize] = bottomRow.sizes
@@ -422,7 +424,14 @@ export function SaudiLicensePlate({
    * وسطى في الرياضية — فتتبع نوع الإصدار ولا تُثبَّت في موضع.
    */
   const countryFill = plateType === 'transport' ? '#1d4ed8' : null
-  const countryInk = countryFill ? '#FFFFFF' : '#0A0D12'
+  /*
+   * كتلة الدولة سوداء الحبر مهما تبدّلت أرضيّتها.
+   *
+   * «السعودية» و«KSA» على اللوحة المصنوعة سوداوان على الأزرق، فيبقيان كذلك.
+   * والشعار معهما لا لأنّنا اخترنا، بل لأنّ لونه مخبوزٌ في ملفّه فلا يقلبه
+   * `monochrome` — وقد كان هنا سطرٌ يَعِد ببياضٍ على الأزرق ولا يفي به.
+   */
+  const countryInk = '#0A0D12'
   const country = geo.countryBox ?? null
   // الضيّقة تُكدّس K S A رأسيًّا — «KSA» كلمةً واحدة لا تُقرأ في ستّين بكسلًا
   const narrowCountry = country ? country.width < country.height * 0.45 : false
