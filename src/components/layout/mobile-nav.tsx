@@ -43,7 +43,8 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="end">
+      {/* يفتح من جهة زرّه — واليمين في RTL هو `start` */}
+      <SheetContent side="start">
         <SheetTitle>التنقّل</SheetTitle>
 
         <nav className="space-y-1">

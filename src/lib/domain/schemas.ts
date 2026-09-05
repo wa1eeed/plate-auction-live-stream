@@ -300,7 +300,7 @@ export const faqInputSchema = z.object({
   category: z.enum(FAQ_CATEGORIES as unknown as [FaqCategory, ...FaqCategory[]]),
   sortOrder: z.number().int().min(0).max(999).default(0),
   published: z.boolean().default(true),
-  showOnListing: z.boolean().default(false),
+  showOnSaleTypes: z.array(saleTypeSchema).default([]),
 })
 
 export type FaqInput = z.infer<typeof faqInputSchema>

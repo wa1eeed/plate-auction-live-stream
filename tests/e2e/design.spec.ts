@@ -435,8 +435,17 @@ test.describe('الجوال عند 360px', () => {
 
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
-    // كلّها حاضرة دفعةً واحدة، بعناوين عناقيدها
-    await expect(drawer.getByRole('link')).toHaveCount(13)
+    /*
+     * كلّها حاضرة دفعةً واحدة — والعدد يُقاس بالعمود لا يُكتب رقمًا.
+     *
+     * رقمٌ مثبَّت يسقط كلّما أُضيف قسم، فيُصلَح بتحديثه لا بالنظر فيما كُسر.
+     * والمقصود أنّ الدُرج لا يُسقط شيئًا يُظهره العمود، وهذا ما يُقاس.
+     */
+    const sections = await page.evaluate(
+      () => document.querySelectorAll('nav[aria-label="أقسام الإدارة"] a').length,
+    )
+    expect(sections).toBeGreaterThan(10)
+    await expect(drawer.getByRole('link')).toHaveCount(sections)
     for (const group of ['التشغيل', 'المال', 'المحاسبة', 'النظام']) {
       await expect(drawer, `عنقود ${group} غائب عن الدُرج`).toContainText(group)
     }

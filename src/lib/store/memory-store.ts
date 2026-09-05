@@ -16,7 +16,9 @@ import type {
   TaxInvoice,
   TaxSettings,
   BrandSettings,
+  PageSettings,
   FaqItem,
+  SaleType,
   LedgerEntry,
   Listing,
   Notification,
@@ -37,6 +39,7 @@ import {
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_TAX_SETTINGS,
   DEFAULT_BRAND_SETTINGS,
+  DEFAULT_PAGE_SETTINGS,
   EMPTY_PAYOUT_ACCOUNT,
 } from '@/lib/domain/types'
 import { buildEntry, emptyWallet, type NewLedgerEntry } from '@/lib/domain/wallet'
@@ -83,6 +86,7 @@ export type MemoryDatabase = {
   invoices: TaxInvoice[]
   taxSettings: TaxSettings
   brandSettings: BrandSettings
+  pageSettings: PageSettings
   faq: FaqItem[]
   listings: Listing[]
   bids: Bid[]
@@ -141,6 +145,11 @@ export function emptyDatabase(): MemoryDatabase {
     invoices: [],
     taxSettings: {
       ...DEFAULT_TAX_SETTINGS,
+      updatedAt: new Date(0).toISOString(),
+      updatedByAdminId: null,
+    },
+    pageSettings: {
+      ...DEFAULT_PAGE_SETTINGS,
       updatedAt: new Date(0).toISOString(),
       updatedByAdminId: null,
     },
@@ -789,6 +798,19 @@ export class MemoryStore implements AuctionStore {
     return clone(this.db.brandSettings)
   }
 
+  async getPageSettings(): Promise<PageSettings> {
+    return clone(this.db.pageSettings)
+  }
+
+  async updatePageSettings(patch: Partial<PageSettings>): Promise<PageSettings> {
+    this.db.pageSettings = {
+      ...this.db.pageSettings,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    }
+    return clone(this.db.pageSettings)
+  }
+
   async getTaxSettings(): Promise<TaxSettings> {
     return clone(this.db.taxSettings)
   }
@@ -944,10 +966,13 @@ export class MemoryStore implements AuctionStore {
 
   // ------------------------------------------------------------- الأسئلة الشائعة
 
-  async listFaq(query: { publishedOnly?: boolean; onListingOnly?: boolean } = {}): Promise<FaqItem[]> {
+  async listFaq(query: { publishedOnly?: boolean; saleType?: SaleType } = {}): Promise<FaqItem[]> {
     let rows = this.db.faq
     if (query.publishedOnly) rows = rows.filter((f) => f.published)
-    if (query.onListingOnly) rows = rows.filter((f) => f.showOnListing)
+    if (query.saleType) {
+      const wanted = query.saleType
+      rows = rows.filter((f) => f.showOnSaleTypes.includes(wanted))
+    }
     return clone(
       rows.slice().sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt)),
     )

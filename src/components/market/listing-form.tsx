@@ -13,7 +13,8 @@ import { PlateEmblemPicker } from '@/components/plate/PlateEmblemPicker'
 import { SaudiLicensePlate, plateShowsEmblem } from '@/components/plate/SaudiLicensePlate'
 import { LetterPicker } from '@/components/plate/letter-picker'
 import { ListingPublishedDialog } from './listing-published-dialog'
-import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
+import { AmountField } from './amount-field'
+import { formatAmount, halalasToRiyals, riyalsToHalalas } from '@/lib/domain/money'
 import {
   PLATE_TYPES,
   PLATE_FORMATS,
@@ -517,14 +518,14 @@ export function ListingForm({
         </div>
 
         {saleType === 'fixed' && (
-          <NumberField id="price" label="سعر البيع (ريال)" register={register} />
+          <NumberField id="price" label="سعر البيع (ريال)" form={form} />
         )}
 
         {saleType === 'offers' && (
           <NumberField
             id="minimumOffer"
             label="أقل عرض مقبول (ريال) — اتركه صفرًا لقبول أي عرض"
-            register={register}
+            form={form}
           />
         )}
 
@@ -535,19 +536,19 @@ export function ListingForm({
                 id="startingPrice"
                 label="السعر الافتتاحي (ريال)"
                 hint="اتركه صفرًا لمزاد مفتوح يبدأ من أول مزايدة"
-                register={register}
+                form={form}
               />
               <NumberField
                 id="minimumIncrement"
                 label="الحد الأدنى للزيادة (ريال)"
                 hint="أقل فرق بين مزايدة وأخرى"
-                register={register}
+                form={form}
               />
               <NumberField
                 id="reservePrice"
                 label="السعر الاحتياطي (سرّي)"
                 hint="اتركه صفرًا للبيع بأي مبلغ"
-                register={register}
+                form={form}
                 highlight
               />
             </div>
@@ -650,33 +651,50 @@ export function ListingForm({
   )
 }
 
+/** حقول المبالغ في النموذج — قيمتها بالريال لا بالهللة. */
+type PriceKey = 'price' | 'startingPrice' | 'minimumIncrement' | 'reservePrice' | 'minimumOffer'
+
+/**
+ * حقل مبلغ في نموذج العرض.
+ *
+ * كان حقل رقمٍ عاديًّا: خانةٌ صغيرة بلا فواصل، يكتب فيها البائع «180000»
+ * فيقرأ ستّة أصفارٍ متلاصقة ولا يتبيّن أمئةُ ألفٍ هي أم مليون. وهو الرقم الذي
+ * تُبنى عليه الصفقة كلّها، فيُكتب بحجمٍ يُقرأ وبفواصل تُعدّ عنه.
+ *
+ * وهو أصغر من حقل المزايدة: هناك المبلغ هو الفعل نفسه، وهنا حقلٌ بين حقول.
+ */
 function NumberField({
   id,
   label,
   hint,
-  register,
+  form,
   highlight,
 }: {
-  id: keyof FormValues
+  id: PriceKey
   label: string
   /** سطر توضيحي أسفل الحقل — يغني عن تخمين معنى القيمة */
   hint?: string
-  register: ReturnType<typeof useForm<FormValues>>['register']
+  form: ReturnType<typeof useForm<FormValues>>
   highlight?: boolean
 }) {
+  const riyals = form.watch(id)
   return (
     <div className="space-y-1.5">
       <Label htmlFor={String(id)} className={highlight ? 'text-gold-500' : undefined}>
         {label}
       </Label>
-      <Input
+      <AmountField
         id={String(id)}
-        type="number"
-        dir="ltr"
-        inputMode="numeric"
-        className={highlight ? 'border-gold-600/60' : undefined}
-        aria-describedby={hint ? `${String(id)}-hint` : undefined}
-        {...register(id, { valueAsNumber: true })}
+        label={label}
+        size="md"
+        placeholder="0"
+        className={highlight ? '[&>input]:border-gold-600/60' : undefined}
+        value={Number.isFinite(riyals) && Number(riyals) > 0 ? riyalsToHalalas(Number(riyals)) : null}
+        onChange={(halalas) =>
+          form.setValue(id, halalas === null ? 0 : halalasToRiyals(halalas), {
+            shouldDirty: true,
+          })
+        }
       />
       {hint && (
         <p id={`${String(id)}-hint`} className="text-[11px] text-muted">

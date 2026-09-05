@@ -24,9 +24,26 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
+        {/*
+          * على الجوال: القائمة يمينًا، والشعار في الوسط، والحساب والجرس يسارًا.
+          *
+          * وترتيب العناصر هنا هو ترتيبها على الشاشة: أوّلُها في RTL هو
+          * أيمنُها. فدُرج التنقّل أوّلًا ليقع تحت الإبهام حيث تُمسك اليد
+          * الجهاز، ويفتح من الجهة التي ضُغط فيها لا من مقابلها.
+          *
+          * والشعار يُوسَّط بالإزاحة لا بالترتيب: لو تُرك في الصفّ لتبدّل
+          * موضعه بتبدّل ما حوله — زرٌّ يظهر للداخل ولا يظهر للزائر، وجرسٌ
+          * يتّسع بعدّاده — فيرقص في كل صفحة. و`left-1/2` قياسٌ فيزيائيّ لا
+          * منطقيّ، والتوسيط متماثل فلا يفرّق بين اتجاه واتجاه.
+          *
+          * ومن `md` فصاعدًا يعود إلى الصفّ: الدُرج يختفي، والتنقّل يظهر
+          * بجانبه، فلا معنى لتوسيطٍ يترك يمين الترويسة خاليًا.
+          */}
+        <MobileNav signedIn={Boolean(user)} />
+
         <BrandMark
-          className="group transition-opacity hover:opacity-90"
+          className="group absolute left-1/2 -translate-x-1/2 transition-opacity hover:opacity-90 md:static md:translate-x-0"
           nameClassName="hidden text-[15px] sm:inline"
         />
 
@@ -65,8 +82,6 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
               </Button>
             </>
           )}
-
-          <MobileNav signedIn={Boolean(user)} />
         </div>
       </div>
     </header>

@@ -17,41 +17,21 @@ import { PageShell } from '@/components/layout/page-shell'
 import { Button } from '@/components/ui/button'
 import { getStore } from '@/lib/store'
 
-export const metadata: Metadata = {
-  title: 'كيف يعمل السوق',
-  description: 'شرح طرق البيع الثلاث وآلية المزايدة والتمديد التلقائي والسعر الاحتياطي.',
+export async function generateMetadata(): Promise<Metadata> {
+  const { howItWorks } = await getStore().getPageSettings()
+  return { title: howItWorks.title, description: howItWorks.intro || undefined }
 }
 
-const SELLER_STEPS = [
-  { icon: Plus, title: 'أضف لوحتك', body: 'أدخل الحروف والأرقام واختر الشعار — تُحفظ كمسودة أولًا.' },
-  { icon: Tag, title: 'اختر طريقة البيع', body: 'بيع مباشر بسعر ثابت، أو مزاد بمزايدات، أو استقبال عروض.' },
-  { icon: LayoutGrid, title: 'انشرها في السوق', body: 'تظهر فورًا للجميع، ويبدأ عدّاد المزاد لحظة النشر.' },
-  {
-    icon: ShieldCheck,
-    title: 'انقل الملكية واقبض',
-    body: 'أول ما يدفع المشتري نمسك مبلغه عندنا، تنقل اللوحة باسمه وترفع إثبات النقل، ونتأكّد ثم يوصلك المبلغ في محفظتك.',
-  },
-]
-
-const BUYER_STEPS = [
-  { icon: LayoutGrid, title: 'تصفّح بلا تسجيل', body: 'ابحث بالحروف أو الأرقام، وصفِّ حسب طريقة البيع والنوع.' },
-  { icon: Gavel, title: 'زايد أو اشترِ', body: 'زايد في المزادات، أو اشترِ مباشرة، أو أرسل عرضك للبائع.' },
-  { icon: Timer, title: 'تابع مزايداتك', body: 'صفحة مزايداتي تُظهر أين أنت الأعلى وأين تمت المزايدة عليك.' },
-  {
-    icon: HandCoins,
-    title: 'سدّد ونحن نحفظ مالك',
-    body: 'تسدّد عبر المنصّة فيبقى مبلغك محفوظًا لدينا لا يصل البائع، وبعد نقل الملكية تتحقّق الإدارة ثم تحوّل المبلغ للبائع. ولك أن تفتح تذكرة استفسار أو اعتراض في أيّ وقت قبل التحويل.',
-  },
-]
-
-const RULES = [
-  'المزايدة وقبول العرض التزام بيعي داخل السوق.',
-  'ما تُقبل المزايدة إلا إذا بلغت المبلغ المطلوب أو زادت عليه.',
-  'لا يمكنك المزايدة على إعلانك ولا على نفسك وأنت أعلى مزايد.',
-  'وقت انتهاء المزاد واحد للجميع — ما يفرق إذا ساعة جوالك متقدّمة أو متأخّرة.',
-  'أي مزايدة صحيحة في الدقائق الأخيرة تمدّد المزاد تلقائيًا.',
-  'المزايدة الملغاة ما تختفي — تبقى ظاهرة في الكشف ومكتوب عليها أنها ملغاة.',
-]
+/*
+ * الأيقونات تبقى في الشيفرة والنصّ يأتي من الإدارة.
+ *
+ * الأيقونة اختيارٌ تصميميّ يقابل موضعًا لا كلمة، فلو تُركت لحقلٍ نصّي لخرجت
+ * خطوةٌ بلا رمز أو رمزٌ لا يشبه خطوته. والترتيب هو الرابط بينهما: الخطوة
+ * الأولى تأخذ الأيقونة الأولى، ولذلك عددُ الخطوات مثبَّت عند أربعٍ في
+ * `PageSettings` — لا تُزاد من الإدارة ولا تُنقص.
+ */
+const SELLER_ICONS = [Plus, Tag, LayoutGrid, ShieldCheck]
+const BUYER_ICONS = [LayoutGrid, Gavel, Timer, HandCoins]
 
 export default async function HowItWorksPage() {
   /*
@@ -61,35 +41,35 @@ export default async function HowItWorksPage() {
    * وعدًا كاذبًا في الاتجاهين: البائع يتوقّع نقصًا لا يقع، والمنصّة تبدو
    * كأنّها تأخذ ما لا تأخذ.
    */
-  const { seller: sellerFee } = await getStore().getCommissionSettings()
+  const store = getStore()
+  const [{ seller: sellerFee }, { howItWorks: page }] = await Promise.all([
+    store.getCommissionSettings(),
+    store.getPageSettings(),
+  ])
   return (
     <PageShell>
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-extrabold sm:text-3xl">كيف يعمل السوق</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          سوق لتداول لوحات المركبات: كل لوحة إعلان مستقل، وصاحب الحساب الواحد يبيع ويشتري.
-        </p>
+        <h1 className="text-2xl font-extrabold sm:text-3xl">{page.title}</h1>
+        {page.intro && (
+          <p className="mt-2 text-sm leading-relaxed text-muted">{page.intro}</p>
+        )}
 
-        <Section title="إذا كنت بائعًا" steps={SELLER_STEPS} />
-        <Section title="إذا كنت مشتريًا" steps={BUYER_STEPS} />
+        <Section title={page.sellerTitle} steps={page.sellerSteps} icons={SELLER_ICONS} />
+        <Section title={page.buyerTitle} steps={page.buyerSteps} icons={BUYER_ICONS} />
 
         <section className="mt-8 rounded-2xl border border-gold-600/40 bg-gold-500/8 p-5">
           <h2 className="flex items-center gap-2 font-bold text-gold-600">
             <Lock className="size-4" />
-            السعر الاحتياطي
+            {page.reserveTitle}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            في المزادات يمكن للبائع تحديد سعر احتياطي سرّي. رقمه لا يظهر لأي مزايد في أي وقت، وإنما
-            تظهر <span className="text-paper">حالته</span> فقط: «تحقق» أو «لم يتحقق بعد». إن انتهى
-            المزاد دون بلوغه لا تُباع اللوحة.
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{page.reserveBody}</p>
         </section>
 
         <section className="mt-6 rounded-2xl border border-ink-600 bg-ink-800 p-5">
-          <h2 className="font-bold">قواعد التداول</h2>
+          <h2 className="font-bold">{page.rulesTitle}</h2>
           <ul className="mt-3 space-y-2">
-            {RULES.map((rule) => (
+            {page.rules.map((rule) => (
               <li key={rule} className="flex gap-2.5 text-sm leading-relaxed text-muted">
                 <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-gold-500" />
                 {rule}
@@ -99,13 +79,20 @@ export default async function HowItWorksPage() {
         </section>
 
         <section className="mt-6 rounded-2xl border border-ink-600 bg-ink-800 p-5">
-          <h2 className="font-bold">السداد ونقل الملكية</h2>
+          <h2 className="font-bold">{page.settlementTitle}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{page.settlementBody}</p>
+          {/*
+            * سطر العمولة يُولَّد ولا يُكتب.
+            *
+            * العمولة تُشغَّل وتُعطَّل من الإعدادات، وصفحةٌ تَعِد بخصمٍ معطَّل
+            * تُقرأ وعدًا كاذبًا في الاتجاهين: البائع يتوقّع نقصًا لا يقع،
+            * والمنصّة تبدو كأنّها تأخذ ما لا تأخذ. فبقي هذا السطر خارج ما
+            * يُحرَّر، يتبع القاعدة السارية لا ما كُتب في مربّع.
+            */}
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            يسدّد المشتري عبر المنصّة فيبقى المبلغ محفوظًا لديها، ثم ينقل البائع الملكية عبر
-            القنوات الرسمية ويرفع إثباتها. وتتحقّق الإدارة من النقل ثم تحوّل المبلغ إلى البائع
-            {sellerFee.enabled ? ' بعد خصم عمولة المنصّة وضريبتها' : ''} — لا يخرج المال إلا
-            بقرارها. وللمشتري أن يفتح تذكرة
-            استفسار أو اعتراض في أيّ وقت قبل التحويل، فيتوقّف التحويل حتى تفصل الإدارة.
+            {sellerFee.enabled
+              ? 'ويُقتطع من حصيلة البائع عمولة المنصّة وضريبتها قبل أن يصله المبلغ.'
+              : 'ولا تقتطع المنصّة عمولة على البيع حاليًا — يصل البائع كامل قيمة الصفقة.'}
           </p>
         </section>
 
@@ -127,26 +114,32 @@ export default async function HowItWorksPage() {
 function Section({
   title,
   steps,
+  icons,
 }: {
   title: string
-  steps: { icon: typeof Gavel; title: string; body: string }[]
+  steps: { title: string; body: string }[]
+  /** بالترتيب نفسه — الخطوة الأولى تأخذ الأولى */
+  icons: React.ElementType[]
 }) {
   return (
     <section className="mt-8">
       <h2 className="mb-4 text-lg font-extrabold">{title}</h2>
       <ol className="grid gap-4 sm:grid-cols-2">
-        {steps.map((step, index) => (
-          <li key={step.title} className="rounded-2xl border border-ink-600 bg-ink-800 p-5">
+        {steps.map((step, index) => {
+          const Icon = icons[index] ?? icons[0]
+          return (
+          <li key={index} className="rounded-2xl border border-ink-600 bg-ink-800 p-5">
             <div className="mb-3 flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-xl bg-gold-500/15 text-gold-500">
-                <step.icon className="size-4.5" />
+                <Icon className="size-4.5" />
               </span>
               <span className="text-xs font-bold text-muted">الخطوة {index + 1}</span>
             </div>
             <h3 className="font-bold">{step.title}</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">{step.body}</p>
           </li>
-        ))}
+          )
+        })}
       </ol>
     </section>
   )

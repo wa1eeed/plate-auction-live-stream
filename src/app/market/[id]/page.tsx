@@ -52,8 +52,13 @@ export default async function ListingPage({
   // عدّاد المشاهدات يتجاهل صاحب الإعلان
   if (!user || user.id !== detail.seller.id) await getStore().incrementViews(id)
 
-  // الأسئلة المعلّمة «تظهر في صفحة المزاد» فقط — لا كل الأسئلة
-  const faq = await listPublicFaq(true)
+  /*
+   * أسئلة هذه الطريقة وحدها.
+   *
+   * الصفحة ثلاثٌ في واحدة — مزادٌ وبيعٌ مباشر وسوم — وسؤال العربون لا موضع
+   * له أسفل لوحةٍ تُشترى بضغطة، وسؤال «متى يصلني المبلغ؟» لا ينتظره مزايد.
+   */
+  const faq = await listPublicFaq(detail.saleType)
 
   /*
    * الرجوع إلى حيث دخل الزائر لا إلى السوق دائمًا.

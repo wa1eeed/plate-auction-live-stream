@@ -31,7 +31,15 @@ test.describe('سوق تداول اللوحات', () => {
   test('التصفّح العام يعمل بلا تسجيل، والتداول يتطلّب حسابًا', async ({ page }) => {
     await page.goto('/market')
     // المستوى الأول تحديدًا: «السوق» يظهر أيضًا عنوانَ عمود في التذييل
-    await expect(page.getByRole('heading', { name: 'السوق', exact: true, level: 1 })).toBeVisible()
+    /*
+     * عنوان الصفحة موجودٌ غير مرئيّ.
+     *
+     * الشاشة الأولى في صفحة تصفّحٍ حقّها للمعروض لا لعنوانٍ يسمّي ما تحته،
+     * لكنّ صفحةً بلا `h1` ناقصةُ البنية عند قارئ الشاشة ومحرّك البحث.
+     */
+    await expect(
+      page.getByRole('heading', { name: 'السوق', exact: true, level: 1 }),
+    ).toBeAttached()
 
     const cards = page.locator('article')
     await expect(cards.first()).toBeVisible({ timeout: 15_000 })

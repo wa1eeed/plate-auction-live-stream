@@ -19,6 +19,7 @@ import {
   type Deposit,
   type Disbursement,
   type FaqItem,
+  type SaleType,
   type TaxInvoice,
   type LedgerEntry,
   type Listing,
@@ -623,9 +624,14 @@ export async function listFaqForAdmin(): Promise<FaqItem[]> {
   return getStore().listFaq()
 }
 
-/** الأسئلة المنشورة للعامة — تُستدعى من صفحة الأسئلة وصفحة الإعلان. */
-export async function listPublicFaq(onListingOnly = false): Promise<FaqItem[]> {
-  return getStore().listFaq({ publishedOnly: true, onListingOnly })
+/**
+ * الأسئلة المنشورة للعامة.
+ *
+ * بلا `saleType` تُرجع كلّ المنشور — وهي صفحة الأسئلة. ومعه تُرجع ما اختير
+ * لتلك الطريقة وحدها، فيقرأ المزايد ما يخصّ المزاد ولا يقرأ ما يخصّ السوم.
+ */
+export async function listPublicFaq(saleType?: SaleType): Promise<FaqItem[]> {
+  return getStore().listFaq({ publishedOnly: true, saleType })
 }
 
 export async function createFaq(input: NewFaqItem, adminId: string): Promise<FaqItem> {

@@ -7,16 +7,17 @@ import {
   Banknote,
   CreditCard,
   FileText,
+  FileType,
   HelpCircle,
   Landmark,
   LayoutDashboard,
   LayoutList,
-  Receipt,
+  Menu,
   PiggyBank,
+  Receipt,
   ScrollText,
   Settings,
   ShieldAlert,
-  Menu,
   Users,
 } from 'lucide-react'
 import {
@@ -83,6 +84,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   {
     title: 'النظام',
     links: [
+      { href: '/admin/pages', label: 'صفحات المنصّة', icon: FileType },
       { href: '/admin/faq', label: 'الأسئلة الشائعة', icon: HelpCircle },
       { href: '/admin/audit', label: 'سجلّ التدقيق', icon: ScrollText },
       { href: '/admin/settings', label: 'الإعدادات', icon: Settings },

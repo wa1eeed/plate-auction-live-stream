@@ -1205,7 +1205,7 @@ export function seedDatabase(db: MemoryDatabase): void {
     iso(-160 * HOUR),
   )
 
-  // أسئلة شائعة منشورة، بعضها يظهر أسفل صفحة المزاد
+  // أسئلة شائعة منشورة، ولكلٍّ طرقُ البيع التي تظهر أسفل صفحاتها
   const faqSeed: Omit<FaqItem, 'id' | 'createdAt' | 'updatedAt'>[] = [
     {
       question: 'ما السعر الاحتياطي؟ ولماذا لا أراه؟',
@@ -1214,7 +1214,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'general',
       sortOrder: 1,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
     },
     {
       question: 'ما العربون؟ ومتى يُخصم من رصيدي؟',
@@ -1223,7 +1223,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'deposit',
       sortOrder: 2,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction'],
     },
     {
       question: 'ماذا يحدث لعربوني إذا فزت؟',
@@ -1232,7 +1232,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'deposit',
       sortOrder: 3,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction'],
     },
     {
       question: 'خسرتُ المزاد — متى يعود عربوني؟',
@@ -1241,7 +1241,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'deposit',
       sortOrder: 4,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction'],
     },
     {
       question: 'كيف أشحن رصيد محفظتي؟',
@@ -1250,7 +1250,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'payment',
       sortOrder: 5,
       published: true,
-      showOnListing: false,
+      showOnSaleTypes: [],
     },
     {
       question: 'هل بيانات بطاقتي آمنة؟',
@@ -1259,7 +1259,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'payment',
       sortOrder: 6,
       published: true,
-      showOnListing: false,
+      showOnSaleTypes: [],
     },
     {
       question: 'كم يستغرق تأكيد الحوالة البنكية؟',
@@ -1268,7 +1268,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'payment',
       sortOrder: 7,
       published: true,
-      showOnListing: false,
+      showOnSaleTypes: [],
     },
     {
       question: 'هل على الصفقة عمولة؟ وكيف تُحتسب؟',
@@ -1277,7 +1277,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'payment',
       sortOrder: 8,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
     },
     {
       question: 'كيف يتم السداد ونقل الملكية؟',
@@ -1286,7 +1286,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'payment',
       sortOrder: 9,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
     },
     {
       question: 'ما التمديد التلقائي؟',
@@ -1295,7 +1295,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'bidding',
       sortOrder: 10,
       published: true,
-      showOnListing: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
     },
     {
       question: 'كيف أعرض لوحتي للبيع؟',
@@ -1304,7 +1304,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       category: 'selling',
       sortOrder: 11,
       published: true,
-      showOnListing: false,
+      showOnSaleTypes: [],
     },
   ]
   const faqNow = iso(-10 * 86_400_000)

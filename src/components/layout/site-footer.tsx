@@ -27,6 +27,8 @@ const COLUMNS = [
     title: 'المنصّة',
     links: [
       { href: '/how-it-works', label: 'كيف يعمل' },
+      { href: '/about', label: 'من نحن' },
+      { href: '/terms', label: 'الشروط والأحكام' },
       { href: '/faq', label: 'الأسئلة الشائعة' },
       { href: '/register', label: 'أنشئ حسابًا' },
       { href: '/login', label: 'تسجيل الدخول' },

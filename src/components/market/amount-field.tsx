@@ -31,6 +31,7 @@ export function AmountField({
   disabled,
   invalid,
   suffix = 'ريال',
+  size = 'lg',
   id,
   className,
 }: {
@@ -44,6 +45,11 @@ export function AmountField({
   disabled?: boolean
   invalid?: boolean
   suffix?: string
+  /**
+   * `lg` حيث المبلغ هو القرار — المزايدة والسوم.
+   * `md` في النماذج: أكبر من جيرانه ليُقرأ، ودون أن يُزاحمها.
+   */
+  size?: 'lg' | 'md'
   id?: string
   className?: string
 }) {
@@ -112,7 +118,8 @@ export function AmountField({
         }}
         className={cn(
           // النائب يُميَّز عن القيمة بخفوته ووزنه، وإلّا قُرئ مبلغًا مكتوبًا
-          'h-14 w-full rounded-xl border bg-ink-900 ps-3 text-center text-2xl font-extrabold tabular-nums leading-none outline-none transition-colors placeholder:font-bold placeholder:text-muted/45 focus:border-gold-600 disabled:opacity-60 sm:text-3xl',
+          'w-full rounded-xl border bg-ink-900 ps-3 font-extrabold tabular-nums leading-none outline-none transition-colors placeholder:font-bold placeholder:text-muted/45 focus:border-gold-600 disabled:opacity-60',
+          size === 'lg' ? 'h-14 text-center text-2xl sm:text-3xl' : 'h-12 text-start text-xl',
           suffix ? 'pe-12' : 'pe-3',
           invalid ? 'border-danger text-danger' : 'border-ink-600',
         )}

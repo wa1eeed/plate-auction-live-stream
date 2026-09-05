@@ -8,6 +8,7 @@ import type {
   Deposit,
   Disbursement,
   FaqItem,
+  SaleType,
   LedgerEntry,
   Listing,
   Notification,
@@ -23,6 +24,7 @@ import type {
   TaxInvoice,
   TaxSettings,
   BrandSettings,
+  PageSettings,
   User,
   Wallet,
 } from '@/lib/domain/types'
@@ -224,6 +226,8 @@ export interface AuctionStore {
   // ---------------------------------------------------- الضريبة وأوامر الصرف
   getBrandSettings(): Promise<BrandSettings>
   updateBrandSettings(patch: Partial<BrandSettings>): Promise<BrandSettings>
+  getPageSettings(): Promise<PageSettings>
+  updatePageSettings(patch: Partial<PageSettings>): Promise<PageSettings>
   getTaxSettings(): Promise<TaxSettings>
   updateTaxSettings(patch: Partial<TaxSettings>): Promise<TaxSettings>
 
@@ -246,7 +250,7 @@ export interface AuctionStore {
   updatePaymentSettings(patch: Partial<PaymentSettings>): Promise<PaymentSettings>
 
   // ---- الأسئلة الشائعة
-  listFaq(query?: { publishedOnly?: boolean; onListingOnly?: boolean }): Promise<FaqItem[]>
+  listFaq(query?: { publishedOnly?: boolean; saleType?: SaleType }): Promise<FaqItem[]>
   getFaq(id: string): Promise<FaqItem | null>
   createFaq(input: NewFaqItem): Promise<FaqItem>
   updateFaq(id: string, patch: Partial<FaqItem>): Promise<FaqItem>

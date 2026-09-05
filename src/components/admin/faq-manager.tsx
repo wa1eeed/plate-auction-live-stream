@@ -27,7 +27,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { FAQ_CATEGORIES, FAQ_CATEGORY_LABELS, type FaqCategory, type FaqItem } from '@/lib/domain/types'
+import {
+  FAQ_CATEGORIES,
+  FAQ_CATEGORY_LABELS,
+  SALE_TYPES,
+  SALE_TYPE_LABELS,
+  type FaqCategory,
+  type FaqItem,
+  type SaleType,
+} from '@/lib/domain/types'
 
 type Draft = {
   question: string
@@ -35,7 +43,7 @@ type Draft = {
   category: FaqCategory
   sortOrder: number
   published: boolean
-  showOnListing: boolean
+  showOnSaleTypes: SaleType[]
 }
 
 const EMPTY: Draft = {
@@ -44,7 +52,7 @@ const EMPTY: Draft = {
   category: 'general',
   sortOrder: 0,
   published: true,
-  showOnListing: false,
+  showOnSaleTypes: [],
 }
 
 /** إدارة الأسئلة الشائعة: إضافة وتعديل وحذف، وتحديد ما يظهر أسفل صفحة المزاد. */
@@ -119,7 +127,11 @@ export function FaqManager({ items }: { items: FaqItem[] }) {
                         </>
                       )}
                     </Badge>
-                    {item.showOnListing && <Badge variant="gold">يظهر في صفحة المزاد</Badge>}
+                    {item.showOnSaleTypes.map((type) => (
+                      <Badge key={type} variant="gold">
+                        {SALE_TYPE_LABELS[type]}
+                      </Badge>
+                    ))}
                     <span className="text-[11px] text-muted">ترتيب {item.sortOrder}</span>
                   </div>
                   <p className="font-bold">{item.question}</p>
@@ -139,7 +151,7 @@ export function FaqManager({ items }: { items: FaqItem[] }) {
                           category: item.category,
                           sortOrder: item.sortOrder,
                           published: item.published,
-                          showOnListing: item.showOnListing,
+                          showOnSaleTypes: item.showOnSaleTypes,
                         },
                       })
                     }
@@ -280,20 +292,47 @@ export function FaqManager({ items }: { items: FaqItem[] }) {
                   />
                 </label>
 
-                <label className="flex items-center justify-between rounded-xl border border-ink-600 bg-ink-900/60 p-3">
-                  <span className="text-sm font-semibold">
-                    يظهر أسفل صفحة المزاد
-                    <span className="block text-[11px] font-normal text-muted">
-                      للأسئلة التي يحتاجها المزايد قبل المزايدة مباشرة
-                    </span>
-                  </span>
-                  <Switch
-                    checked={editing.draft.showOnListing}
-                    onCheckedChange={(showOnListing) =>
-                      setEditing({ ...editing, draft: { ...editing.draft, showOnListing } })
-                    }
-                  />
-                </label>
+                {/*
+                  * أين يظهر السؤال أسفل صفحات اللوحات — لكل طريقة بيعٍ رايتها.
+                  *
+                  * كانت رايةً واحدة تُنزله على كل صفحة إعلان، والصفحات ثلاثٌ
+                  * تفترق أسئلتها: العربون والتمديد للمزايد، و«متى يصلني
+                  * المبلغ؟» لمن يشتري مباشرة. فسؤالٌ في غير موضعه يُقرأ حشوًا.
+                  */}
+                <fieldset className="rounded-xl border border-ink-600 bg-ink-900/60 p-3">
+                  <legend className="px-1 text-sm font-semibold">يظهر أسفل صفحات اللوحات</legend>
+                  <p className="mb-2.5 text-[11px] leading-relaxed text-muted">
+                    اختر طرق البيع التي يظهر السؤال أسفل صفحاتها. وبلا اختيار يبقى في صفحة
+                    الأسئلة وحدها.
+                  </p>
+                  <div className="space-y-1.5">
+                    {SALE_TYPES.map((type) => {
+                      const checked = editing.draft.showOnSaleTypes.includes(type)
+                      return (
+                        <label
+                          key={type}
+                          className="flex items-center justify-between rounded-lg border border-ink-600 bg-ink-900 px-3 py-2"
+                        >
+                          <span className="text-sm">{SALE_TYPE_LABELS[type]}</span>
+                          <Switch
+                            checked={checked}
+                            onCheckedChange={(next) =>
+                              setEditing({
+                                ...editing,
+                                draft: {
+                                  ...editing.draft,
+                                  showOnSaleTypes: next
+                                    ? [...editing.draft.showOnSaleTypes, type]
+                                    : editing.draft.showOnSaleTypes.filter((t) => t !== type),
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                </fieldset>
               </div>
             )}
 

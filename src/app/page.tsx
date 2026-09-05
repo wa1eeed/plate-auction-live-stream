@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Gavel, Lock, ShieldCheck, Tag, Timer, Wallet } from 'lucide-react'
+import { Gavel, Lock, ShieldCheck, Timer, Wallet } from 'lucide-react'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PageShell } from '@/components/layout/page-shell'
@@ -9,55 +9,25 @@ import { Card, CardContent } from '@/components/ui/card'
 import { config, DEMO_PRIMARY_USER } from '@/lib/config'
 import { getMarketListings } from '@/lib/server/market-service'
 import { getBrand } from '@/lib/server/brand-service'
+import { getStore } from '@/lib/store'
 import type { ListingCard } from '@/lib/domain/types'
 
 export const dynamic = 'force-dynamic'
 
-const FEATURES = [
-  {
-    icon: Lock,
-    title: 'سعرك الأدنى سرّك',
-    body: 'أقل سعر تقبل به تكتبه ولا يشوفه أحد غيرك — ولوحتك ما تنباع بأقل منه. المزايد يعرف بس إذا وصل له أو ما وصل.',
-  },
-  {
-    icon: Wallet,
-    title: 'عربون يضمن الجدّية',
-    body: 'نحجز العربون من محفظتك أول ما تزايد، فما يزايد عليك إلا اللي يقدر يدفع — ويرجع لك كامل لحظة ما تخسر.',
-  },
-  {
-    icon: Timer,
-    title: 'تمديد تلقائي',
-    body: 'أي مزايدة في آخر لحظة تزيد الوقت — عشان تكسب اللوحة بأعلى سعر مو بأسرع نت.',
-  },
-  {
-    icon: Gavel,
-    title: 'كل مزايدة مكشوفة',
-    body: 'كل مزايدة مكتوبة بوقتها ومبلغها، وحتى الملغاة تشوفها مكتوب عليها ملغاة — ما نخفي شي.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'ما تفوتك مزايدة',
-    body: 'تشوف كل مزايدة لحظة ما تنزل، بدون ما تحدّث الصفحة — فما تفوتك فرصة وأنت تنتظر.',
-  },
-  {
-    /*
-     * أوّل سؤال لمن يزن دفع عشرات الآلاف ليس «كيف يُحسم المزاد» بل «لو دفعت
-     * وما نُقلت؟». والجواب في المنتج فعلًا — حجز أمانة واعتراض واسترداد —
-     * وكان مدفونًا في «كيف تعمل المنصّة» بينما تعرض الواجهة ستّ ميزات تشغيل.
-     */
-    icon: Lock,
-    title: 'مالك محفوظ لين تستلم',
-    body: 'تدفع لنا مو للبائع، ونمسك مالك لين تنتقل اللوحة باسمك — وإذا ما انتقلت يرجع لك.'
-  },
-  {
-    icon: Tag,
-    title: 'حساب واحد يبيع ويشتري',
-    body: 'لوحاتي، محفظتي، مزايداتي، العروض، مشترياتي ومبيعاتي — كلها في مكان واحد.',
-  },
-]
+/*
+ * الأيقونات تبقى في الشيفرة والنصّ يأتي من الإدارة.
+ *
+ * الأيقونة رمزٌ يقابل موضعًا لا كلمة، فالترتيب هو الرابط: البطاقة الأولى
+ * تأخذ الأولى. ولذلك عدد البطاقات مثبَّتٌ عند ستٍّ في `PageSettings`.
+ */
+const FEATURE_ICONS = [Lock, Wallet, Timer, Gavel, ShieldCheck, ShieldCheck]
 
 export default async function HomePage() {
-  const [listings, brand] = await Promise.all([getMarketListings(), getBrand()])
+  const [listings, brand, pages] = await Promise.all([
+    getMarketListings(),
+    getBrand(),
+    getStore().getPageSettings(),
+  ])
   const serverTime = new Date().toISOString()
 
   const open = listings.filter((card) => card.status === 'active')
@@ -125,28 +95,30 @@ export default async function HomePage() {
         <section className="border-t border-ink-600/70 bg-ink-900/30">
           <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-extrabold sm:text-3xl">بِع واشترِ وأنت مطمئن</h2>
+              <h2 className="text-2xl font-extrabold sm:text-3xl">{pages.trust.title}</h2>
               <p className="mt-3 text-pretty text-sm leading-relaxed text-muted">
-                مالك محفوظ عندنا حتى تستلم لوحتك، وما يزايد عليك إلا اللي دافع عربونه،
-                وسعرك اللي ما تبي أحد يشوفه ما يشوفه أحد. كل شي مكتوب وواضح من أول خطوة.
+                {pages.trust.body}
               </p>
             </div>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((feature) => (
+              {pages.trust.features.map((feature, index) => {
+                const Icon = FEATURE_ICONS[index] ?? FEATURE_ICONS[0]
+                return (
                 <Card
-                  key={feature.title}
+                  key={index}
                   className="group transition-[transform,border-color] duration-[var(--duration-base)] ease-[var(--ease-smooth)] hover:-translate-y-1 hover:border-gold-600/50"
                 >
                   <CardContent className="p-5">
                     <span className="mb-3.5 flex size-10 items-center justify-center rounded-xl border border-gold-600/40 bg-gold-500/10 text-gold-500 transition-transform duration-[var(--duration-base)] ease-[var(--ease-spring)] group-hover:scale-110">
-                      <feature.icon className="size-4.5" />
+                      <Icon className="size-4.5" />
                     </span>
                     <h3 className="font-bold">{feature.title}</h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-muted">{feature.body}</p>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           </div>
         </section>
