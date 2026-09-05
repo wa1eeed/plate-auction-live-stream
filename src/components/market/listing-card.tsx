@@ -37,7 +37,13 @@ const SALE_VARIANT: Record<SaleType, 'gold' | 'success' | 'default'> = {
   offers: 'default',
 }
 
-/** وسمٌ صغير يقول للقارئ إنّ اللوحة له — بنصٍّ واحد أينما وقع. */
+/**
+ * وسمٌ صغير يقول للقارئ إنّ اللوحة له — بنصٍّ واحد أينما وقع.
+ *
+ * و«تابعة لك» لا «اللوحة تابعة لك»: الوسم يقع على اللوحة وبجانب رقمها، فذكرُ
+ * «اللوحة» فيه إعادةُ تسميةٍ لما تحته — ويطول على كعب البطاقة حيث يزاحم الرقم
+ * ونداءَ الفتح.
+ */
 export function OwnerTag({ className }: { className?: string }) {
   return (
     <span
@@ -47,7 +53,7 @@ export function OwnerTag({ className }: { className?: string }) {
       )}
     >
       <UserRound className="size-3" aria-hidden />
-      اللوحة تابعة لك
+      تابعة لك
     </span>
   )
 }
