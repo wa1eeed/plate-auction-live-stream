@@ -543,7 +543,23 @@ export function SaudiLicensePlate({
             * يعطي إحساس السطح المعدني المصقول. النسب محسوبة ليبقى الوجه أبيضَ
             * رسميًّا لا لامعًا زخرفيًّا.
             */}
-          <linearGradient id={`plate-face-${uid}`} x1="0" y1="0" x2="0.2" y2="1">
+          {/*
+            * وإحداثيّاته من فضاء اللوحة لا من صندوق كل شكل.
+            *
+            * الخانات المنفصلة تُملأ بهذا التدرّج نفسه، فبإحداثيّات الصندوق
+            * يعيد كلُّ خانةٍ التدرّجَ كاملًا في مساحتها: أربعُ لمعاتٍ صغيرة
+            * متطابقة بدل ضوءٍ واحدٍ يمرّ على الوجه. وبفضاء اللوحة تقتسم
+            * الخاناتُ مسحةً واحدة كما تقتسمها لوحةٌ متّصلة — وهو ما يجعل
+            * الطويلة تُقرأ سطحًا معدنيًّا واحدًا.
+            */}
+          <linearGradient
+            id={`plate-face-${uid}`}
+            gradientUnits="userSpaceOnUse"
+            x1={0}
+            y1={0}
+            x2={geo.width * 0.2}
+            y2={geo.height}
+          >
             <stop offset="0%" stopColor="#FFFFFF" />
             <stop offset="46%" stopColor="#FEFEFF" />
             <stop offset="58%" stopColor="#F9FAFC" />
@@ -563,6 +579,46 @@ export function SaudiLicensePlate({
               <feDropShadow dx="-1.1" dy="-1.3" stdDeviation="0" floodColor="#FFFFFF" floodOpacity="0.95" />
               <feDropShadow dx="1" dy="1.2" stdDeviation="0" floodColor="#5B6472" floodOpacity="0.55" />
               <feDropShadow dx="2.2" dy="2.8" stdDeviation="2.2" floodColor="#0A0D12" floodOpacity="0.3" />
+            </filter>
+          )}
+          {/*
+            * الخانة محفورةٌ في الوجه لا ملصوقةٌ عليه.
+            *
+            * ظلٌّ داخليّ من أعلاها يجعلها تغور تحت مستوى الإطار — وهو ما
+            * تفعله اللوحة الحقيقية: الخانات مضغوطةٌ في المعدن. وبدونه تُقرأ
+            * أربعَ بطاقاتٍ بيضاء مسطّحة موضوعةٍ على أرضيّة سوداء.
+            */}
+          {geo.cells && (
+            <filter
+              id={`plate-inset-${uid}`}
+              x="-12%"
+              y="-30%"
+              width="124%"
+              height="160%"
+            >
+              {/*
+                * الإزاحة أصغر من التمويه، والاتجاه من حيث يأتي الضوء.
+                *
+                * بإزاحةٍ تقارب التمويه يخرج الظلُّ خطًّا داكنًا حادًّا على
+                * الحافّة — يُقرأ حدًّا مرسومًا لا عمقًا. وبتمويهٍ ضعفَها يذوب
+                * في الوجه فيُقرأ تغويرًا. والإزاحة إلى أسفلَ ويمينٍ تترك الظلّ
+                * في الأعلى واليسار — حيث يقع لو جاء الضوء من هناك، وهو من
+                * حيث يأتي في تدرّج الوجه نفسه.
+                */}
+              <feOffset
+                in="SourceAlpha"
+                dx={geo.height * 0.008}
+                dy={geo.height * 0.010}
+                result="off"
+              />
+              <feGaussianBlur in="off" stdDeviation={geo.height * 0.019} result="blr" />
+              <feComposite in="blr" in2="SourceAlpha" operator="out" result="cut" />
+              <feFlood floodColor="#0A0D12" floodOpacity="0.24" result="ink" />
+              <feComposite in="ink" in2="cut" operator="in" result="shade" />
+              <feMerge>
+                <feMergeNode in="SourceGraphic" />
+                <feMergeNode in="shade" />
+              </feMerge>
             </filter>
           )}
           <linearGradient id={`plate-sheen-${uid}`} x1="0" y1="0" x2="1" y2="1">
@@ -594,24 +650,29 @@ export function SaudiLicensePlate({
             strokeWidth={geo.inset}
           />
 
-          <g clipPath={`url(#plate-clip-${uid})`} filter={embossed ? `url(#plate-emboss-${uid})` : undefined}>
-            {/*
-              * الخانات المنفصلة: أرضيّةٌ سوداء يُرسم فوقها البياض.
-              *
-              * الوجه المرسوم أصلًا أبيضُ كلّه، فلو رُسم الأسود بينها لصار
-              * أربعة مستطيلاتٍ سوداء تُحاذي أربعة بيضاء وتتراكب حوافّها. وطلاء
-              * الأرضيّة أوّلًا ثمّ وضع البياض عليها يُنتج الفراغ نفسه بحدٍّ
-              * واحدٍ نظيف.
-              */}
-            {geo.cells && (
-              <>
-                <rect
-                  x={geo.inset}
-                  y={geo.inset}
-                  width={geo.width - geo.inset * 2}
-                  height={geo.height - geo.inset * 2}
-                  fill="#0A0D12"
-                />
+          {/*
+            * الخانات المنفصلة: أرضيّةٌ سوداء يُرسم فوقها البياض.
+            *
+            * الوجه المرسوم أصلًا أبيضُ كلّه، فلو رُسم الأسود بينها لصار
+            * أربعة مستطيلاتٍ سوداء تُحاذي أربعة بيضاء وتتراكب حوافّها. وطلاء
+            * الأرضيّة أوّلًا ثمّ وضع البياض عليها يُنتج الفراغ نفسه بحدٍّ
+            * واحدٍ نظيف.
+            *
+            * **وتُرسم خارج مرشِّح النقش.** النقشُ ظلٌّ خارجيّ يُبرز ما تحته عن
+            * سطحه، وهو حقُّ الحرف لا حقُّ الخانة: كان يقع عليها فتُقرأ بطاقةً
+            * ناتئةً موضوعةً على الأرضيّة، وهي في اللوحة الحقيقية **محفورةٌ
+            * فيها**. فصار لها مرشِّحها: ظلٌّ داخليّ يُغوّرها.
+            */}
+          {geo.cells && (
+            <g clipPath={`url(#plate-clip-${uid})`}>
+              <rect
+                x={geo.inset}
+                y={geo.inset}
+                width={geo.width - geo.inset * 2}
+                height={geo.height - geo.inset * 2}
+                fill="#0A0D12"
+              />
+              <g filter={`url(#plate-inset-${uid})`}>
                 {geo.cells.map((cell) => (
                   <rect
                     key={`${cell.x}-${cell.y}`}
@@ -623,8 +684,22 @@ export function SaudiLicensePlate({
                     fill={`url(#plate-face-${uid})`}
                   />
                 ))}
-              </>
-            )}
+                {/* كتلة الدولة خانةٌ مثلها، فتُحفر معها لا تطفو فوقها */}
+                {country && (
+                  <rect
+                    x={country.x}
+                    y={country.y}
+                    width={country.width}
+                    height={country.height}
+                    rx={geo.cellRadius}
+                    fill={countryFill ?? `url(#plate-face-${uid})`}
+                  />
+                )}
+              </g>
+            </g>
+          )}
+
+          <g clipPath={`url(#plate-clip-${uid})`} filter={embossed ? `url(#plate-emboss-${uid})` : undefined}>
 
             {/* أرضيّة خانة الدولة — زرقاء في لوحات النقل */}
             {/*
@@ -637,14 +712,16 @@ export function SaudiLicensePlate({
               */}
             {country && (
               <>
-                <rect
-                  x={country.x}
-                  y={country.y}
-                  width={country.width}
-                  height={country.height}
-                  rx={geo.cellRadius}
-                  fill={countryFill ?? `url(#plate-face-${uid})`}
-                />
+                {!geo.cells && (
+                  <rect
+                    x={country.x}
+                    y={country.y}
+                    width={country.width}
+                    height={country.height}
+                    rx={geo.cellRadius}
+                    fill={countryFill ?? `url(#plate-face-${uid})`}
+                  />
+                )}
 
                 <Unflip x={country.x + country.width / 2} active={mirrored}>
                   <g>
