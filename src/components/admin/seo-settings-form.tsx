@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Bot, Globe, Loader2, Save, Search, Share2 } from 'lucide-react'
+import { Bot, CheckCircle2, Globe, Loader2, Save, Search, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
@@ -76,10 +76,12 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
 
   return (
     <form onSubmit={submit} className="space-y-5">
+      <Explainer />
+
       <Section
         icon={Search}
         title="نتيجة البحث"
-        hint="ما يظهر في جوجل. اكتبه كما تريد أن يُقرأ، لا كما تُكرَّر فيه الكلمات."
+        hint="ما يقرؤه الباحث في جوجل قبل أن يضغط. اكتبه كما تريد أن يُقرأ لا كما تُكرَّر فيه الكلمات — تكرارها يخفض ترتيبك لا يرفعه."
       >
         <div className="space-y-4">
           <Counted
@@ -112,7 +114,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
 
           <ListField
             label="الكلمات المفتاحية"
-            hint="بفاصلة بينها. لا ترفع ترتيبك وحدها، لكنّها تصف الصفحة لمن يفهرسها."
+            hint="بفاصلة بينها. لا ترفع ترتيبك وحدها — جوجل يتجاهلها منذ سنين — لكنّ محرّكات أخرى ما زالت تقرؤها، وتفيد في وصف الصفحة."
             values={form.keywords}
             onChange={(v) => set('keywords', v)}
             placeholder="لوحات مميزة، مزاد لوحات"
@@ -123,7 +125,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
       <Section
         icon={Bot}
         title="محرّكات الإجابة"
-        hint="ما يُبنى منه تعريف الكيان في البيانات المنظَّمة — تقرؤه المساعدات التي تجيب بلا نقرة."
+        hint="حين يسأل أحدهم مساعدًا ذكيًّا «وين أبيع لوحتي؟» فهذه الحقول هي ما يجعله يذكرك بالاسم بدل أن يصفك وصفًا عامًّا."
       >
         <div className="space-y-4">
           <Field
@@ -134,7 +136,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
           />
           <ListField
             label="الحسابات الرسمية"
-            hint="روابط كاملة، بفاصلة بينها. تربط المنصّة بمواضعها الأخرى فتُعرَف كيانًا واحدًا."
+            hint="روابط كاملة بفاصلة بينها — إكس، إنستقرام، لينكدإن، سناب. تقول للمحرّك إنّ هذه الحسابات ومنصّتك شيءٌ واحد، فيجمع ذكرها كلّها لصالحك بدل أن يراها كيانات متفرّقة."
             values={form.sameAs}
             onChange={(v) => set('sameAs', v)}
             placeholder="https://x.com/... ، https://instagram.com/..."
@@ -146,7 +148,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
       <Section
         icon={Globe}
         title="الموضع"
-        hint="لمن تعمل هذه المنصّة وأين — يُقرأ في نتائج البحث المحلّي وفي إجابات المساعدات."
+        hint="من يبحث من الرياض تختلف نتائجه عمّن يبحث من خارج السعودية. وهذا ما يقول للمحرّك: هذه المنصّة تخدم هؤلاء."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -154,7 +156,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
             value={form.geoRegion}
             onChange={(v) => set('geoRegion', v)}
             dir="ltr"
-            hint="ISO 3166-2 — مثل SA أو SA-01"
+            hint="SA للسعودية كلّها، أو SA-01 للرياض تحديدًا"
             placeholder="SA-01"
           />
           <Field
@@ -166,13 +168,14 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
         </div>
       </Section>
 
-      <Section icon={Share2} title="التحقّق من الملكية" hint="رمز أدوات مشرفي المواقع لدى جوجل.">
-        <Field
-          label="Google site verification"
+      <Section
+        icon={Share2}
+        title="إثبات ملكيتك للموقع لدى جوجل"
+        hint="خطوةٌ تُفعل مرّة واحدة. بدونها لا تستطيع رؤية كلمات البحث التي تصلك، ولا طلب أرشفة صفحاتك، ولا معرفة أخطاء الفهرسة."
+      >
+        <VerificationField
           value={form.googleSiteVerification}
           onChange={(v) => set('googleSiteVerification', v)}
-          dir="ltr"
-          hint="المحتوى وحده، لا الوسم كاملًا"
         />
       </Section>
 
@@ -255,6 +258,193 @@ function ListField({
         }
       />
       <p className="text-[11px] leading-relaxed text-muted">{hint}</p>
+    </div>
+  )
+}
+
+/**
+ * الفروق الثلاثة — مشروحةً لا مُختصرةً في ثلاثة أحرف.
+ *
+ * «SEO» و«AEO» و«GEO» اختصاراتٌ لا تقول شيئًا لمن يشغّل منصّة. وما يحتاجه هو
+ * الفرق العمليّ: **مَن** يقرأ كلَّ حقل، و**متى** يظهر أثره، و**ماذا** يُملأ
+ * هنا من أجله. فبدونها يملأ الحقول كلّها بالكلمات نفسها ويظنّ أنّه فعل شيئًا.
+ */
+function Explainer() {
+  const rows = [
+    {
+      icon: Search,
+      code: 'SEO',
+      title: 'ظهورك في نتائج البحث',
+      who: 'جوجل وبِنق — حين يبحث أحدهم بنفسه',
+      what: 'العنوان والوصف اللذان يُقرآن في النتيجة، والكلمات التي تصف صفحاتك.',
+      when: 'تراه حين تبحث عن اسم منصّتك في جوجل.',
+      tone: 'gold' as const,
+    },
+    {
+      icon: Bot,
+      code: 'AEO',
+      title: 'ظهورك في الإجابات المباشرة',
+      who: 'المساعدات التي تُجيب بلا فتح موقع',
+      what: 'أسئلتك الشائعة تُرسَل بصيغة يفهمها الحاسوب، فتُقتبس إجابتك كما كتبتها.',
+      when: 'يسأل أحدهم «كيف أبيع لوحتي؟» فيأتي الجواب منك أنت.',
+      tone: 'success' as const,
+    },
+    {
+      icon: Globe,
+      code: 'GEO',
+      title: 'ظهورك لمن حولك',
+      who: 'محرّكات البحث حين تعرف موقع الباحث',
+      what: 'أين تعمل منصّتك، وباسم أيّ منشأة، وبأي حسابات تُعرف.',
+      when: 'يبحث أحدهم من الرياض فتُقدَّم على منصّة خارج السعودية.',
+      tone: 'sky' as const,
+    },
+  ]
+
+  const TONE = {
+    gold: 'bg-gold-500/12 text-gold-500',
+    success: 'bg-success/12 text-success',
+    sky: 'bg-ink-700 text-paper',
+  }
+
+  return (
+    <section className="surface rounded-2xl p-5">
+      <h3 className="text-sm font-extrabold">ثلاث جهات تقرأ منصّتك — ولكلٍّ حاجة</h3>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        ما تحته ليس ثلاث نسخ من الشيء نفسه. كلٌّ يُقرأ في موضعٍ مختلف، وملؤه
+        بالكلمات نفسها يُضيّع اثنين منها.
+      </p>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {rows.map((row) => (
+          <div key={row.code} className="rounded-xl border border-ink-600 bg-ink-900/50 p-4">
+            <p className="flex items-center gap-2">
+              <span className={cn('flex size-7 items-center justify-center rounded-lg', TONE[row.tone])}>
+                <row.icon className="size-3.5" />
+              </span>
+              <span className="text-sm font-extrabold">{row.title}</span>
+              <span
+                dir="ltr"
+                title="الاسم الشائع لهذا المجال"
+                className="ms-auto rounded-md bg-ink-700 px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted"
+              >
+                {row.code}
+              </span>
+            </p>
+
+            <dl className="mt-3 space-y-2 text-[11px] leading-relaxed">
+              <div>
+                <dt className="font-bold text-muted">من يقرؤه</dt>
+                <dd>{row.who}</dd>
+              </div>
+              <div>
+                <dt className="font-bold text-muted">ماذا تملأ هنا</dt>
+                <dd>{row.what}</dd>
+              </div>
+              <div>
+                <dt className="font-bold text-muted">متى ترى أثره</dt>
+                <dd className="text-muted">{row.when}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/*
+ * الرمز الذي يُطلب في «وسم HTML» لدى Google Search Console.
+ *
+ * الصيغة التي تعطيها جوجل هي الوسم كاملًا. ومن ينسخها كما هي — وهو ما يفعله
+ * الجميع — كان يُخزَّن عنده الوسم بأكمله في موضع المحتوى، فيخرج في الصفحة
+ * وسمًا داخل وسم فيفشل التحقّق بلا أن يُقال له لماذا.
+ */
+const TOKEN_IN_TAG = /content=["']([^"']+)["']/i
+
+export function extractToken(input: string): string {
+  const trimmed = input.trim()
+  const inTag = trimmed.match(TOKEN_IN_TAG)
+  return (inTag ? inTag[1] : trimmed).trim()
+}
+
+function VerificationField({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const done = value.length > 10
+
+  return (
+    <div className="space-y-4">
+      <ol className="space-y-2 rounded-xl border border-ink-600 bg-ink-900/50 p-4 text-xs leading-relaxed">
+        {[
+          <>
+            افتح{' '}
+            <a
+              href="https://search.google.com/search-console"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-gold-500 underline"
+            >
+              Google Search Console
+            </a>{' '}
+            وسجّل دخولك بحساب جوجل.
+          </>,
+          <>
+            اضغط <b>إضافة موقع</b> واختر النوع <b>بادئة عنوان URL</b> — لا «نطاق».
+          </>,
+          <>
+            اكتب عنوان منصّتك كاملًا، ثمّ من طرق التحقّق اختر <b>وسم HTML</b>.
+          </>,
+          <>
+            انسخ السطر الذي تعطيك إيّاه <b>كاملًا</b> والصقه في الحقل تحت — نستخرج منه ما
+            يلزم وحدنا.
+          </>,
+          <>
+            ارجع إلى جوجل واضغط <b>تحقّق</b>. (احفظ هنا أوّلًا، ثمّ انشر التحديث على
+            موقعك.)
+          </>,
+        ].map((step, index) => (
+          <li key={index} className="flex gap-2.5">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-ink-700 text-[10px] font-bold tabular-nums">
+              {index + 1}
+            </span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="gsc">الصق وسم جوجل هنا</Label>
+        <Input
+          id="gsc"
+          dir="ltr"
+          value={value}
+          placeholder='<meta name="google-site-verification" content="..." />'
+          onChange={(event) => onChange(extractToken(event.target.value))}
+        />
+        {done ? (
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-success">
+            <CheckCircle2 className="size-3.5" />
+            جاهز — سيُضاف هذا الوسم إلى كل صفحة بعد الحفظ والنشر
+          </p>
+        ) : (
+          <p className="text-[11px] text-muted">
+            الصق السطر كما نسخته من جوجل. لو لصقت الرمز وحده فهو مقبول أيضًا.
+          </p>
+        )}
+      </div>
+
+      {done && (
+        <div className="rounded-xl border border-ink-600 bg-ink-900/50 p-3">
+          <p className="mb-1.5 text-[11px] font-bold text-muted">ما سيظهر في صفحاتك</p>
+          <code dir="ltr" className="block break-all font-mono text-[11px] text-gold-500">
+            {`<meta name="google-site-verification" content="${value}" />`}
+          </code>
+        </div>
+      )}
     </div>
   )
 }
