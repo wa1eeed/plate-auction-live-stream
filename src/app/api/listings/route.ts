@@ -5,6 +5,7 @@ import { PLATE_TYPE_MAX_LETTERS, type PlateEmblem } from '@/lib/domain/types'
 import { handleError, ok, readJson } from '@/lib/server/api'
 import { getMarketListings } from '@/lib/server/market-service'
 import { requireUserId } from '@/lib/server/require-user'
+import { readUserSession } from '@/lib/server/session'
 import { getStore } from '@/lib/store'
 import { computeDeposit } from '@/lib/domain/types'
 
@@ -14,7 +15,11 @@ export async function GET() {
   try {
     // وقت الخادم يرافق البطاقات ليكون عدّادها حيًّا ومرجعه الخادم لا جهاز الزائر
     return ok(
-      { listings: await getMarketListings(), serverTime: new Date().toISOString() },
+      {
+        // الجلسة تُقرأ ولا تُشترط: التصفّح مفتوح، والوسم لمن دخل وحده
+        listings: await getMarketListings(undefined, (await readUserSession())?.userId ?? null),
+        serverTime: new Date().toISOString(),
+      },
       { headers: { 'cache-control': 'no-store' } },
     )
   } catch (error) {

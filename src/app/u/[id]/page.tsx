@@ -10,6 +10,7 @@ import { ShareButton } from '@/components/market/share-button'
 import { LocalTime } from '@/components/market/local-time'
 import { EmptyState } from '@/components/market/plate-row'
 import { getSellerShowcase } from '@/lib/server/market-service'
+import { getCurrentUser } from '@/lib/server/require-user'
 import { getBrand } from '@/lib/server/brand-service'
 import { arabicCount } from '@/lib/utils'
 
@@ -47,7 +48,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
  */
 export default async function SellerShowcasePage({ params }: { params: Params }) {
   const { id } = await params
-  const showcase = await getSellerShowcase(id)
+  // من فتح معرضه بنفسه يرى لوحاته موسومةً كما يراها في السوق
+  const viewer = await getCurrentUser()
+  const showcase = await getSellerShowcase(id, viewer?.id ?? null)
   if (!showcase) notFound()
 
   const { seller, cards } = showcase

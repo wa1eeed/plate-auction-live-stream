@@ -417,7 +417,17 @@ function priceLabelFor(saleType: SaleType, hasBids: boolean): string {
 }
 
 /** كل الإعلانات المعروضة في السوق. */
-export async function getMarketListings(sellerId?: string): Promise<ListingCard[]> {
+/**
+ * بطاقات السوق.
+ *
+ * `sellerId` يُصفّي، و`viewerId` يَسِم: الأولى تحدّد ما يُعرض، والثانية تُعلّم
+ * ما هو لصاحب الجلسة من بينه. ولا يخرج معرّف البائع في الحمولة — يُقارَن هنا
+ * وتخرج رايةٌ واحدة، فلا تُبنى من البطاقات خريطةُ من يملك ماذا.
+ */
+export async function getMarketListings(
+  sellerId?: string,
+  viewerId?: string | null,
+): Promise<ListingCard[]> {
   const store = getStore()
   await finalizeDueAuctions(store)
 
@@ -460,6 +470,7 @@ export async function getMarketListings(sellerId?: string): Promise<ListingCard[
       endsAt: listing.endsAt,
       remainingMs: remainingMs(listing, now),
       sellerName: seller?.displayName ?? 'مستخدم',
+      isMine: Boolean(viewerId) && listing.sellerId === viewerId,
       createdAt: listing.createdAt,
     })
   }
@@ -487,6 +498,8 @@ export async function getMarketListings(sellerId?: string): Promise<ListingCard[
  */
 export async function getSellerShowcase(
   idOrHandle: string,
+  /** صاحب الجلسة — يُوسم به ما هو له من بطاقات المعرض */
+  viewerId?: string | null,
 ): Promise<{ seller: PublicSeller; cards: ListingCard[] } | null> {
   const store = getStore()
   /*
@@ -507,7 +520,7 @@ export async function getSellerShowcase(
       city: user.city,
       memberSince: user.createdAt,
     },
-    cards: await getMarketListings(user.id),
+    cards: await getMarketListings(user.id, viewerId ?? null),
   }
 }
 

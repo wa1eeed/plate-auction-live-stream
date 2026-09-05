@@ -582,6 +582,13 @@ export type ListingCard = {
   endsAt: string | null
   remainingMs: number
   sellerName: string
+  /**
+   * الإعلان لصاحب الجلسة.
+   *
+   * يُحسب على الخادم بمقارنة البائع بالزائر، ولا يخرج معرّف البائع نفسه —
+   * فبطاقةٌ عامّة لا يُبنى منها من يملك ماذا.
+   */
+  isMine: boolean
   createdAt: string
 }
 

@@ -5,6 +5,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { PageShell } from '@/components/layout/page-shell'
 import { MarketGrid } from '@/components/market/market-grid'
 import { getMarketListings } from '@/lib/server/market-service'
+import { getCurrentUser } from '@/lib/server/require-user'
 import { SALE_TYPES, type SaleType } from '@/lib/domain/types'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,8 @@ export default async function MarketPage({
 }) {
   const { sale } = await searchParams
   const preset = SALE_TYPES.includes(sale as SaleType) ? (sale as SaleType) : undefined
-  const listings = await getMarketListings()
+  const viewer = await getCurrentUser()
+  const listings = await getMarketListings(undefined, viewer?.id ?? null)
 
   return (
     <PageShell>

@@ -26,7 +26,7 @@ export default async function ShowcasePage() {
   const user = await getStore().findUser(userId)
   if (!user) throw new Error('المستخدم غير موجود')
 
-  const published = (await getMarketListings(userId)).filter(
+  const published = (await getMarketListings(userId, userId)).filter(
     (card) => card.status === 'active',
   ).length
 

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, Gavel, HandCoins, Tag } from 'lucide-react'
+import { ArrowLeft, Gavel, HandCoins, Tag, UserRound } from 'lucide-react'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { Badge } from '@/components/ui/badge'
 import { formatAmount } from '@/lib/domain/money'
@@ -35,6 +35,21 @@ const SALE_VARIANT: Record<SaleType, 'gold' | 'success' | 'default'> = {
   auction: 'gold',
   fixed: 'success',
   offers: 'default',
+}
+
+/** وسمٌ صغير يقول للقارئ إنّ اللوحة له — بنصٍّ واحد أينما وقع. */
+export function OwnerTag({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 rounded-full border border-gold-600/45 bg-gold-500/10 px-2 py-0.5 text-[10px] font-bold leading-none text-gold-400',
+        className,
+      )}
+    >
+      <UserRound className="size-3" aria-hidden />
+      اللوحة تابعة لك
+    </span>
+  )
 }
 
 export function ListingCard({
@@ -242,12 +257,23 @@ export function ListingCard({
         * من سطرٍ محشور بين السعر وحافّة العمود.
         */}
       <p className="flex items-center justify-between gap-3 border-t border-ink-700 px-3 py-2.5 text-[11px] text-muted sm:px-4">
-        <span
-          dir="ltr"
-          title={REFERENCE_LABELS.listing}
-          className="shrink-0 tabular-nums text-muted/70"
-        >
-          {card.reference}
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            dir="ltr"
+            title={REFERENCE_LABELS.listing}
+            className="shrink-0 tabular-nums text-muted/70"
+          >
+            {card.reference}
+          </span>
+          {/*
+            * وسمُ الملكية بجانب رقم الإعلان.
+            *
+            * البطاقات متشابهة، ولوحةُ صاحبها بينها لا يميّزها شيء — فيفتحها
+            * ليزايد عليها، أو يمرّ عليها ولا يعرف أنّ عليه متابعتها. وموضعه
+            * الكعب لا الصدر: الصدر لما يُقرَّر به شراءً، وهذا خبرٌ عن القارئ
+            * لا عن اللوحة.
+            */}
+          {card.isMine && <OwnerTag />}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-400 transition-transform group-hover:-translate-x-0.5">
           {closed ? 'عرض التفاصيل' : card.saleType === 'fixed' ? 'اشترِ الآن' : 'التفاصيل والمزايدة'}

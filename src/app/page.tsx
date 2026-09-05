@@ -10,6 +10,7 @@ import { config, DEMO_PRIMARY_USER } from '@/lib/config'
 import { getMarketListings } from '@/lib/server/market-service'
 import { getBrand } from '@/lib/server/brand-service'
 import { getStore } from '@/lib/store'
+import { getCurrentUser } from '@/lib/server/require-user'
 import type { ListingCard } from '@/lib/domain/types'
 
 export const dynamic = 'force-dynamic'
@@ -23,8 +24,9 @@ export const dynamic = 'force-dynamic'
 const FEATURE_ICONS = [Lock, Wallet, Timer, Gavel, ShieldCheck, ShieldCheck]
 
 export default async function HomePage() {
+  const viewer = await getCurrentUser()
   const [listings, brand, pages] = await Promise.all([
-    getMarketListings(),
+    getMarketListings(undefined, viewer?.id ?? null),
     getBrand(),
     getStore().getPageSettings(),
   ])

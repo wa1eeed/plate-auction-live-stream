@@ -19,6 +19,7 @@ import { MobileBidBar } from '@/components/market/mobile-bid-bar'
 import { FaqList } from '@/components/market/faq-list'
 import { LocalTime, LocalZoneNote } from '@/components/market/local-time'
 import { Badge } from '@/components/ui/badge'
+import { OwnerTag } from '@/components/market/listing-card'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
@@ -142,6 +143,8 @@ export function ListingView({
               {SALE_TYPE_LABELS[detail.saleType]}
             </Badge>
             <Badge variant="muted">{PLATE_TYPE_LABELS[detail.plate.plateType]}</Badge>
+            {/* الوسم نفسه الذي في كعب البطاقة — لفظًا واحدًا لمعنًى واحد */}
+            {detail.isMine && <OwnerTag />}
             {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>}
             <ReferenceChip reference={detail.reference} />
 

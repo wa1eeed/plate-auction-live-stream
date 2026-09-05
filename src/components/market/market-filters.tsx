@@ -124,7 +124,18 @@ export function MarketFilters({
         onKeyDown={keys.onKeyDown}
         role="tablist"
         aria-label="طريقة البيع"
-        className="scrollbar-none -mb-px flex gap-1 overflow-x-auto border-b border-ink-600"
+        /*
+         * أربعة أقسام تقتسم العرض على الجوال — لا شريطٌ يفيض فيُسحب.
+         *
+         * كان `overflow-x-auto` وأربعةُ أزرارٍ تتجاوز ٣٧٥ بكسل، فيصير الشريط
+         * منطقة سحبٍ باللمس: تتحرّك التابات مع الإصبع في كل اتجاه وتتأرجح
+         * عند الطرفين بارتداد المتصفّح — وما يُلمس ليَنقُل لا يجوز أن ينزلق.
+         *
+         * والقسمة بـ`flex-1` تُدخل الأربعة في العرض مهما ضاق: تسقط الأيقونات
+         * ويضيق الحشو، فلا فيض ولا سحب. ويعود التمرير فوق `sm` حيث تتّسع
+         * الأسماء بأيقوناتها. وهو ما فُعل بتابات المعاملات قبلها.
+         */
+        className="scrollbar-none -mb-px flex border-b border-ink-600 max-sm:overscroll-x-contain sm:gap-1 sm:overflow-x-auto"
       >
         {SALE_TABS.map((tab) => {
           const active = value.saleType === tab.value
@@ -137,13 +148,15 @@ export function MarketFilters({
               tabIndex={tabIndexOf(active)}
               onClick={() => onChange({ ...value, saleType: tab.value as SaleType | 'all' })}
               className={cn(
-                'relative flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm transition-colors',
+                'relative flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-1 py-2.5 text-[13px] transition-colors',
+                'sm:flex-none sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm',
                 active
                   ? 'font-bold text-gold-500'
                   : 'font-semibold text-muted hover:text-paper',
               )}
             >
-              <tab.icon className="size-4" />
+              {/* الأيقونة زينةٌ يستغنى عنها حين يضيق العرض، والاسم لا يُستغنى عنه */}
+              <tab.icon className="hidden size-4 sm:block" />
               {tab.label}
               {active && (
                 <motion.span
@@ -192,11 +205,11 @@ export function MarketFilters({
           * يُعدّ ولا يُرسم — فيقرأ الزائر «عرض 12 من 47» وخمسٌ وثلاثون غائبة
           * بلا سبب ظاهر. ونظام التصميم يوجب عدّاد ما خُفي.
           */}
-        {value.availability !== 'all' && (
+        {value.availability !== DEFAULT_MARKET_FILTERS.availability && (
           <Chip
             label={AVAILABILITY_LABELS[value.availability]}
             onClear={() =>
-              onChange({ ...value, availability: 'all' })
+              onChange({ ...value, availability: DEFAULT_MARKET_FILTERS.availability })
             }
           />
         )}
@@ -217,7 +230,14 @@ function countRefinements(value: Filters): number {
   if (value.plateType !== DEFAULT_MARKET_FILTERS.plateType) count += 1
   if (value.letterCount !== DEFAULT_MARKET_FILTERS.letterCount) count += 1
   if (value.digitCount !== DEFAULT_MARKET_FILTERS.digitCount) count += 1
-  if (value.availability !== 'all') count += 1
+  /*
+   * والحالة الافتراضية لا تُعدّ.
+   *
+   * كان الشرط `!== 'all'` فيعدّ الافتراضيَّ `open` فلترًا: يفتح الزائر السوق
+   * ولم يلمس شيئًا فيجد «فلاتر ①» ورقاقةً تُنسب إليه اختيارًا لم يختره —
+   * ويبحث عمّا فعله ليُلغيه. وما خُفي يُقال في سطر الحصيلة («المغلقة
+   * والمباعة مخفيّة») لا برايةٍ تدّعي فعلًا.
+   */
   return count
 }
 
