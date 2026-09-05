@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { ImageUp, Loader2, Palette, Save, Trash2, Type } from 'lucide-react'
+import { Gavel, ImageUp, Loader2, Palette, Save, Trash2, Type } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
@@ -28,9 +28,9 @@ const ASSETS: {
   {
     key: 'logo',
     label: 'شعار المنصّة',
-    hint: 'يظهر في الترويسة والتذييل. مربّع، ويُفضَّل PNG شفّاف.',
-    ratio: 'aspect-square w-16',
-    preview: 'object-cover',
+    hint: 'يظهر في الترويسة والتذييل بارتفاعٍ ثابت وعرضٍ يتبع نسبته — لا يُقصّ. ويُفضَّل PNG شفّاف.',
+    ratio: 'aspect-[16/9] w-32',
+    preview: 'object-contain p-2',
   },
   {
     key: 'icon',
@@ -102,6 +102,7 @@ export function BrandSettingsForm({ settings }: { settings: BrandSettings }) {
         body: JSON.stringify({
           name: form.name,
           shortName: form.shortName,
+          brandDisplay: form.brandDisplay,
           heroBadge: form.heroBadge,
           heroTitle: form.heroTitle,
           heroHighlight: form.heroHighlight,
@@ -150,6 +151,58 @@ export function BrandSettingsForm({ settings }: { settings: BrandSettings }) {
             hint="في الترويسة، وفي «عنوان الصفحة — الاسم القصير»"
             required
           />
+        </div>
+      </Section>
+
+      <Section
+        icon={ImageUp}
+        title="ما يظهر في الترويسة"
+        hint="شعارٌ مكتوبٌ فيه اسم منصّتك يجعل الاسم بجانبه تكرارًا، وشعارٌ رمزيّ بلا اسم يترك الزائر لا يعرف أين هو."
+      >
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(
+            [
+              { value: 'logoAndName', label: 'الشعار والاسم', hint: 'الافتراضي' },
+              { value: 'logoOnly', label: 'الشعار وحده', hint: 'إن كان اسمك في الشعار' },
+              { value: 'nameOnly', label: 'الاسم وحده', hint: 'بلا صورة' },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => set('brandDisplay', option.value)}
+              className={cn(
+                'rounded-xl border p-3 text-start transition-colors',
+                form.brandDisplay === option.value
+                  ? 'border-gold-600 bg-gold-500/10'
+                  : 'border-ink-600 bg-ink-900/40 hover:border-gold-600/40',
+              )}
+            >
+              {/* معاينةٌ بالشكل نفسه: ما يُختار يُرى لا يُوصف */}
+              <span className="mb-2 flex h-9 items-center gap-2">
+                {option.value !== 'nameOnly' &&
+                  (form.logo ? (
+                    <Image
+                      src={`data:${form.logo.mime};base64,${form.logo.data}`}
+                      alt=""
+                      width={80}
+                      height={36}
+                      unoptimized
+                      className="h-9 w-auto max-w-[5rem] object-contain"
+                    />
+                  ) : (
+                    <span className="flex size-9 items-center justify-center rounded-xl bg-gold-500 text-ink-950">
+                      <Gavel className="size-4" />
+                    </span>
+                  ))}
+                {option.value !== 'logoOnly' && (
+                  <span className="truncate text-sm font-extrabold">{form.shortName}</span>
+                )}
+              </span>
+              <span className="block text-xs font-bold">{option.label}</span>
+              <span className="block text-[11px] text-muted">{option.hint}</span>
+            </button>
+          ))}
         </div>
       </Section>
 

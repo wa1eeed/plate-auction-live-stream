@@ -334,13 +334,25 @@ test.describe('الجوال عند 360px', () => {
       )
       expect(overflow, `تمرير أفقي في ${path}`).toBeLessThanOrEqual(1)
     }
-    // واسم العمود يظهر بجانب قيمته في الجداول
-    await page.goto('/admin/users')
+    // واسم العمود يظهر بجانب قيمته في ما بقي جدولًا — وجدولٌ فيه صفوف
+    await page.goto('/admin/listings')
     const label = await page.evaluate(() => {
       const td = document.querySelector('.admin-table td')
       return td ? getComputedStyle(td, '::before').content : ''
     })
     expect(label.length).toBeGreaterThan(2)
+
+    /*
+     * والمستخدمون بطاقات كذلك — ولا بريد فيها.
+     *
+     * البريد لا يُقرَّر به شيء وهو يُمسح بالعين في قائمة، وهو بيانٌ شخصيّ
+     * يُعرض على شاشةٍ قد تُشارَك أو تُصوَّر. وموضعه صفحة صاحبه.
+     */
+    await page.goto('/admin/users')
+    const userCard = page.locator('li[data-row]').first()
+    await expect(userCard).toBeVisible()
+    await expect(userCard).not.toContainText('@demo.sa')
+    expect(await page.locator('.admin-table').count()).toBe(0)
 
     // والصفقات بطاقات ممتدّة لا جدولًا: كل ما يُقرأ ويُفعل داخل البطاقة
     await page.goto('/admin/orders')

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HANDLE_PATTERN, RESERVED_HANDLES } from './types'
 import { normalizeArabicLetters, normalizePlateNumbers } from '@/lib/saudi-plate-mapping'
 import {
   FAQ_CATEGORIES,
@@ -65,8 +66,25 @@ export const socialHandlesSchema = z.object({
   instagram: socialHandleSchema,
 })
 
+/**
+ * المعرّف العلنيّ — يُختار عند التسجيل لا بعده.
+ *
+ * هو رابط معرضه: `/@waleed`. واختياره في النموذج يجعله جزءًا من الحساب منذ
+ * لحظته، فلا يبقى صاحبه برابطٍ رقميّ طويل حتى يكتشف الصفحة التي تُغيّره.
+ */
+export const handleSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((value) => value.replace(/^@+/, ''))
+  .refine((value) => HANDLE_PATTERN.test(value), {
+    message: 'حروف لاتينية صغيرة وأرقام وشرطة سفلية، من ٣ إلى ٣٠ خانة',
+  })
+  .refine((value) => !RESERVED_HANDLES.has(value), { message: 'هذا المعرّف محجوز' })
+
 export const registerSchema = loginSchema.extend({
   displayName: displayNameSchema,
+  handle: handleSchema,
   phone: saudiPhoneSchema.optional().or(z.literal('')),
   social: socialHandlesSchema.optional(),
   acceptedTerms: z.literal(true, {

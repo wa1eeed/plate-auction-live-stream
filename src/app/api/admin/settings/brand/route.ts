@@ -30,6 +30,7 @@ const listOfUrls = z
 const brandSchema = z.object({
   name: z.string().trim().min(2, 'اسم المنصّة مطلوب').max(80),
   shortName: z.string().trim().min(2, 'الاسم القصير مطلوب').max(40),
+  brandDisplay: z.enum(['logoAndName', 'logoOnly', 'nameOnly']).default('logoAndName'),
 
   heroBadge: z.string().trim().max(80).default(''),
   heroTitle: z.string().trim().min(2).max(120),

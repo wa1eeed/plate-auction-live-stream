@@ -216,10 +216,21 @@ export class MemoryStore implements AuctionStore {
     displayName: string
     phone: string | null
     social?: SocialHandles
+    handle?: string | null
   }): Promise<User> {
     const email = input.email.trim().toLowerCase()
     if (this.db.users.some((u) => u.email === email)) {
       throw new Error('البريد الإلكتروني مستخدم مسبقًا')
+    }
+    /*
+     * التفرّد يُحرَس هنا لا في الطلب وحده.
+     *
+     * الفحص في المسار ثمّ الإنشاء بعده يترك ثغرةً بين اللحظتين: طلبان
+     * متزامنان بالمعرّف نفسه يمرّان معًا. والحارس عند الكتابة يُغلقها.
+     */
+    const handle = input.handle?.trim().toLowerCase() || null
+    if (handle && this.db.users.some((u) => u.handle === handle)) {
+      throw new Error('المعرّف مستخدم مسبقًا')
     }
     const account: UserAccount = {
       id: newId('usr'),
@@ -227,8 +238,7 @@ export class MemoryStore implements AuctionStore {
       email,
       displayName: input.displayName,
       phone: input.phone,
-      // بلا معرّف علنيّ حتى يختاره: رابطه بمعرّفه الداخليّ إلى أن يفعل
-      handle: null,
+      handle,
       showcaseUsesHandle: false,
       city: null,
       avatarUrl: null,

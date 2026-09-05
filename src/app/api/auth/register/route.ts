@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       email: body.email,
       passwordHash: hashPassword(body.password),
       displayName: body.displayName,
+      handle: body.handle,
       phone: body.phone ? body.phone : null,
       social: {
         tiktok: body.social?.tiktok ?? null,

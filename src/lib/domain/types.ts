@@ -847,6 +847,12 @@ export type AdminUserRow = {
   id: string
   reference: string
   displayName: string
+  /** معرّفه العلنيّ — يُعرَض إلى جانب رقم عضويته */
+  handle: string | null
+  /*
+   * البريد يبقى في السطر لأنّ **البحث** يجري عليه — والدعم يُسأل به.
+   * وعرضُه في البطاقة شيءٌ آخر: انظر صفحة القائمة.
+   */
   email: string
   phone: string | null
   city: string | null
@@ -1426,6 +1432,14 @@ export type BrandSettings = {
   name: string
   /** الاسم القصير — في الترويسة وفي `%s — الاسم` */
   shortName: string
+  /**
+   * ما يظهر في الترويسة والتذييل.
+   *
+   * شعارٌ مرفوعٌ مكتوبٌ فيه اسم المنصّة يجعل الاسم بجانبه تكرارًا، وشعارٌ رمزيّ
+   * بلا اسم يترك الزائر لا يعرف أين هو. فالاختيار لصاحب النسخة لا حكمٌ واحد
+   * يُفرَض على الشكلين.
+   */
+  brandDisplay: 'logoAndName' | 'logoOnly' | 'nameOnly'
 
   // ---- نصّ الواجهة الأولى
   heroBadge: string
@@ -1462,6 +1476,7 @@ export type BrandSettings = {
 export const DEFAULT_BRAND_SETTINGS: Omit<BrandSettings, 'updatedAt' | 'updatedByAdminId'> = {
   name: 'سوق تداول لوحات المركبات',
   shortName: 'سوق اللوحات',
+  brandDisplay: 'logoAndName',
   heroBadge: 'سوق تداول لوحات المركبات',
   heroTitle: 'لوحتك تسوى أكثر',
   heroHighlight: 'بِعها بسعرها الصح',

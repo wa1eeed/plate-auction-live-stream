@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { HANDLE_PATTERN } from '@/lib/domain/types'
+import { HandleField } from './handle-field'
 import { SOCIAL_LABELS, SOCIAL_PLATFORMS } from '@/lib/domain/types'
 import { toast } from 'sonner'
 import { Loader2, LogIn, UserPlus } from 'lucide-react'
@@ -21,6 +23,7 @@ const schema = z
     email: z.string().trim().email('البريد الإلكتروني غير صحيح'),
     password: z.string().min(8, 'كلمة المرور 8 أحرف على الأقل'),
     displayName: z.string().trim().max(40, 'الاسم طويل جدًا').optional(),
+    handle: z.string().trim().optional(),
     phone: z.string().trim().optional(),
     tiktok: z.string().trim().optional(),
     snapchat: z.string().trim().optional(),
@@ -31,6 +34,13 @@ const schema = z
     if (values.mode !== 'register') return
     if ((values.displayName ?? '').trim().length < 2) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['displayName'], message: 'أدخل اسمك' })
+    }
+    if (!HANDLE_PATTERN.test((values.handle ?? '').trim().toLowerCase())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['handle'],
+        message: 'حروف لاتينية صغيرة وأرقام وشرطة سفلية، من ٣ إلى ٣٠ خانة',
+      })
     }
     if (values.phone && !/^(?:\+?966|0)?5\d{8}$/.test(values.phone.replace(/[\s-]/g, ''))) {
       ctx.addIssue({
@@ -67,6 +77,7 @@ export function AuthForm({
       email: demo?.email ?? '',
       password: demo?.password ?? '',
       displayName: '',
+      handle: '',
       phone: '',
       acceptedTerms: false,
     },
@@ -82,6 +93,7 @@ export function AuthForm({
               email: values.email,
               password: values.password,
               displayName: values.displayName,
+              handle: values.handle,
               phone: values.phone || '',
               social: {
                 tiktok: values.tiktok || null,
@@ -135,6 +147,16 @@ export function AuthForm({
           {form.formState.errors.displayName && (
             <p className="text-xs text-danger">{form.formState.errors.displayName.message}</p>
           )}
+        </div>
+      )}
+
+      {mode === 'register' && (
+        <div className="space-y-1.5">
+          <HandleField
+            value={form.watch('handle') ?? ''}
+            onChange={(value: string) => form.setValue('handle', value, { shouldValidate: true })}
+            error={form.formState.errors.handle?.message}
+          />
         </div>
       )}
 

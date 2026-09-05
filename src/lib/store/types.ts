@@ -132,6 +132,8 @@ export interface AuctionStore {
     displayName: string
     phone: string | null
     social?: SocialHandles
+    /** المعرّف العلنيّ — يُختار عند التسجيل، والتفرّد محروسٌ عند الكتابة */
+    handle?: string | null
   }): Promise<User>
   updateUser(id: string, patch: Partial<User>): Promise<User>
 

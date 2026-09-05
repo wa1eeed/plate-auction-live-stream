@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ExternalLink, Instagram, Phone, Music2, Ghost } from 'lucide-react'
+import { ExternalLink, Ghost, Instagram, Mail, Music2, Phone } from 'lucide-react'
 import {
   SOCIAL_LABELS,
   SOCIAL_PLATFORMS,
@@ -23,10 +23,18 @@ const ICONS: Record<SocialPlatform, React.ElementType> = {
  * جديدة فلا تُدفع الإدارة خارج لوحتها.
  */
 export function ContactCard({
+  email,
   phone,
   social,
   className,
 }: {
+  /*
+   * البريد هنا لا في قائمة المستخدمين.
+   *
+   * لا يُقرَّر به شيء وهو يُمسح بالعين في قائمة، وهو مع ذلك بيانٌ شخصيّ يُعرض
+   * على شاشةٍ قد تُشارَك أو تُصوَّر. وموضعه صفحة صاحبه، حيث يُقصَد قصدًا.
+   */
+  email: string
   phone: string | null
   social: SocialHandles
   className?: string
@@ -38,6 +46,15 @@ export function ContactCard({
       <h2 className="mb-3 text-sm font-bold">وسائل التواصل</h2>
 
       <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={`mailto:${email}`}
+          dir="ltr"
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-ink-600 bg-ink-900/60 px-3 py-1.5 text-xs font-bold transition-colors hover:border-gold-600/50 hover:text-gold-500"
+        >
+          <Mail className="size-3.5 shrink-0" />
+          <span className="truncate">{email}</span>
+        </a>
+
         {phone ? (
           <a
             href={`tel:${phone.replace(/\s/g, '')}`}

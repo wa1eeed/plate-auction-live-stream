@@ -5,6 +5,7 @@ import { loginAdmin, USERS } from './support/session'
 const DEFAULTS = {
   name: 'سوق تداول لوحات المركبات',
   shortName: 'سوق اللوحات',
+  brandDisplay: 'logoAndName',
   heroBadge: 'سوق تداول لوحات المركبات',
   heroTitle: 'لوحتك تسوى أكثر',
   heroHighlight: 'بِعها بسعرها الصح',
@@ -247,5 +248,59 @@ test.describe('أقسام الإعدادات', () => {
     await page.setViewportSize({ width: 1280, height: 900 })
     await expect(page.locator('[role="tablist"]')).toBeVisible()
     await expect(picker).toBeHidden()
+  })
+})
+
+test.describe('عرض الشعار', () => {
+  /*
+   * الشعار لا يُحبس في مربّع.
+   *
+   * كان يُقصّ داخل إطارٍ ذهبيّ مربّع بـ`object-cover`، فشعارٌ عريض يُقصّ طرفاه
+   * وشعارٌ فيه اسمٌ يُقرأ نصفه. والإطار زينةُ **البديل** لا الشعار نفسه.
+   */
+  test('يُعرض كاملًا بنسبته، والاسم يظهر أو يُخفى باختيار الإدارة', async ({ page, browser }) => {
+    await loginAdmin(page)
+
+    const wide = await page.evaluate(() => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 320
+      canvas.height = 90
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#7c3aed'
+      ctx.fillRect(0, 0, 320, 90)
+      return canvas.toDataURL('image/png').split(',')[1]
+    })
+
+    await setBrand(page, {
+      brandDisplay: 'logoOnly',
+      logo: { data: wide, mime: 'image/png', fileName: 'wide.png' },
+    })
+
+    const visitor = await browser.newContext()
+    const guest = await visitor.newPage()
+    await guest.goto('/market')
+
+    const logo = guest.locator('header img').first()
+    await expect(logo).toBeVisible()
+
+    const shape = await logo.evaluate((el) => {
+      const box = el.getBoundingClientRect()
+      return { ratio: box.width / box.height, fit: getComputedStyle(el).objectFit }
+    })
+    // نسبة الصورة ١٦:٤٫٥ محفوظة — لا مربّع
+    expect(shape.fit, 'الشعار مقصوص').toBe('contain')
+    expect(shape.ratio, `النسبة ${shape.ratio}`).toBeGreaterThan(2)
+
+    // و«الشعار وحده» يُخفي الاسم
+    await expect(guest.locator('header a').first()).not.toContainText('سوق اللوحات')
+
+    // ثمّ «الاسم وحده» يُخفي الصورة
+    await setBrand(page, { brandDisplay: 'nameOnly', logo: { data: wide, mime: 'image/png', fileName: 'wide.png' } })
+    await guest.reload()
+    await expect(guest.locator('header img')).toHaveCount(0)
+    await expect(guest.locator('header a').first()).toContainText('سوق اللوحات')
+
+    await setBrand(page, {})
+    await visitor.close()
   })
 })

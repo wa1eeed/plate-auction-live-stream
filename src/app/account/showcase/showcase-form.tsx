@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AtSign, Check, Copy, ExternalLink, Loader2, Save, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { HandleField } from '@/components/market/handle-field'
 import { showcasePath } from '@/lib/domain/reference'
 import { cn } from '@/lib/utils'
 
@@ -132,26 +131,13 @@ export function ShowcaseForm({
           </p>
 
           <div className="mt-4 space-y-1.5">
-            <Label htmlFor="handle">المعرّف</Label>
-            <div className="flex items-center gap-2">
-              <span className="shrink-0 font-mono text-sm text-muted" dir="ltr">
-                {origin.replace(/^https?:\/\//, '')}/@
-              </span>
-              <Input
-                id="handle"
-                dir="ltr"
-                value={handle}
-                placeholder="waleed"
-                onChange={(event) =>
-                  setHandle(event.target.value.replace(/^@+/, '').toLowerCase())
-                }
-                className="font-mono"
-              />
-            </div>
-            <p className="text-[11px] text-muted">
-              حروف لاتينية صغيرة وأرقام وشرطة سفلية، من ٣ إلى ٣٠ خانة. وروابطك القديمة
-              تبقى عاملة بعد تغييره.
-            </p>
+            {/* الحقل نفسه الذي في التسجيل — فحصُ توفّرٍ واحد لا اثنان يفترقان */}
+            <HandleField
+              value={handle}
+              onChange={setHandle}
+              label="المعرّف"
+              hint="حروف لاتينية صغيرة وأرقام وشرطة سفلية، من ٣ إلى ٣٠ خانة. وروابطك القديمة تبقى عاملة بعد تغييره."
+            />
           </div>
         </section>
 

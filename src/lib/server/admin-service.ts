@@ -158,6 +158,7 @@ export async function listUserRows(): Promise<AdminUserRow[]> {
       id: user.id,
       reference: user.reference,
       displayName: user.displayName,
+      handle: user.handle,
       email: user.email,
       phone: user.phone,
       city: user.city,

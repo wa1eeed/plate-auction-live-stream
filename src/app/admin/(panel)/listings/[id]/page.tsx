@@ -89,7 +89,7 @@ export default async function AdminListingPage({ params }: { params: Promise<{ i
         {live && <Badge variant="success">{compactCountdown(summary.remainingMs)}</Badge>}
       </div>
 
-      <ContactCard phone={seller.phone} social={seller.social} className="mb-5" />
+      <ContactCard email={seller.email} phone={seller.phone} social={seller.social} className="mb-5" />
 
       <div className="mb-5 grid gap-4 lg:grid-cols-[300px_1fr] lg:items-start">
         <div className="rounded-2xl border border-ink-600 bg-ink-800 p-4">

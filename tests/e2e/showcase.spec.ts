@@ -92,3 +92,40 @@ test.describe('معرض البائع العام', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText(USERS.waleed.name)
   })
 })
+
+test.describe('المعرّف العلنيّ عند التسجيل', () => {
+  /*
+   * يُختار في النموذج لا بعده.
+   *
+   * كان يُختار من صفحة المعرض بعد التسجيل، فيبقى صاحبه برابطٍ رقميّ طويل حتى
+   * يكتشف تلك الصفحة. والفحص أثناء الكتابة لا عند الإرسال: من ملأ النموذج
+   * كلّه ثمّ رُدّ عليه «المعرّف مأخوذ» يعيد قراءة كل حقلٍ ليعرف أين أخطأ.
+   */
+  test('يُفحص توفّره وأنت تكتب، ويُرفض المأخوذ والمحجوز', async ({ page }) => {
+    await page.goto('/register')
+
+    const handle = page.getByLabel('معرّفك')
+    await expect(handle).toBeVisible()
+
+    await handle.fill('waleed')
+    await expect(page.getByText('مأخوذ — جرّب غيره')).toBeVisible()
+
+    await handle.fill('admin')
+    await expect(page.getByText('هذا المعرّف محجوز')).toBeVisible()
+
+    const fresh = `tester${Date.now().toString(36)}`
+    await handle.fill(fresh)
+    await expect(page.getByText(new RegExp(`متاح`))).toBeVisible()
+
+    // ويصير رابط معرضه فور إنشاء حسابه
+    await page.getByLabel('الاسم').fill('سعد التجريبي')
+    await page.getByLabel('البريد الإلكتروني').fill(`${fresh}@demo.sa`)
+    await page.getByLabel('كلمة المرور').fill('demo1234')
+    await page.getByRole('checkbox').check()
+    await page.getByRole('button', { name: 'إنشاء الحساب' }).click()
+
+    await page.waitForURL(/\/account/, { timeout: 20_000 })
+    await page.goto(`/@${fresh}`)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('سعد التجريبي')
+  })
+})

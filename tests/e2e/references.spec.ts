@@ -104,11 +104,17 @@ test.describe('الأرقام في لوحة الإدارة', () => {
   test('عمود أول في جدولَي المستخدمين والإعلانات، والبحث يجدها', async ({ page }) => {
     await loginAdmin(page)
 
+    /*
+     * المستخدمون بطاقات لا جدولًا — والرقم بارزٌ في كلٍّ منها.
+     *
+     * والبحث يعمل عليه كما كان: هو ما يُملى في المراسلة، فيُلصق ليُفتح صاحبه.
+     */
     await page.goto('/admin/users')
-    await expect(page.getByRole('columnheader', { name: 'رقم العضوية' })).toBeVisible()
-    const userRef = (await page.locator('tbody tr').first().textContent())?.match(/U\d{2}-\d{5}/)?.[0]
+    const firstUser = page.locator('li[data-row]').first()
+    const userRef = (await firstUser.textContent())?.match(/U\d{2}-\d{5}/)?.[0]
+    expect(userRef, 'لا رقم عضوية في البطاقة').toBeTruthy()
     await page.getByLabel(/ابحث/).fill(userRef!)
-    await expect(page.locator('tbody tr:visible')).toHaveCount(1)
+    await expect(page.locator('li[data-row]:visible')).toHaveCount(1)
 
     await page.goto('/admin/listings')
     await expect(page.getByRole('columnheader', { name: 'رقم الإعلان' })).toBeVisible()
@@ -120,7 +126,7 @@ test.describe('الأرقام في لوحة الإدارة', () => {
   test('صفحة المستخدم: الرابط بالرقم المرجعي والرقم بارز قابل للنسخ', async ({ page }) => {
     await loginAdmin(page)
     await page.goto('/admin/users')
-    await page.locator('tbody tr').first().getByRole('link', { name: 'التفاصيل' }).click()
+    await page.locator('li[data-row]').first().click()
 
     // شريط العنوان يحمل ما يقرؤه الأدمن ويُمليه، لا معرّفًا داخليًا
     await page.waitForURL(/\/admin\/users\/U\d{2}-\d{5}$/)

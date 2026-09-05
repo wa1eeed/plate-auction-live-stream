@@ -10,6 +10,7 @@ import {
   Receipt,
   ShieldAlert,
   Wallet,
+  ExternalLink,
 } from 'lucide-react'
 import { AdminHeader, AdminTable, Money, Td, Tr } from '@/components/admin/admin-ui'
 import { WalletActions } from '@/components/admin/wallet-actions'
@@ -29,6 +30,7 @@ import {
 } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import { UserEditDialog } from '@/components/admin/user-edit-dialog'
+import { showcasePath } from '@/lib/domain/reference'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { ContactCard } from '@/components/admin/contact-card'
 import { formatAmount } from '@/lib/domain/money'
@@ -107,16 +109,38 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         }
       />
 
-      {/* رقم العضوية بارزًا لا مدفونًا في سطر: هو ما يُقتبَس في كل مراسلة عن
-          هذا الحساب، وما يحمله الرابط في شريط العنوان */}
+      {/*
+        * معرّفان لكلٍّ عمله.
+        *
+        * **رقم العضوية** داخليّ: يُقتبَس في المراسلة ويُكتب في الفواتير، ولا
+        * يتبدّل. و**المعرّف العلنيّ** هو رابط معرضه الذي يشاركه، ويملكه هو
+        * ويغيّره متى شاء. وخلطهما يجعل المشغّل يقتبس ما قد يتغيّر غدًا.
+        */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <ReferenceChip reference={user.reference} kind="user" />
+        {user.handle ? (
+          <a
+            href={showcasePath(user.handle)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="معرضه العام — يفتح في نافذة جديدة"
+            className="inline-flex items-center gap-1 rounded-lg border border-ink-600 bg-ink-800 px-2 py-1 font-mono text-[11px] font-bold text-paper transition-colors hover:border-gold-600/50 hover:text-gold-500"
+            dir="ltr"
+          >
+            @{user.handle}
+            <ExternalLink className="size-3" />
+          </a>
+        ) : (
+          <span className="rounded-lg border border-dashed border-ink-600 px-2 py-1 text-[11px] text-muted">
+            بلا معرّف علنيّ
+          </span>
+        )}
         <span className="text-xs text-muted">
-          {REFERENCE_LABELS.user} — اقتبسه في أي مراسلة عن هذا الحساب
+          {REFERENCE_LABELS.user} · والمعرّف العلنيّ رابط معرضه
         </span>
       </div>
 
-      <ContactCard phone={user.phone} social={user.social} className="mb-5" />
+      <ContactCard email={user.email} phone={user.phone} social={user.social} className="mb-5" />
 
       {flags.length > 0 && (
         <ul className="mb-5 flex flex-wrap gap-2">
