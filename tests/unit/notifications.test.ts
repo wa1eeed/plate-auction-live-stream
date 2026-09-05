@@ -200,22 +200,56 @@ describe('إشعارات نتيجة المزاد', () => {
 })
 
 describe('إشعارات العروض', () => {
-  it('تُنبّه البائع بعرض جديد والمشتري بقراره', async () => {
+  it('تُنبّه البائع بعرض جديد، وتُنبّه صاحبه بأنّه أُرسل', async () => {
     const listing = listingBy((l) => l.saleType === 'offers' && l.status === 'active')
     const buyer = db.users.find((u) => u.id !== listing.sellerId)!.id
 
-    const offer = await placeOffer({
+    await placeOffer({
       listingId: listing.id,
       buyerId: buyer,
       amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
     })
+
     expect(
       (await getNotifications(listing.sellerId)).items.some((n) => n.type === 'offer_received'),
     ).toBe(true)
 
+    /*
+     * والمرسِل يُشعَر بما أرسل.
+     *
+     * إشعارٌ بفعلِ صاحبه يبدو زائدًا حتى يُنتظر الردّ: العرض يُرسل ثمّ يُغلق
+     * اللسان، ولا يبقى منه أثرٌ إلّا في صفحةٍ يُبحث عنها.
+     */
+    const sent = (await getNotifications(buyer)).items.find((n) => n.type === 'offer_sent')
+    expect(sent, 'لا إشعار لمن أرسل عرضه').toBeTruthy()
+    expect(sent!.href).toBe('/account/offers')
+  })
+
+  it('قبولُ عرضٍ يُشعر صاحبه، ويُشعر من سقط عرضه بسببه', async () => {
+    const listing = listingBy((l) => l.saleType === 'offers' && l.status === 'active')
+    const [winner, loser] = db.users.filter((u) => u.id !== listing.sellerId).map((u) => u.id)
+    const floor = halalasToRiyals(listing.minimumOffer)
+
+    await placeOffer({ listingId: listing.id, buyerId: loser, amountRiyals: floor + 500 })
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: winner,
+      amountRiyals: floor + 1_000,
+    })
+
     await respondToOffer({ offerId: offer.id, sellerId: listing.sellerId, decision: 'accept' })
-    const buyerNotifications = await getNotifications(buyer)
-    expect(buyerNotifications.items.some((n) => n.type === 'offer_accepted')).toBe(true)
-    expect(buyerNotifications.items[0].href).toBe('/account/purchases')
+
+    const accepted = (await getNotifications(winner)).items.find((n) => n.type === 'offer_accepted')
+    expect(accepted, 'لا إشعار لمن قُبل عرضه').toBeTruthy()
+    expect(accepted!.href).toBe('/account/purchases')
+
+    /*
+     * ومن سقط عرضه ضمنًا يُشعَر كما يُشعَر من رُدّ صراحةً.
+     *
+     * كانت البقيّة تُغلق في صمت، فلا يعرف صاحبها أنّ اللوحة ذهبت إلّا أن يعود
+     * إلى الصفحة — وهو نظير «تجاوزك غيرك» في المزاد، وذاك يصل كل مزايدٍ قائم.
+     */
+    const declined = (await getNotifications(loser)).items.find((n) => n.type === 'offer_declined')
+    expect(declined, 'سقط عرضه في صمت').toBeTruthy()
   })
 })

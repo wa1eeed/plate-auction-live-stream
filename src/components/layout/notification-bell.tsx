@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bell, CheckCheck, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, ShieldAlert, ShieldCheck, ShieldX, Trophy, Wallet, XCircle } from 'lucide-react'
+import { Bell, CheckCheck, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trophy, Wallet, XCircle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ const ICONS: Record<NotificationType, React.ElementType> = {
   auction_won: Trophy,
   auction_lost: Gavel,
   reserve_not_met: Gavel,
+  offer_sent: Send,
   offer_received: HandCoins,
   offer_accepted: HandCoins,
   offer_declined: XCircle,
@@ -74,7 +75,19 @@ export function NotificationBell({ userId }: { userId: string }) {
       // صوت عند وصول جديد فقط — لا عند كل مزامنة
       if (data.unread > previousUnread.current) {
         const latest = data.items[0]
-        play(latest && URGENT.includes(latest.type) ? 'outbid' : 'alert')
+        /*
+         * لكل جنسٍ نبرته: العرض الوارد جرسٌ لطيف لا نبرةَ تحذير.
+         *
+         * والنبرة تُقرأ قبل النصّ — من سمع نبرة «تجاوزك غيرك» ظنّ مزادًا يفلت
+         * منه، وإنّما وصله عرضٌ ينتظر ردّه.
+         */
+        play(
+          latest?.type === 'offer_received'
+            ? 'offer-in'
+            : latest && URGENT.includes(latest.type)
+              ? 'outbid'
+              : 'alert',
+        )
       }
       previousUnread.current = data.unread
     } catch {

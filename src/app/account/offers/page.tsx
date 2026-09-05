@@ -25,7 +25,7 @@ export default async function OffersPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-extrabold">العروض</h1>
+        <h1 className="text-2xl font-extrabold">العروض والسومات</h1>
         <p className="mt-1 text-sm text-muted">عروض وردت على لوحاتك وعروض أرسلتها لغيرك.</p>
       </header>
 

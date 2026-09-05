@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
  * وهي **صامتة افتراضيًا**: صوت يفاجئ الزائر بلا إذنه تجربة سيّئة، والمتصفّحات
  * تمنع التشغيل قبل أول تفاعل على أي حال. من يفعّلها يُحفظ اختياره.
  */
-export type SoundName = 'bid' | 'outbid' | 'win' | 'tick' | 'alert' | 'success'
+export type SoundName = 'bid' | 'outbid' | 'win' | 'tick' | 'alert' | 'success' | 'offer-sent' | 'offer-in'
 
 /** نغمة كل حدث: ترددات صاعدة للفرح، هابطة للتنبيه. */
 const TONES: Record<SoundName, { freq: number[]; duration: number; type: OscillatorType; gain: number }> = {
@@ -28,6 +28,47 @@ const TONES: Record<SoundName, { freq: number[]; duration: number; type: Oscilla
   alert: { freq: [440, 440], duration: 0.2, type: 'triangle', gain: 0.14 },
   // نجاح عملية
   success: { freq: [587, 880], duration: 0.18, type: 'sine', gain: 0.13 },
+  // وصلك عرض: جرسٌ لطيف من درجتين، أرفع من نبرة المزايدة فيُميَّز عنها
+  'offer-in': { freq: [988, 1319], duration: 0.3, type: 'sine', gain: 0.12 },
+  // «أُرسل عرضك» لها مولّدها الخاص أدناه — والقيد هنا ليكتمل الجدول
+  'offer-sent': { freq: [880], duration: 0.24, type: 'sine', gain: 0.1 },
+}
+
+/**
+ * حفيفُ الإرسال — ضجيجٌ أبيض يمرّ بمصفاةٍ تصعد ترددها ثمّ يخفت.
+ *
+ * صوت «أُرسل» في الهواتف حفيفٌ صاعد لا نغمة: نَفَسٌ يبدأ ثقيلًا وينتهي رفيعًا،
+ * فيُقرأ ذهابًا لا تنبيهًا. والنغمات الموقّعة لا تؤدّيه مهما رُتّبت، فيُصنع من
+ * ضجيجٍ مولَّد تُحرّك مصفاتُه من ٤٠٠ إلى ٣٥٠٠ هرتز في ربع ثانية.
+ *
+ * ومولَّدٌ لا منسوخ: الأصل الذي في الهواتف عملٌ مملوك، وهذا يشبهه في الإحساس
+ * ولا يأخذ منه شيئًا.
+ */
+function playWhoosh(ctx: AudioContext): void {
+  const duration = 0.26
+  const now = ctx.currentTime
+  const frames = Math.floor(ctx.sampleRate * duration)
+  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate)
+  const channel = buffer.getChannelData(0)
+  for (let i = 0; i < frames; i += 1) channel[i] = Math.random() * 2 - 1
+
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.Q.value = 1.1
+  filter.frequency.setValueAtTime(400, now)
+  filter.frequency.exponentialRampToValueAtTime(3500, now + duration)
+
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(0.2, now + 0.045)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
+
+  source.connect(filter).connect(gain).connect(ctx.destination)
+  source.start(now)
+  source.stop(now + duration + 0.02)
 }
 
 const STORAGE_KEY = 'pa_sound'
@@ -52,6 +93,16 @@ function audioContext(): AudioContext | null {
 export function playTone(name: SoundName): void {
   const ctx = audioContext()
   if (!ctx) return
+
+  if (name === 'offer-sent') {
+    try {
+      playWhoosh(ctx)
+    } catch {
+      // جهاز لا يدعم الصوت — نتجاهل
+    }
+    return
+  }
+
   const tone = TONES[name]
 
   try {

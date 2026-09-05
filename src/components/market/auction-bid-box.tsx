@@ -7,10 +7,11 @@ import { toast } from 'sonner'
 import { Crown, Gavel, Loader2, LogIn, Minus, Plus, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { quickBidSteps } from '@/lib/domain/auction'
-import { formatAmount, halalasToRiyals, parseAmountInput } from '@/lib/domain/money'
+import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import type { ListingDetail } from '@/lib/domain/types'
 import { useSound } from '@/lib/hooks/use-sound'
 import { cn } from '@/lib/utils'
+import { AmountField } from './amount-field'
 
 function randomRequestId() {
   return `req_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
@@ -168,48 +169,36 @@ export function AuctionBidBox({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        {/* الضبط بالإبهام دون لوحة مفاتيح */}
+      <div className="flex items-stretch gap-2">
+        {/* الضبط بالإبهام دون لوحة مفاتيح — وارتفاعها يتبع الحقل فيستوي الصفّ */}
         <button
           type="button"
           aria-label="إنقاص المبلغ"
           disabled={busy || amount - step < detail.nextBidAmount}
           onClick={() => setAmount((value) => Math.max(detail.nextBidAmount, value - step))}
-          className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-ink-600 bg-ink-900 transition-colors hover:border-gold-600/50 disabled:opacity-40"
+          className="flex w-11 shrink-0 items-center justify-center rounded-xl border border-ink-600 bg-ink-900 transition-colors hover:border-gold-600/50 disabled:opacity-40"
         >
           <Minus className="size-4" />
         </button>
 
-        <div className="relative min-w-0 flex-1">
-          <input
-            inputMode="numeric"
-            dir="ltr"
-            aria-label="مبلغ المزايدة"
-            value={formatAmount(amount)}
-            disabled={busy}
-            onChange={(event) => {
-              const parsed = parseAmountInput(event.target.value)
-              if (parsed !== null) setAmount(parsed)
-            }}
-            onBlur={() => {
-              if (amount < detail.nextBidAmount) setAmount(detail.nextBidAmount)
-            }}
-            className={cn(
-              'h-11 w-full rounded-xl border bg-ink-900 px-3 text-center text-base font-extrabold tabular-nums outline-none transition-colors focus:border-gold-600',
-              belowMinimum ? 'border-danger text-danger' : 'border-ink-600',
-            )}
-          />
-          <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-[10px] font-bold text-muted">
-            ريال
-          </span>
-        </div>
+        <AmountField
+          label="مبلغ المزايدة"
+          className="flex-1"
+          value={amount}
+          disabled={busy}
+          invalid={belowMinimum}
+          onChange={(next) => setAmount(next ?? 0)}
+          onBlur={() => {
+            if (amount < detail.nextBidAmount) setAmount(detail.nextBidAmount)
+          }}
+        />
 
         <button
           type="button"
           aria-label="زيادة المبلغ"
           disabled={busy}
           onClick={() => setAmount((value) => value + step)}
-          className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-ink-600 bg-ink-900 transition-colors hover:border-gold-600/50"
+          className="flex w-11 shrink-0 items-center justify-center rounded-xl border border-ink-600 bg-ink-900 transition-colors hover:border-gold-600/50"
         >
           <Plus className="size-4" />
         </button>

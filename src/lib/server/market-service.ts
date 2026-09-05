@@ -762,6 +762,21 @@ export async function placeOffer(input: {
     href: '/account/offers',
     listingId: listing.id,
   })
+  /*
+   * والمشتري يُشعَر بما أرسل.
+   *
+   * إشعارٌ بفعلِ صاحبه يبدو زائدًا حتى يُنتظر الردّ: العرض يُرسل ثمّ يُغلق
+   * اللسان، ولا يبقى منه أثرٌ إلّا في صفحةٍ يُبحث عنها. وسطرٌ في الجرس يقول
+   * ما أُرسل وعلى أيّ لوحة، ويقود إلى موضع الردّ حين يأتي.
+   */
+  await notify(store, {
+    userId: input.buyerId,
+    type: 'offer_sent',
+    title: 'أُرسل عرضك',
+    body: `${formatAmount(amount)} ريال على «${listing.arabicLetters} ${listing.plateNumbers}» — بانتظار ردّ البائع.`,
+    href: '/account/offers',
+    listingId: listing.id,
+  })
   return offer
 }
 
@@ -811,10 +826,25 @@ export async function respondToOffer(input: {
     endedAt: now,
   })
 
-  // بقية العروض المعلّقة تُرفض تلقائيًا
+  /*
+   * بقية العروض المعلّقة تُرفض تلقائيًا — ويُقال لأصحابها.
+   *
+   * كانت تُغلق في صمت: يُقبل عرضٌ فتسقط البقيّة بلا إشعار، فلا يعرف صاحبها
+   * أنّ لوحته ذهبت إلّا أن يعود إلى الصفحة. والرفض الصريح يُشعر صاحبه
+   * (أسفله)، فما وجهُ أن يُحرم منه من رُفض ضمنًا؟ وهو نظير «تجاوزك غيرك» في
+   * المزاد، وذاك يصل كل مزايدٍ قائم.
+   */
   for (const other of await store.listOffers({ listingId: listing.id })) {
     if (other.id !== offer.id && other.status === 'pending') {
       await store.updateOffer(other.id, { status: 'declined', respondedAt: now })
+      await notify(store, {
+        userId: other.buyerId,
+        type: 'offer_declined',
+        title: 'قُبل عرضٌ آخر',
+        body: `بيعت «${listing.arabicLetters} ${listing.plateNumbers}» لعرضٍ آخر، فأُغلق عرضك.`,
+        href: `/market/${listing.id}`,
+        listingId: listing.id,
+      })
     }
   }
 

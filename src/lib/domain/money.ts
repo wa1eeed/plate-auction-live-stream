@@ -41,9 +41,15 @@ export function formatAmount(halalas: Halalas): string {
   return GROUPER.format(halalasToRiyals(halalas))
 }
 
-/** تحويل نص يدخله المستخدم (قد يحوي فواصل أو أرقامًا عربية) إلى هللات. */
-export function parseAmountInput(input: string): Halalas | null {
-  const western = Array.from(input ?? '')
+/**
+ * يردّ الأرقام العربية والفارسية إلى غربية، ويُسقط الفواصل والمسافات.
+ *
+ * لوحة المفاتيح العربية تكتب «١٢٣٤» ولوحة المنصّة تعرض «1,234»، وكلاهما يصل
+ * الحقل نفسه. والفصل بين التحويل والتحقّق يجعل الحقل يُنسّق ما يُكتب حرفًا
+ * حرفًا لا عند اكتماله وحده.
+ */
+export function toWesternDigits(input: string): string {
+  return Array.from(input ?? '')
     .map((c) => {
       const code = c.codePointAt(0) ?? 0
       if (code >= 0x0660 && code <= 0x0669) return String(code - 0x0660)
@@ -53,8 +59,36 @@ export function parseAmountInput(input: string): Halalas | null {
     .join('')
     .replace(/[,\s٬]/g, '')
     .trim()
+}
+
+/** تحويل نص يدخله المستخدم (قد يحوي فواصل أو أرقامًا عربية) إلى هللات. */
+export function parseAmountInput(input: string): Halalas | null {
+  const western = toWesternDigits(input)
   if (!western || !/^\d+(\.\d{1,2})?$/.test(western)) return null
   return riyalsToHalalas(Number.parseFloat(western))
+}
+
+const WHOLE_GROUPER = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+
+/**
+ * يُنسّق ما يُكتب في حقل مبلغ **أثناء الكتابة** لا بعد اكتماله.
+ *
+ * الفاصلة تُدخَل مع الرقم الرابع فيُقرأ «1,000,000» ولا يُعدّ بالأصابع. وهي
+ * حالةٌ لا يكفيها `parseAmountInput`: هو يرفض «12.» وهي خطوةٌ لازمة في طريق
+ * «12.5»، فلو رُفضت لتعذّر إدخال الكسر أصلًا.
+ *
+ * يردّ `null` لما ليس رقمًا — فيُترك الحقل على آخر نصٍّ صحيح ولا يُمحى ما كُتب.
+ */
+export function groupAmountInput(raw: string): { text: string; halalas: Halalas | null } | null {
+  const western = toWesternDigits(raw)
+  if (western === '') return { text: '', halalas: null }
+  if (!/^\d*(\.\d{0,2})?$/.test(western)) return null
+  const [whole, fraction] = western.split('.')
+  const grouped = whole === '' ? '' : WHOLE_GROUPER.format(Number(whole))
+  return {
+    text: fraction === undefined ? grouped : `${grouped}.${fraction}`,
+    halalas: parseAmountInput(western),
+  }
 }
 
 const INVOICE_GROUPER = new Intl.NumberFormat('en-US', {

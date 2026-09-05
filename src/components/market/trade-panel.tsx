@@ -13,8 +13,8 @@ import {
   ShoppingCart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input, Textarea } from '@/components/ui/input'
-import { formatAmount, halalasToRiyals, parseAmountInput } from '@/lib/domain/money'
+import { Textarea } from '@/components/ui/input'
+import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
   OFFER_STATUS_LABELS,
@@ -25,6 +25,7 @@ import { cn, formatTimestamp } from '@/lib/utils'
 import { useSound } from '@/lib/hooks/use-sound'
 import { AuctionBidBox } from './auction-bid-box'
 import { CommissionNotice } from './commission-notice'
+import { AmountField } from './amount-field'
 
 function randomRequestId() {
   return `req_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
@@ -46,7 +47,7 @@ export function TradePanel({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [offerAmount, setOfferAmount] = useState('')
+  const [offerAmount, setOfferAmount] = useState<number | null>(null)
   const [offerMessage, setOfferMessage] = useState('')
   const inFlight = useRef(false)
   const { play } = useSound()
@@ -251,36 +252,42 @@ export function TradePanel({
           className="space-y-2"
           onSubmit={(event) => {
             event.preventDefault()
-            const parsed = parseAmountInput(offerAmount)
-            if (parsed === null) {
+            if (offerAmount === null || offerAmount <= 0) {
               toast.error('أدخل مبلغًا صحيحًا')
               return
             }
             void send(
               `/api/listings/${detail.id}/offers`,
-              { amount: halalasToRiyals(parsed), message: offerMessage || undefined },
+              { amount: halalasToRiyals(offerAmount), message: offerMessage || undefined },
               'أُرسل عرضك إلى البائع',
             ).then((okResult) => {
               if (okResult) {
-                setOfferAmount('')
+                // حفيفُ الذهاب: يُسمع أنّ العرض غادر لا أنّ زرًّا ضُغط
+                play('offer-sent')
+                setOfferAmount(null)
                 setOfferMessage('')
               }
             })
           }}
         >
-          <Input
+          {/* المبلغ هو القرار، فيُكتب بحجمه لا بحجم أيّ حقلٍ آخر */}
+          <AmountField
+            label="مبلغ العرض"
             value={offerAmount}
-            onChange={(event) => setOfferAmount(event.target.value)}
-            inputMode="numeric"
-            dir="ltr"
-            placeholder={
-              detail.minimumOffer > 0
-                ? `${formatAmount(detail.minimumOffer)} أو أكثر`
-                : 'مبلغ عرضك بالريال'
-            }
+            onChange={setOfferAmount}
             disabled={busy}
-            aria-label="مبلغ العرض"
+            invalid={detail.minimumOffer > 0 && offerAmount !== null && offerAmount < detail.minimumOffer}
+            placeholder={detail.minimumOffer > 0 ? formatAmount(detail.minimumOffer) : '0'}
           />
+          {detail.minimumOffer > 0 && (
+            <p className="text-[11px] text-muted">
+              أقل عرض يقبله البائع{' '}
+              <span dir="ltr" className="font-bold text-paper">
+                {formatAmount(detail.minimumOffer)}
+              </span>{' '}
+              ريال
+            </p>
+          )}
           <Textarea
             value={offerMessage}
             onChange={(event) => setOfferMessage(event.target.value)}
@@ -289,7 +296,7 @@ export function TradePanel({
             disabled={busy}
             aria-label="رسالة للبائع"
           />
-          <Button type="submit" size="lg" className="w-full" disabled={busy || !offerAmount}>
+          <Button type="submit" size="lg" className="w-full" disabled={busy || offerAmount === null || offerAmount <= 0}>
             {busy ? <Loader2 className="size-5 animate-spin" /> : <HandCoins className="size-5" />}
             أرسل العرض
           </Button>

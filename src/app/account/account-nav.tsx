@@ -23,7 +23,7 @@ const LINKS = [
   { href: '/account/showcase', label: 'معرض لوحاتي', icon: Share2 },
   { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
   { href: '/account/bids', label: 'مزايداتي', icon: Gavel },
-  { href: '/account/offers', label: 'العروض', icon: HandCoins },
+  { href: '/account/offers', label: 'العروض والسومات', icon: HandCoins },
   { href: '/account/purchases', label: 'مشترياتي', icon: ShoppingBag },
   { href: '/account/sales', label: 'مبيعاتي', icon: Store },
   { href: '/account/invoices', label: 'فواتيري', icon: FileText },
@@ -44,7 +44,7 @@ const FADE = '2.25rem'
  * - **والتلاشي يتبع الموضع**: يتلاشى الطرف الذي وراءه مخبوء وحده، فيُقرأ
  *   التلاشي دعوةً إلى التمرير لا زخرفةً ثابتة تقصّ طرفًا لا شيء بعده.
  */
-export function AccountNav() {
+export function AccountNav({ pendingOffers = 0 }: { pendingOffers?: number }) {
   const pathname = usePathname()
   const scrollerRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLAnchorElement>(null)
@@ -136,6 +136,22 @@ export function AccountNav() {
                 >
                   <link.icon className="size-4 shrink-0" />
                   {link.label}
+                  {/*
+                    * عدّادٌ على «العروض والسومات» وحده.
+                    *
+                    * السوم الوارد ينتظر ردًّا، ولا شيء في المنصّة يقول إنّه
+                    * ينتظر إلّا أن يُفتح القسم. والرقم على الاسم يُقرأ في كل
+                    * صفحةٍ من صفحات الحساب — فلا يُنسى عرضٌ لأنّ صاحبه لم
+                    * يمرّ على قسمه.
+                    */}
+                  {link.href === '/account/offers' && pendingOffers > 0 && (
+                    <span
+                      aria-label={`${pendingOffers} بانتظار ردّك`}
+                      className="ms-auto inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums text-white"
+                    >
+                      {pendingOffers}
+                    </span>
+                  )}
                 </Link>
               </li>
             )

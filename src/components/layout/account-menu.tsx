@@ -29,7 +29,7 @@ const LINKS = [
   { href: '/account/listings', label: 'إدارة لوحاتي', icon: LayoutList },
   { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
   { href: '/account/bids', label: 'مزايداتي', icon: Gavel },
-  { href: '/account/offers', label: 'العروض', icon: HandCoins },
+  { href: '/account/offers', label: 'العروض والسومات', icon: HandCoins },
   { href: '/account/purchases', label: 'مشترياتي', icon: ShoppingBag },
   { href: '/account/sales', label: 'مبيعاتي', icon: Store },
 ] as const

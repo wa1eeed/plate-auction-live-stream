@@ -1093,6 +1093,7 @@ export type NotificationType =
   | 'auction_won'
   | 'auction_lost'
   | 'reserve_not_met'
+  | 'offer_sent'
   | 'offer_received'
   | 'offer_accepted'
   | 'offer_declined'
