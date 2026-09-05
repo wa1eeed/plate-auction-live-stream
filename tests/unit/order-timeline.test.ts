@@ -303,7 +303,7 @@ describe('صوت الطرفين', () => {
     const done = order({ status: 'completed', paidAt: AT, transferProofAt: AT, releasedAt: AT, completedAt: AT })
     const { buyer, seller } = voices(done)
     expect(buyer[4].label).toBe('ذهب المبلغ إلى البائع')
-    expect(seller[4].label).toBe('وصل عائدك إلى محفظتك')
+    expect(seller[4].label).toBe('تم اكتمال الصفقة')
   })
 
   it('اسم المحطّة كلمة واحدة — وهي نفسها للطرفين لأنها تسمّي المرحلة لا الفاعل', () => {
