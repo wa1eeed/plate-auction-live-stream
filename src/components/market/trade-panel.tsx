@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
   OFFER_STATUS_LABELS,
+  computeCommissionSide,
   isClosedListing,
   type ListingDetail,
 } from '@/lib/domain/types'
@@ -51,6 +52,24 @@ export function TradePanel({
   const [offerMessage, setOfferMessage] = useState('')
   const inFlight = useRef(false)
   const { play } = useSound()
+
+  /*
+   * تُحسب بالقاعدة المرسلة لا بحصيلةٍ جاهزة — والحساب هو حساب الخادم نفسه.
+   *
+   * `computeCommissionSide` دالّةٌ خالصة في نطاق المجال، تستعملها الواجهة
+   * والخادم معًا. فلو تبدّلت قاعدةٌ في أحدهما لتبدّلت في الآخر، ولا يقع أن
+   * يَعِد المعروضُ بغير ما يُقتطع.
+   */
+  const offerFee = useMemo(
+    () =>
+      offerAmount && offerAmount > 0
+        ? computeCommissionSide(detail.commission.buyerRule, offerAmount, {
+            enabled: detail.commission.vatEnabled,
+            percent: detail.commission.vatPercent,
+          })
+        : null,
+    [offerAmount, detail.commission],
+  )
 
   /**
    * الشراء المباشر ينقل إلى صفحة السداد لا يُنهي الأمر بتنبيه.
@@ -211,7 +230,8 @@ export function TradePanel({
   const pending = detail.myOffers.find((offer) => offer.status === 'pending')
   return (
     <Panel title="إرسال عرض" id="trade">
-      <CommissionNotice detail={detail} />
+      {/* القاعدة هنا، والمبلغ أسفل الحقل — سؤالان لا رقمان متضاربان */}
+      <CommissionNotice detail={detail} asRule />
       {pending ? (
         <div className="space-y-3">
           <div className="rounded-xl border border-gold-600/50 bg-gold-500/10 p-4">
@@ -287,6 +307,38 @@ export function TradePanel({
               </span>{' '}
               ريال
             </p>
+          )}
+
+          {/*
+            * العمولة تُحسب على ما يكتبه لا على ما يُعرض في الصفحة.
+            *
+            * السوم مبلغٌ من عنده، فحصيلةُ العمولة المرسلة مع الإعلان محسوبةٌ
+            * على أقلّ عرضٍ مقبول ولا تصلح لما يزيد عليه. فتُحسب هنا بالقاعدة
+            * نفسها على ما في الحقل، وتتبدّل معه رقمًا رقمًا — ورسمٌ يُكتشف
+            * بعد الالتزام يُفسد الثقة أكثر ممّا يجمع.
+            */}
+          {offerFee && offerFee.total > 0 && (
+            <div className="space-y-1 rounded-xl border border-ink-600 bg-ink-900/50 p-2.5 text-[11px]">
+              <p className="flex items-center justify-between gap-3 text-muted">
+                <span>
+                  عمولة المنصّة
+                  {detail.commission.vatEnabled && ` + ضريبة ${detail.commission.vatPercent}٪`}
+                </span>
+                <span dir="ltr" className="font-bold tabular-nums text-paper">
+                  {formatAmount(offerFee.total)}
+                </span>
+              </p>
+              <p className="flex items-center justify-between gap-3 font-bold">
+                <span className="text-muted">الإجمالي إن قُبل عرضك</span>
+                <span dir="ltr" className="tabular-nums text-gold-500">
+                  {formatAmount((offerAmount ?? 0) + offerFee.total)} ريال
+                </span>
+              </p>
+              <p className="leading-relaxed text-muted">
+                تُضاف العمولة وضريبتها على مبلغ عرضك، وتُستحقّ عند قبول البائع — وتُسدَّد
+                معه في خطوة واحدة.
+              </p>
+            </div>
           )}
           <Textarea
             value={offerMessage}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatAmount, groupAmountInput } from '@/lib/domain/money'
 import { cn } from '@/lib/utils'
 
@@ -57,6 +57,8 @@ export function AmountField({
   const [text, setText] = useState(() => (value === null ? '' : formatAmount(value)))
   /** ما كتبه الحقل آخر مرّة — به نعرف أنّ التغيّر جاء من خارجه */
   const emitted = useRef(value)
+  /** موضع المؤشّر المطلوب بعد التنسيق، مقيسًا بعدد الأرقام قبله */
+  const caretDigits = useRef<number | null>(null)
 
   /*
    * القيمة إذا تبدّلت من خارج الحقل — رقاقةٌ أو زرّ زيادة — كُتبت فيه.
@@ -69,6 +71,36 @@ export function AmountField({
     emitted.current = value
     setText(value === null ? '' : formatAmount(value))
   }, [value])
+
+  /*
+   * المؤشّر يُعاد قبل الرسم لا بعده.
+   *
+   * كان في `requestAnimationFrame`: إطارٌ كامل بين الكتابة وإعادة المؤشّر،
+   * فإن وصل الحرف التالي قبله كُتب في موضع المؤشّر القديم — أوّلِ الحقل —
+   * فتتداخل الأرقام. و`useLayoutEffect` يقع في نفس الالتزام قبل أن يرى
+   * المتصفّح شيئًا، فلا تبقى نافذةٌ يسبق فيها الحرفُ المؤشّرَ.
+   */
+  useLayoutEffect(() => {
+    const wanted = caretDigits.current
+    const node = inputRef.current
+    caretDigits.current = null
+    if (wanted === null || !node) return
+
+    if (wanted === 0) {
+      node.setSelectionRange(0, 0)
+      return
+    }
+    let seen = 0
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i]
+      if (char >= '0' && char <= '9') seen += 1
+      if (seen === wanted) {
+        node.setSelectionRange(i + 1, i + 1)
+        return
+      }
+    }
+    node.setSelectionRange(text.length, text.length)
+  }, [text])
 
   return (
     <div className={cn('relative min-w-0', className)}>
@@ -94,27 +126,11 @@ export function AmountField({
           // ما ليس رقمًا يُهمل، ويبقى الحقل على آخر نصٍّ صحيح
           if (!grouped) return
 
+          // المؤشّر يعود بعدد الأرقام التي كانت قبله، لا بعدد المحارف
+          caretDigits.current = digitsBefore
           setText(grouped.text)
           emitted.current = grouped.halalas
           onChange(grouped.halalas)
-
-          // المؤشّر يعود بعدد الأرقام التي كانت قبله، لا بعدد المحارف
-          requestAnimationFrame(() => {
-            const node = inputRef.current
-            if (!node) return
-            let position = grouped.text.length
-            let seen = 0
-            for (let i = 0; i < grouped.text.length; i += 1) {
-              const char = grouped.text[i]
-              if (char >= '0' && char <= '9') seen += 1
-              if (seen === digitsBefore) {
-                position = i + 1
-                break
-              }
-            }
-            if (digitsBefore === 0) position = 0
-            node.setSelectionRange(position, position)
-          })
         }}
         className={cn(
           // النائب يُميَّز عن القيمة بخفوته ووزنه، وإلّا قُرئ مبلغًا مكتوبًا

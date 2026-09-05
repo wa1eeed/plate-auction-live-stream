@@ -5,6 +5,7 @@ import { resetStoreForTests } from '@/lib/store'
 import { resetRateLimits } from '@/lib/server/rate-limit'
 import {
   buyNow,
+  closeListing,
   finalizeDueAuctions,
   getAccountBids,
   getAccountListings,
@@ -16,6 +17,7 @@ import {
   respondToOffer,
 } from '@/lib/server/market-service'
 import { getPurchases, getSales, updateOrderStatus } from '@/lib/server/order-service'
+import { getNotifications } from '@/lib/server/notification-service'
 import { halalasToRiyals, riyalsToHalalas } from '@/lib/domain/money'
 import type { Listing } from '@/lib/domain/types'
 
@@ -383,5 +385,41 @@ describe('صفحات الحساب', () => {
       status: 'cancelled',
     })
     expect(cancelled.status).toBe('cancelled')
+  })
+})
+
+/*
+ * ما يقع بالسوم حين يُغلق إعلانه.
+ *
+ * العرابين تُفكّ عند الإغلاق منذ البداية، وبقي السوم وحده معلّقًا على إعلانٍ
+ * ميت — «قيد الانتظار» بلا إشعار، وزرُّ سحبه يعمل كأنّ شيئًا ينتظره.
+ */
+describe('إغلاق الإعلان والسوم القائم عليه', () => {
+  it('سحبُ البائع إعلانَه يُغلق السوم ويُشعر أصحابه', async () => {
+    const listing = findBy((l) => l.saleType === 'offers' && l.status === 'active')
+    const buyers = db.users.filter((u) => u.id !== listing.sellerId)
+    for (const buyer of buyers.slice(0, 2)) {
+      await placeOffer({
+        listingId: listing.id,
+        buyerId: buyer.id,
+        amountRiyals: halalasToRiyals(listing.minimumOffer) + 500,
+      })
+    }
+    expect(
+      (await store.listOffers({ listingId: listing.id })).filter((o) => o.status === 'pending'),
+    ).toHaveLength(2)
+
+    await closeListing(store, listing.id, 'cancelled', 'سحب البائع إعلانه')
+
+    const after = await store.listOffers({ listingId: listing.id })
+    expect(after.filter((o) => o.status === 'pending'), 'سومٌ معلّق على إعلانٍ ميت').toHaveLength(0)
+
+    for (const buyer of buyers.slice(0, 2)) {
+      const { items } = await getNotifications(buyer.id)
+      expect(
+        items.some((n) => n.type === 'offer_declined'),
+        `لم يُخبَر ${buyer.displayName} بإغلاق عرضه`,
+      ).toBe(true)
+    }
   })
 })

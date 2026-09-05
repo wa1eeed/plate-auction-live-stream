@@ -323,3 +323,54 @@ describe('العمولة المعروضة على صفحة اللوحة', () => {
     expect(commission.buyer.total).toBe(commission.buyer.base + commission.buyer.vat)
   })
 })
+
+/*
+ * قاعدة عمولة المشتري تصل الواجهة كما هي.
+ *
+ * السوم مبلغٌ يكتبه صاحبه، فلا تصلح له حصيلةٌ محسوبةٌ على أقلّ عرضٍ مقبول —
+ * والواجهة تحسبها على ما يُكتب بالدالّة نفسها. فإن لم تصل القاعدة صحيحةً
+ * عُرض للمشتري رسمٌ غير ما يُقتطع منه.
+ */
+describe('قاعدة العمولة المرسلة إلى الواجهة', () => {
+  const listingOf = () =>
+    db.listings.find((row) => row.saleType === 'offers' && row.status === 'active')!
+
+  it('تُنقل بحدودها كما ضُبطت — وتُطابق ما يحسبه الخادم على أيّ مبلغ', async () => {
+    const buyer = percentSide(2, { max: riyalsToHalalas(500) })
+    await store.updateCommissionSettings({
+      ...DEFAULT_COMMISSION_SETTINGS,
+      seller: percentSide(2.5),
+      buyer,
+      vatEnabled: true,
+      vatPercent: 15,
+    })
+
+    const { commission } = await getListingDetail(listingOf().id, null)
+    expect(commission.buyerRule).toEqual(buyer)
+
+    // ما تحسبه الواجهة على مبلغٍ يكتبه صاحبه = ما يحسبه الخادم عليه
+    const typed = riyalsToHalalas(45_000)
+    const onScreen = computeCommissionSide(commission.buyerRule, typed, {
+      enabled: commission.vatEnabled,
+      percent: commission.vatPercent,
+    })
+    expect(onScreen.base, 'لم يُحترم السقف').toBe(riyalsToHalalas(500))
+    expect(onScreen.vat).toBe(Math.round((onScreen.base * 15) / 100))
+    expect(onScreen).toEqual(computeCommission(await store.getCommissionSettings(), typed).buyer)
+  })
+
+  it('ومعطّلةً تصل معطّلة — فلا يُعرض رسمٌ لا وجود له', async () => {
+    await store.updateCommissionSettings({
+      ...DEFAULT_COMMISSION_SETTINGS,
+      buyer: { ...percentSide(2), enabled: false },
+    })
+    const { commission } = await getListingDetail(listingOf().id, null)
+    expect(commission.buyerRule.enabled).toBe(false)
+    expect(
+      computeCommissionSide(commission.buyerRule, riyalsToHalalas(45_000), {
+        enabled: commission.vatEnabled,
+        percent: commission.vatPercent,
+      }).total,
+    ).toBe(0)
+  })
+})

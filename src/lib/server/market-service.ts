@@ -218,6 +218,29 @@ export async function closeListing(
     endedAt: new Date().toISOString(),
   })
   await releaseLosingDeposits(store, listingId, null, reason)
+
+  /*
+   * والسوم القائم يسقط معها — ويُقال لأصحابه.
+   *
+   * كان يبقى «قيد الانتظار» على إعلانٍ ميت: لا إشعار لصاحبه، وزرّ «اسحب
+   * العرض» يظلّ يعمل كأنّ شيئًا ينتظره، وعدّاد «الواردة إليّ» عند البائع
+   * يبقى منتفخًا بإعلانٍ لم يعد موجودًا. والعرابين تُفكّ أعلاه، فما وجهُ أن
+   * يُترك السوم وحده معلّقًا؟
+   */
+  const closedAt = new Date().toISOString()
+  for (const offer of await store.listOffers({ listingId })) {
+    if (offer.status !== 'pending') continue
+    await store.updateOffer(offer.id, { status: 'declined', respondedAt: closedAt })
+    await notify(store, {
+      userId: offer.buyerId,
+      type: 'offer_declined',
+      title: status === 'suspended' ? 'أُوقف الإعلان' : 'سُحب الإعلان',
+      body: `${reason} — فأُغلق عرضك على «${updated.arabicLetters} ${updated.plateNumbers}».`,
+      href: '/account/offers',
+      listingId,
+    })
+  }
+
   await store.appendEvent({
     listingId,
     eventType: 'listing_cancelled',
@@ -627,6 +650,7 @@ export async function getListingDetail(
       seller: commissionNow.seller,
       vatPercent: commissionSettings.vatPercent,
       vatEnabled: commissionSettings.vatEnabled,
+      buyerRule: commissionSettings.buyer,
     },
 
     startsAt: listing.startsAt,

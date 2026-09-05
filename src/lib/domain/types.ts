@@ -647,6 +647,14 @@ export type ListingDetail = {
     seller: CommissionBreakdown
     vatPercent: number
     vatEnabled: boolean
+    /**
+     * قاعدة عمولة المشتري نفسها — لا حصيلتها على السعر القائم.
+     *
+     * السوم يكتبه صاحبه بمبلغٍ من عنده، فلا يُعرف ما يُضاف إليه إلّا بحسابه
+     * على ما يكتب. والحصيلة المرسلة محسوبةٌ على أقلّ عرضٍ مقبول، فلا تصلح
+     * لمبلغٍ يزيد عليه. والقاعدة جدولُ أجورٍ معلن لا سرًّا يُخفى.
+     */
+    buyerRule: CommissionSide
   }
 
   startsAt: string | null
