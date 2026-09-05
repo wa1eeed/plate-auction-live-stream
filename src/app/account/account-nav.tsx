@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 
 const LINKS = [
   { href: '/account', label: 'نظرة عامة', icon: Home },
-  { href: '/account/listings', label: 'لوحاتي', icon: LayoutList },
+  { href: '/account/listings', label: 'إدارة لوحاتي', icon: LayoutList },
   { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
   { href: '/account/bids', label: 'مزايداتي', icon: Gavel },
   { href: '/account/offers', label: 'العروض', icon: HandCoins },

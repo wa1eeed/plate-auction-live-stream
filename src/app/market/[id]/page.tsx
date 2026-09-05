@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PageShell } from '@/components/layout/page-shell'
-import { getListingDetail, isServiceError } from '@/lib/server/market-service'
+import { getListingDetail, getSellerShowcase, isServiceError } from '@/lib/server/market-service'
 import { getCurrentUser } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
 import { formatAmount } from '@/lib/domain/money'
@@ -29,8 +29,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
 }
 
-export default async function ListingPage({ params }: { params: Params }) {
+export default async function ListingPage({
+  params,
+  searchParams,
+}: {
+  params: Params
+  searchParams: Promise<{ from?: string }>
+}) {
   const { id } = await params
+  const { from } = await searchParams
   const user = await getCurrentUser()
 
   let detail
@@ -47,10 +54,22 @@ export default async function ListingPage({ params }: { params: Params }) {
   // الأسئلة المعلّمة «تظهر في صفحة المزاد» فقط — لا كل الأسئلة
   const faq = await listPublicFaq(true)
 
+  /*
+   * الرجوع إلى حيث دخل الزائر لا إلى السوق دائمًا.
+   *
+   * من فتح رابطًا شاركه صاحب اللوحات لم يمرّ بالسوق ولا يعرفه، فإعادته إليه
+   * تُخرجه من حيث دخل. و`from` يحمل معرّف صاحب المعرض — ويُتحقّق منه هنا فلا
+   * يُصنع رابطُ رجوعٍ إلى معرضٍ لا وجود له.
+   */
+  const origin = from ? await getSellerShowcase(from) : null
+  const backTo = origin
+    ? { href: `/u/${origin.seller.id}`, label: `لوحات ${origin.seller.displayName}` }
+    : { href: '/market', label: 'السوق' }
+
   return (
     <PageShell>
       <SiteHeader active="market" />
-      <ListingView faq={faq} initialDetail={detail} isSignedIn={Boolean(user)} />
+      <ListingView faq={faq} initialDetail={detail} isSignedIn={Boolean(user)} backTo={backTo} />
       <SiteFooter />
     </PageShell>
   )

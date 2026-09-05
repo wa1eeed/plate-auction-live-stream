@@ -31,7 +31,7 @@ test.describe('لوحة الإدارة', () => {
 
     // وحساب المستخدم ما زال مفتوحًا في الوقت نفسه
     await page.goto('/account/listings')
-    await expect(page.getByRole('heading', { name: 'لوحاتي' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'إدارة لوحاتي' })).toBeVisible()
 
     // وخروج الإدارة لا يمسّ جلسة المستخدم
     await page.goto('/admin')
@@ -41,7 +41,7 @@ test.describe('لوحة الإدارة', () => {
     forgetAdminSession()
 
     await page.goto('/account/listings')
-    await expect(page.getByRole('heading', { name: 'لوحاتي' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'إدارة لوحاتي' })).toBeVisible()
   })
 
   test('المؤشرات وصفحات الإدارة تعرض بيانات المنصّة', async ({ page }) => {

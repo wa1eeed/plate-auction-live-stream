@@ -40,11 +40,19 @@ export function ListingCard({
   card,
   serverTime,
   index = 0,
+  href,
 }: {
   card: ListingCardData
   /** مرجع وقت الخادم — بدونه يجمد العدّاد على لحظة الجلب */
   serverTime?: string | null
   index?: number
+  /*
+   * وجهةٌ مخصّصة — يُمرَّرها معرض البائع ليحمل الرابط أصلَ الزيارة.
+   *
+   * البطاقة نفسها في السوق وفي المعرض، والفرق في الرابط وحده: منه تعرف صفحة
+   * اللوحة أين تُعيد زائرها.
+   */
+  href?: string
 }) {
   const Icon = SALE_ICON[card.saleType]
   const closed = isClosedListing(card.status)
@@ -72,7 +80,7 @@ export function ListingCard({
         * والصفّ يُظهر ثلاثًا ويُبقي اللوحة مقروءة.
         */}
       <Link
-        href={`/market/${card.id}`}
+        href={href ?? `/market/${card.id}`}
         className="flex flex-1 flex-row items-stretch rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 sm:flex-col"
       >
         {/*

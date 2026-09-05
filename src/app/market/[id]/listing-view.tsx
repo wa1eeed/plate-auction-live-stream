@@ -41,10 +41,13 @@ export function ListingView({
   faq,
   initialDetail,
   isSignedIn,
+  backTo = { href: '/market', label: 'السوق' },
 }: {
   faq: FaqItem[]
   initialDetail: ListingDetail
   isSignedIn: boolean
+  /** من أين جاء الزائر — إليه يعود، لا إلى السوق دائمًا */
+  backTo?: { href: string; label: string }
 }) {
   const { detail, status, refetch, viewers } = useListing(initialDetail.id, initialDetail)
   const closed = isClosedListing(detail.status)
@@ -77,11 +80,11 @@ export function ListingView({
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Link
-          href="/market"
+          href={backTo.href}
           className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-paper"
         >
           <ChevronsLeft className="size-4 rtl:rotate-180" />
-          السوق
+          {backTo.label}
         </Link>
         {/* البثّ والمشاهدون في المسرح نفسه — حيث يُقرآن مع ما يصفانه */}
         {!isLiveAuction && closed && (

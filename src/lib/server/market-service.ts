@@ -17,6 +17,7 @@ import type {
   AccountOrder,
   Listing,
   ListingCard,
+  PublicSeller,
   ListingDetail,
   ListingEventType,
   ListingStatus,
@@ -415,11 +416,19 @@ function priceLabelFor(saleType: SaleType, hasBids: boolean): string {
 }
 
 /** كل الإعلانات المعروضة في السوق. */
-export async function getMarketListings(): Promise<ListingCard[]> {
+export async function getMarketListings(sellerId?: string): Promise<ListingCard[]> {
   const store = getStore()
   await finalizeDueAuctions(store)
 
-  const listings = await store.listListings()
+  /*
+   * التصفية بالبائع تمرّ من هنا لا من باني بطاقاتٍ ثانٍ.
+   *
+   * معرض البائع يعرض ما يعرضه السوق بالضبط — السعر القائم وعدد المزايدات
+   * والوقت المتبقّي — وبانيان لبطاقةٍ واحدة يفترقان أوّل ما يتغيّر حقل.
+   */
+  const listings = (await store.listListings()).filter(
+    (listing) => !sellerId || listing.sellerId === sellerId,
+  )
   const now = Date.now()
   const cards: ListingCard[] = []
 
@@ -463,6 +472,33 @@ export async function getMarketListings(): Promise<ListingCard[]> {
   return cards.sort(
     (a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt),
   )
+}
+
+/**
+ * معرض بائع — صفحةٌ عامّة يشاركها صاحبها.
+ *
+ * ما يخرج منها هو ما يخرج في السوق ولا شيء غيره: الاسم والمدينة وتاريخ
+ * العضوية، ولوحاته المعروضة. ولا بريد ولا جوّال ولا **رقم عضوية** — الرقم
+ * يُقتبَس في المراسلة والفواتير، ونشره في صفحةٍ تُشارَك يجعله معلومًا لمن لا
+ * يحتاجه.
+ *
+ * والمعرّف في الرابط هو `id` العشوائي لا الرقم المرجعي: لا يُخمَّن ولا يُعدّ.
+ */
+export async function getSellerShowcase(
+  sellerId: string,
+): Promise<{ seller: PublicSeller; cards: ListingCard[] } | null> {
+  const user = await getStore().findUser(sellerId)
+  if (!user) return null
+
+  return {
+    seller: {
+      id: user.id,
+      displayName: user.displayName,
+      city: user.city,
+      memberSince: user.createdAt,
+    },
+    cards: await getMarketListings(user.id),
+  }
 }
 
 /** تفاصيل إعلان واحد كما يراها الزائر. */

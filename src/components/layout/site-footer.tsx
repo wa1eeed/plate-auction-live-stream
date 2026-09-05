@@ -17,7 +17,7 @@ const COLUMNS = [
   {
     title: 'حسابي',
     links: [
-      { href: '/account/listings', label: 'لوحاتي' },
+      { href: '/account/listings', label: 'إدارة لوحاتي' },
       { href: '/account/wallet', label: 'محفظتي' },
       { href: '/account/bids', label: 'مزايداتي' },
       { href: '/account/purchases', label: 'مشترياتي' },

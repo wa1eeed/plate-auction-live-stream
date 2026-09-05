@@ -189,7 +189,7 @@ export default async function AccountOverviewPage() {
       })} لم تُنشر`,
       body: 'لن تظهر في السوق حتى تنشرها.',
       href: '/account/listings',
-      cta: 'لوحاتي',
+      cta: 'إدارة لوحاتي',
     },
   ].filter(Boolean) as {
     tone: 'danger' | 'gold' | 'default'

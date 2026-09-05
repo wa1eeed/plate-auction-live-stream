@@ -23,7 +23,7 @@ const PUBLIC_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: '/account/listings/new', label: 'أضف لوحة', icon: Plus },
-  { href: '/account/listings', label: 'لوحاتي', icon: Gavel },
+  { href: '/account/listings', label: 'إدارة لوحاتي', icon: Gavel },
   { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
 ] as const
 
