@@ -32,6 +32,7 @@ export function PlateRow({
     <>
       <SaudiLicensePlate
         plateType={plate.plateType}
+        plateFormat={plate.plateFormat}
         arabicLetters={plate.arabicLetters}
         latinLetters={plate.latinLetters}
         plateNumbers={plate.plateNumbers}

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { HANDLE_PATTERN, RESERVED_HANDLES } from './types'
+import { HANDLE_PATTERN, PLATE_FORMATS, RESERVED_HANDLES, type PlateFormat } from './types'
 import { normalizeArabicLetters, normalizePlateNumbers } from '@/lib/saudi-plate-mapping'
 import {
   FAQ_CATEGORIES,
@@ -14,6 +14,10 @@ import { isValidCrNumber, isValidVatNumber } from './zatca'
 import type { FaqCategory, PlateType, SaleType } from './types'
 
 const plateTypeSchema = z.enum(PLATE_TYPES as unknown as [PlateType, ...PlateType[]])
+/** نوع الإصدار — الطويلة افتراضًا لتوافق ما أُنشئ قبل وجود الخيار */
+const plateFormatSchema = z
+  .enum(PLATE_FORMATS as unknown as [PlateFormat, ...PlateFormat[]])
+  .default('long')
 const emblemSchema = z.enum(PLATE_EMBLEMS as unknown as [string, ...string[]])
 const saleTypeSchema = z.enum(SALE_TYPES as unknown as [SaleType, ...SaleType[]])
 
@@ -146,6 +150,7 @@ const riyalField = (label: string, min = 0) =>
 export const listingInputSchema = z
   .object({
     plateType: plateTypeSchema,
+    plateFormat: plateFormatSchema,
     arabicLetters: z.string().trim().min(1, 'أدخل حرفًا واحدًا على الأقل'),
     latinLetters: z
       .string()

@@ -130,6 +130,7 @@ export function MyListingCard({
           >
             <SaudiLicensePlate
               plateType={listing.plateType}
+              plateFormat={listing.plateFormat}
               arabicLetters={listing.arabicLetters}
               latinLetters={listing.latinLetters}
               plateNumbers={listing.plateNumbers}

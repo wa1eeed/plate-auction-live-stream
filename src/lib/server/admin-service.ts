@@ -51,6 +51,7 @@ import { verifyInvoiceChain } from './invoice-service'
 function toPlate(listing: Listing): Plate {
   return {
     plateType: listing.plateType,
+    plateFormat: listing.plateFormat,
     arabicLetters: listing.arabicLetters,
     latinLetters: listing.latinLetters,
     plateNumbers: listing.plateNumbers,

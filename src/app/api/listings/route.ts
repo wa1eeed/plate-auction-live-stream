@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     const listing = await getStore().createListing({
       sellerId: userId,
       plateType: input.plateType,
+      plateFormat: input.plateFormat,
       arabicLetters: normalizeArabicLetters(input.arabicLetters, maxLetters),
       latinLetters: input.latinLetters.toUpperCase(),
       plateNumbers: normalizePlateNumbers(input.plateNumbers, 4),

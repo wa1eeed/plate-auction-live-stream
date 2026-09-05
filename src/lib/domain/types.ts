@@ -4,6 +4,35 @@ import type { Halalas } from './money'
 
 export type PlateType = 'private' | 'transport' | 'motorcycle'
 
+/**
+ * نوع الإصدار — شكل اللوحة نفسها لا صنف مركبتها.
+ *
+ * محورٌ مستقلّ عن `PlateType`: تلك تقول «خصوصي» أو «نقل خاص»، وهذه تقول أيّ
+ * قالبٍ صُبّت فيه. ولوحةٌ خصوصية قد تصدر طويلةً أو اعتيادية أو رياضية.
+ *
+ *   · `long`     الطويلة — صفّان وشعارٌ أوسط وشريط الدولة يمينًا
+ *   · `standard` الاعتيادية — أقرب إلى المربّع، صفّان بلا شعارٍ أوسط
+ *   · `sport`    الرياضية — صفٌّ واحد **لاتينيّ فقط**، والدولة في خانةٍ وسطى
+ */
+export type PlateFormat = 'long' | 'standard' | 'sport'
+
+export const PLATE_FORMATS: readonly PlateFormat[] = ['standard', 'long', 'sport']
+
+export const PLATE_FORMAT_LABELS: Record<PlateFormat, string> = {
+  standard: 'لوحة اعتيادية',
+  long: 'لوحة طويلة',
+  sport: 'لوحة رياضية',
+}
+
+export const PLATE_FORMAT_HINTS: Record<PlateFormat, string> = {
+  standard: 'مستطيلة قريبة من المربّع — صفّان: العربي أعلى واللاتيني أسفله.',
+  long: 'الطويلة المعتادة — صفّان وشعار في الوسط.',
+  sport: 'قصيرة بصفٍّ واحد، بحروف وأرقام إنجليزية فقط بلا عربية.',
+}
+
+/** الرياضية بلا عربية — يُخفى حقلاها في النموذج ولا يُرسمان في اللوحة. */
+export const isLatinOnlyFormat = (format: PlateFormat): boolean => format === 'sport'
+
 export const PLATE_TYPES: readonly PlateType[] = ['private', 'transport', 'motorcycle']
 
 export const PLATE_TYPE_LABELS: Record<PlateType, string> = {
@@ -53,6 +82,8 @@ export type PlateSize = 'thumbnail' | 'card' | 'stage' | 'fullscreen' | 'fill'
 
 export type Plate = {
   plateType: PlateType
+  /** نوع الإصدار — الطويلة افتراضًا لما أُنشئ قبل وجود الخيار */
+  plateFormat: PlateFormat
   arabicLetters: string
   latinLetters: string
   plateNumbers: string
@@ -266,6 +297,7 @@ export type Listing = {
   reference: string
   sellerId: string
   plateType: PlateType
+  plateFormat: PlateFormat
   arabicLetters: string
   latinLetters: string
   plateNumbers: string

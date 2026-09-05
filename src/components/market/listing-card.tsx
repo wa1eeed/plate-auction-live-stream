@@ -114,6 +114,7 @@ export function ListingCard({
           >
             <SaudiLicensePlate
               plateType={card.plate.plateType}
+              plateFormat={card.plate.plateFormat}
               arabicLetters={card.plate.arabicLetters}
               latinLetters={card.plate.latinLetters}
               plateNumbers={card.plate.plateNumbers}

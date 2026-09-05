@@ -103,6 +103,7 @@ export async function getCheckoutView(orderId: string, userId: string): Promise<
       ...order,
       plate: {
         plateType: listing.plateType,
+        plateFormat: listing.plateFormat,
         arabicLetters: listing.arabicLetters,
         latinLetters: listing.latinLetters,
         plateNumbers: listing.plateNumbers,

@@ -28,6 +28,7 @@ function card(
     reference: buildReference('listing', 26, Number(id.replace(/\D/g, '')) || 1),
     plate: {
       plateType: overrides.plateType ?? 'private',
+      plateFormat: 'long',
       arabicLetters: overrides.ar ?? 'أ',
       latinLetters: overrides.en ?? 'A',
       plateNumbers: overrides.numbers ?? '1',

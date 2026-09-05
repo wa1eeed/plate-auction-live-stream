@@ -10,11 +10,17 @@ import { Input, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlateEmblemPicker } from '@/components/plate/PlateEmblemPicker'
+import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { LetterPicker } from '@/components/plate/letter-picker'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import {
   PLATE_TYPES,
+  PLATE_FORMATS,
+  PLATE_FORMAT_HINTS,
+  PLATE_FORMAT_LABELS,
   PLATE_TYPE_LABELS,
+  isLatinOnlyFormat,
+  type PlateFormat,
   PLATE_TYPE_MAX_LETTERS,
   SALE_TYPES,
   SALE_TYPE_HINTS,
@@ -46,6 +52,7 @@ const SALE_ICONS: Record<SaleType, typeof Gavel> = { auction: Gavel, fixed: Tag,
 
 type FormValues = {
   plateType: PlateType
+  plateFormat: PlateFormat
   arabicLetters: string
   latinLetters: string
   plateNumbers: string
@@ -61,6 +68,7 @@ type FormValues = {
 
 const DEFAULTS: FormValues = {
   plateType: 'private',
+  plateFormat: 'standard',
   arabicLetters: '',
   latinLetters: '',
   plateNumbers: '',
@@ -93,6 +101,7 @@ export function ListingForm({
     defaultValues: listing
       ? {
   plateType: listing.plateType,
+  plateFormat: listing.plateFormat,
           arabicLetters: listing.arabicLetters,
           latinLetters: listing.latinLetters,
           plateNumbers: listing.plateNumbers,
@@ -110,6 +119,9 @@ export function ListingForm({
 
   const { register, watch, setValue, handleSubmit, formState } = form
   const plateType = watch('plateType')
+  const plateFormat = watch('plateFormat')
+  // الرياضية بلا عربية أصلًا — فحقلاها يُخفيان ولا يُطلبان
+  const latinOnly = isLatinOnlyFormat(plateFormat)
   const saleType = watch('saleType')
   const arabicLetters = watch('arabicLetters')
   const plateNumbers = watch('plateNumbers')
@@ -186,6 +198,50 @@ export function ListingForm({
             </Select>
           </div>
 
+          {/*
+            * نوع الإصدار — شكل اللوحة لا صنف مركبتها.
+            *
+            * محورٌ مستقلّ: لوحةٌ خصوصية قد تصدر طويلةً أو اعتيادية أو رياضية.
+            * والاختيار بالبطاقات لا بقائمة منسدلة: الفرق شكليّ، فيُرى لا
+            * يُوصف — ومن يقرأ «طويلة» و«اعتيادية» في قائمة لا يعرف أيّهما أراد.
+            */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>نوع الإصدار</Label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {PLATE_FORMATS.map((format) => (
+                <button
+                  key={format}
+                  type="button"
+                  onClick={() => setValue('plateFormat', format, { shouldValidate: true })}
+                  className={cn(
+                    'rounded-xl border p-3 text-start transition-colors',
+                    plateFormat === format
+                      ? 'border-gold-600 bg-gold-500/10'
+                      : 'border-ink-600 bg-ink-900/40 hover:border-gold-600/40',
+                  )}
+                >
+                  <span className="mb-2 flex h-12 items-center justify-center">
+                    <SaudiLicensePlate
+                      plateType={plateType}
+                      plateFormat={format}
+                      arabicLetters={watch('arabicLetters') || 'ا ب ج'}
+                      latinLetters={watch('latinLetters') || 'ABJ'}
+                      plateNumbers={watch('plateNumbers') || '1234'}
+                      emblem={emblem}
+                      size="fill"
+                      showReflection={false}
+                      className="h-12"
+                    />
+                  </span>
+                  <span className="block text-xs font-bold">{PLATE_FORMAT_LABELS[format]}</span>
+                  <span className="mt-0.5 block text-[10px] leading-relaxed text-muted">
+                    {PLATE_FORMAT_HINTS[format]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="plateNumbers">أرقام اللوحة (1–4)</Label>
             {/*
@@ -217,6 +273,13 @@ export function ListingForm({
             </p>
           </div>
 
+          {/*
+            * الحروف تُدخَل عربيةً ولو كانت اللوحة رياضية.
+            *
+            * اللوحة السعودية تُسجَّل بحروفها العربية أيًّا كان إصدارها،
+            * واللاتينية تُشتقّ منها بجدول المرور المعتمد. والرياضية لا تطبع
+            * إلّا اللاتينية — فما يتغيّر هو **ما يُطبَع** لا ما يُدخَل.
+            */}
           <LetterPicker
             value={normalizedLetters}
             onChange={(letters) => setValue('arabicLetters', letters, { shouldDirty: true })}
@@ -234,8 +297,16 @@ export function ListingForm({
             >
               {watch('latinLetters') || '—'}
             </output>
-            <p className="text-[11px] text-muted">
+            <p className="text-[11px] leading-relaxed text-muted">
               تُشتقّ من الحروف العربية حسب جدول لوحات المرور المعتمد.
+              {latinOnly && (
+                <>
+                  {' '}
+                  <b className="text-gold-500">
+                    واللوحة الرياضية لا تطبع إلا هذه الحروف والأرقام اللاتينية.
+                  </b>
+                </>
+              )}
             </p>
           </div>
         </div>

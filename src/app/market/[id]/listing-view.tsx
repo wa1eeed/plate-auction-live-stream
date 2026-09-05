@@ -115,6 +115,7 @@ export function ListingView({
             <div className="drop-shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
               <SaudiLicensePlate
                 plateType={detail.plate.plateType}
+                plateFormat={detail.plate.plateFormat}
                 arabicLetters={detail.plate.arabicLetters}
                 latinLetters={detail.plate.latinLetters}
                 plateNumbers={detail.plate.plateNumbers}

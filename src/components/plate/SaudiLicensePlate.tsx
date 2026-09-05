@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import type { PlateEmblem, PlateSize, PlateType } from '@/lib/domain/types'
+import type { PlateEmblem, PlateSize, PlateType, PlateFormat } from '@/lib/domain/types'
 import { toArabicIndicDigits } from '@/lib/saudi-plate-mapping'
 import { EMBLEM_ART, EmblemShapes, STRIP_SYMBOL } from './EmblemGraphic'
 import {
@@ -15,6 +15,8 @@ import {
 
 export type SaudiLicensePlateProps = {
   plateType?: PlateType
+  /** نوع الإصدار — الطويلة افتراضًا لما لم يُحدَّد */
+  plateFormat?: PlateFormat
   arabicLetters: string
   latinLetters: string
   /** الأرقام الغربية — تُشتق منها الأرقام العربية تلقائيًا */
@@ -102,6 +104,17 @@ type Geometry = {
   /** شريطا الصفّين: العربي أعلى واللاتيني أسفل، بينهما فجوة */
   rows: { topBand: number; bottomBand: number; bandHeight: number }
   fonts: { numbers: number; letters: number }
+  /**
+   * خطوطٌ فاصلة بين الخانات — مواضع `x`.
+   *
+   * الطويلة بلا فواصل داخلية: الشعار الأوسط يفصل بصريًّا. والاعتيادية
+   * والرياضية تُقسَّمان خاناتٍ بحدودٍ ظاهرة كما في اللوحة المصنوعة.
+   */
+  dividers?: number[]
+  /**
+   * صفٌّ واحد لاتينيّ فقط، والدولة في خانةٍ وسطى لا شريطٍ جانبيّ (الرياضية).
+   */
+  singleRow?: boolean
 }
 
 const LONG_GEOMETRY: Geometry = {
@@ -118,6 +131,57 @@ const LONG_GEOMETRY: Geometry = {
   // الداخل 7..193 (186). الشريطان بارتفاع 72، موضوعان ليتساوى الهامش أعلى وأسفل (~17)
   rows: { topBand: 24, bottomBand: 104, bandHeight: 72 },
   fonts: { numbers: 82, letters: 88 },
+}
+
+/**
+ * اللوحة الاعتيادية — مستطيلة قريبة من المربّع.
+ *
+ * صفّان كالطويلة، لكن بلا شعارٍ أوسط: عرضها لا يتّسع لثلاث كتل، فالشعار فيها
+ * يزاحم الرقم والحرف. والدولة في شريطها الجانبيّ وحدها، وخطٌّ يفصل خانة
+ * الأرقام عن خانة الحروف كما في اللوحة المصنوعة.
+ */
+const STANDARD_GEOMETRY: Geometry = {
+  viewBox: '0 0 460 230',
+  width: 460,
+  height: 230,
+  frameRadius: 18,
+  inset: 7,
+  strip: { x: 386, width: 67 },
+  main: { x: 7, width: 379 },
+  numbers: { center: 120, from: 20, to: 220 },
+  // لا شعار أوسط
+  emblem: { center: 240, from: 235, to: 245, size: 0 },
+  letters: { center: 310, from: 245, to: 375 },
+  // الداخل 7..223 (216). شريطان بارتفاع 84 بهامش ~24 أعلى وأسفل
+  rows: { topBand: 26, bottomBand: 122, bandHeight: 84 },
+  fonts: { numbers: 92, letters: 96 },
+  dividers: [240],
+}
+
+/**
+ * اللوحة الرياضية — صفٌّ واحد لاتينيّ.
+ *
+ * لا عربية فيها أصلًا: لا رقمًا ولا حرفًا. والدولة في **خانةٍ وسطى** لا في
+ * شريطٍ جانبيّ — شعارٌ فوقه «السعودية» و«KSA» — فتنقسم اللوحة ثلاث خانات
+ * بحدودٍ ظاهرة. ونسبتها أقصر من الطويلة: ٣٫٨ لا ٤٫٦٥.
+ */
+const SPORT_GEOMETRY: Geometry = {
+  viewBox: '0 0 760 200',
+  width: 760,
+  height: 200,
+  frameRadius: 18,
+  inset: 7,
+  // لا شريط جانبيّ — الرقم صفر يُسقط رسمه
+  strip: { x: 0, width: 0 },
+  main: { x: 7, width: 746 },
+  numbers: { center: 175, from: 30, to: 320 },
+  emblem: { center: 380, from: 330, to: 430, size: 78 },
+  letters: { center: 575, from: 440, to: 720 },
+  // صفٌّ واحد يشغل الوسط
+  rows: { topBand: 0, bottomBand: 40, bandHeight: 120 },
+  fonts: { numbers: 132, letters: 132 },
+  dividers: [330, 430],
+  singleRow: true,
 }
 
 /**
@@ -163,6 +227,7 @@ function Unflip({ x, active, children }: { x: number; active: boolean; children:
  */
 export function SaudiLicensePlate({
   plateType = 'private',
+  plateFormat = 'long',
   arabicLetters,
   latinLetters,
   plateNumbers,
@@ -179,7 +244,20 @@ export function SaudiLicensePlate({
 }: SaudiLicensePlateProps) {
   const western = latinNumbers ?? plateNumbers ?? ''
   const eastern = arabicNumbers ?? toArabicIndicDigits(western)
-  const geo = plateType === 'motorcycle' ? MOTO_GEOMETRY : LONG_GEOMETRY
+  /*
+   * الشكل من نوع الإصدار، إلا الدراجة فلها شكلها مهما كان الإصدار.
+   *
+   * نوع المركبة ونوع الإصدار محوران مستقلّان — لكنّ لوحة الدراجة مقاسٌ واحد
+   * لا تصدر طويلةً ولا رياضية.
+   */
+  const geo =
+    plateType === 'motorcycle'
+      ? MOTO_GEOMETRY
+      : plateFormat === 'standard'
+        ? STANDARD_GEOMETRY
+        : plateFormat === 'sport'
+          ? SPORT_GEOMETRY
+          : LONG_GEOMETRY
   // معرّف ثابت مشتقّ من المحتوى: متطابق بين الخادم والعميل، ولا يتضارب
   // مع لوحة أخرى مختلفة المحتوى.
   const uid = stableUid([plateType, arabicLetters, latinLetters, western, emblem])
@@ -214,11 +292,24 @@ export function SaudiLicensePlate({
   const [numberSize, latinLetterSize] = bottomRow.sizes
   // حجم صفر يعني أن هذه الهندسة بلا شعار أوسط (لوحة الدراجة)
   const showCenterEmblem = geo.emblem.size > 0
+  const hasStrip = geo.strip.width > 0
+  /*
+   * خلفية زرقاء لخانة الدولة في لوحات النقل.
+   *
+   * هي علامتها في اللوحة الحقيقية: يُعرف صنف المركبة منها قبل قراءة حرفٍ.
+   * وتقع حيث تقع الدولة — شريطًا جانبيًّا في الطويلة والاعتيادية، وخانةً
+   * وسطى في الرياضية — فتتبع نوع الإصدار ولا تُثبَّت في موضع.
+   */
+  const countryFill = plateType === 'transport' ? '#1d4ed8' : null
+  const countryInk = countryFill ? '#FFFFFF' : '#0A0D12'
   const art = showCenterEmblem && emblem !== 'none' && emblem !== 'custom' ? EMBLEM_ART[emblem] : null
 
   const mirrored = stripSide === 'left'
   const label =
-    title ?? `لوحة ${plateType === 'motorcycle' ? 'دراجة نارية' : plateType === 'transport' ? 'نقل خاص' : 'خصوصي'} ${arabicLetters} ${western}`
+    title ??
+    `لوحة ${plateType === 'motorcycle' ? 'دراجة نارية' : plateType === 'transport' ? 'نقل خاص' : 'خصوصي'}${
+      geo.singleRow ? ' رياضية' : ''
+    } ${geo.singleRow ? latinLetters : arabicLetters} ${western}`
 
   const stripCenter = geo.strip.x + geo.strip.width / 2
   const ksaLetters = ['K', 'S', 'A']
@@ -306,27 +397,55 @@ export function SaudiLicensePlate({
           />
 
           <g clipPath={`url(#plate-clip-${uid})`} filter={embossed ? `url(#plate-emboss-${uid})` : undefined}>
+            {/* أرضيّة خانة الدولة — زرقاء في لوحات النقل */}
+            {countryFill && (
+              <rect
+                x={hasStrip ? geo.strip.x : geo.emblem.from}
+                y={geo.inset}
+                width={hasStrip ? geo.width - geo.strip.x - geo.inset : geo.emblem.to - geo.emblem.from}
+                height={geo.height - geo.inset * 2}
+                fill={countryFill}
+              />
+            )}
+
             {/* الخط الفاصل لشريط الدولة */}
-            <rect
-              x={geo.strip.x}
-              y={geo.inset}
-              width={Math.max(2.5, geo.width * 0.003)}
-              height={geo.height - geo.inset * 2}
-              fill="#0A0D12"
-            />
+            {hasStrip && (
+              <rect
+                x={geo.strip.x}
+                y={geo.inset}
+                width={Math.max(2.5, geo.width * 0.003)}
+                height={geo.height - geo.inset * 2}
+                fill="#0A0D12"
+              />
+            )}
+
+            {/* حدود الخانات — ظاهرة في الاعتيادية والرياضية */}
+            {geo.dividers?.map((x) => (
+              <rect
+                key={x}
+                x={x}
+                y={geo.inset}
+                width={Math.max(2.5, geo.width * 0.003)}
+                height={geo.height - geo.inset * 2}
+                fill="#0A0D12"
+              />
+            ))}
 
             {/* رمز الدولة أعلى الشريط */}
+            {hasStrip && (
             <Unflip x={stripCenter - geo.strip.width * 0.1} active={mirrored}>
               <g
                 transform={`translate(${stripCenter - geo.strip.width * 0.1 - stripSymbolSize / 2} ${geo.inset + geo.height * 0.055}) scale(${stripSymbolSize / 100})`}
               >
-                <EmblemShapes art={STRIP_SYMBOL} monochrome="#0A0D12" box={100} />
+                <EmblemShapes art={STRIP_SYMBOL} monochrome={countryInk} box={100} />
               </g>
             </Unflip>
+            )}
 
             {/* «السعودية» رأسيًا على حافة الشريط.
                 المعامل 0.20 لا 0.12: النصّ يدور 90° فيصير نصف ارتفاعه امتدادًا
                 أفقيًا على الجانبين، وبالمعامل الأصغر كان يتجاوز الإطار ويُقصّ. */}
+            {hasStrip && (
             <Unflip x={geo.width - geo.inset - geo.strip.width * 0.2} active={mirrored}>
               <text
                 transform={`rotate(90 ${geo.width - geo.inset - geo.strip.width * 0.2} ${geo.height / 2})`}
@@ -334,7 +453,7 @@ export function SaudiLicensePlate({
                 y={geo.height / 2}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="#0A0D12"
+                fill={countryInk}
                 fontSize={geo.strip.width * 0.26}
                 fontWeight={500}
                 style={{ fontFamily: 'var(--font-plate-arabic)' }}
@@ -342,15 +461,17 @@ export function SaudiLicensePlate({
                 السعودية
               </text>
             </Unflip>
+            )}
 
             {/* أحرف KSA رأسيًا */}
-            {ksaLetters.map((letter, index) => (
+            {hasStrip &&
+              ksaLetters.map((letter, index) => (
               <Unflip key={letter} x={stripCenter - geo.strip.width * 0.1} active={mirrored}>
                 <text
                   x={stripCenter - geo.strip.width * 0.1}
                   y={ksaFirstBaseline + index * ksaStep}
                   textAnchor="middle"
-                  fill="#0A0D12"
+                  fill={countryInk}
                   fontSize={ksaFontSize}
                   fontWeight={600}
                   style={{ fontFamily: 'var(--font-plate-latin)' }}
@@ -358,7 +479,42 @@ export function SaudiLicensePlate({
                   {letter}
                 </text>
               </Unflip>
-            ))}
+              ))}
+
+            {/*
+              * الرياضية: الدولة في خانةٍ وسطى — شعارٌ فوقه «السعودية» و«KSA».
+              *
+              * لا شريط جانبيّ فيها، فيُكتب الاسمان أفقيًّا تحت الشعار كما في
+              * اللوحة المصنوعة، لا رأسيًّا على حافّة.
+              */}
+            {geo.singleRow && (
+              <Unflip x={geo.emblem.center} active={mirrored}>
+                <g>
+                  <text
+                    x={geo.emblem.center}
+                    y={geo.height * 0.72}
+                    textAnchor="middle"
+                    fill={countryInk}
+                    fontSize={geo.height * 0.1}
+                    fontWeight={500}
+                    style={{ fontFamily: 'var(--font-plate-arabic)' }}
+                  >
+                    السعودية
+                  </text>
+                  <text
+                    x={geo.emblem.center}
+                    y={geo.height * 0.9}
+                    textAnchor="middle"
+                    fill={countryInk}
+                    fontSize={geo.height * 0.12}
+                    fontWeight={600}
+                    style={{ fontFamily: 'var(--font-plate-latin)' }}
+                  >
+                    KSA
+                  </text>
+                </g>
+              </Unflip>
+            )}
 
             {/* الشعار الوسطي */}
             {art && (
@@ -398,7 +554,14 @@ export function SaudiLicensePlate({
               />
             )}
 
-            {/* الأرقام العربية — أعلى القسم الأيسر */}
+            {/*
+              * العربية تُسقط في الرياضية.
+              *
+              * ليست إخفاءً بالتنسيق بل امتناعًا عن الرسم: اللوحة الرياضية لا
+              * عربية فيها أصلًا، ورسمُها ثمّ إخفاؤها يُبقيها في نصّ الوصول
+              * وفي البحث فتُقرأ لوحةً ليست هي.
+              */}
+            {!geo.singleRow && (
             <Unflip x={geo.numbers.center} active={mirrored}>
               <text
                 x={geo.numbers.center}
@@ -413,6 +576,7 @@ export function SaudiLicensePlate({
                 {eastern}
               </text>
             </Unflip>
+            )}
             {/* الأرقام الإنجليزية — أسفل القسم الأيسر */}
             <Unflip x={geo.numbers.center} active={mirrored}>
               <text
@@ -428,7 +592,7 @@ export function SaudiLicensePlate({
                 {western}
               </text>
             </Unflip>
-            {/* الحروف العربية — أعلى القسم الأيمن */}
+            {!geo.singleRow && (
             <Unflip x={geo.letters.center} active={mirrored}>
               <text
                 x={geo.letters.center}
@@ -443,6 +607,7 @@ export function SaudiLicensePlate({
                 {isolateArabic(arabicLetters)}
               </text>
             </Unflip>
+            )}
             {/* الحروف الإنجليزية — أسفل القسم الأيمن */}
             <Unflip x={geo.letters.center} active={mirrored}>
               <text

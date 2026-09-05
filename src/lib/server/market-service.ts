@@ -61,6 +61,7 @@ export function isServiceError(error: unknown): error is ServiceError {
 function toPlate(listing: Listing): Plate {
   return {
     plateType: listing.plateType,
+    plateFormat: listing.plateFormat,
     arabicLetters: listing.arabicLetters,
     latinLetters: listing.latinLetters,
     plateNumbers: listing.plateNumbers,

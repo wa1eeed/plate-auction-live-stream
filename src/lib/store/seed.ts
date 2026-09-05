@@ -8,6 +8,7 @@ import type {
   Listing,
   PlateEmblem,
   PlateType,
+  PlateFormat,
   SaleType,
 } from '@/lib/domain/types'
 import { DEMO_ADMIN, DEMO_USERS, DEMO_WALLET_OPENING_BALANCE } from '@/lib/config'
@@ -23,6 +24,7 @@ import type { MemoryDatabase } from './memory-store'
 type SeedListing = {
   seller: number
   plateType: PlateType
+  plateFormat?: PlateFormat
   arabicLetters: string
   plateNumbers: string
   emblem: PlateEmblem
@@ -542,6 +544,8 @@ export function seedDatabase(db: MemoryDatabase): void {
     return {
       id: newId('lst'),
       reference: nextRef('listing'),
+      // تنويعٌ في البذرة: الأنواع الثلاثة تُرى في السوق بلا ضبطٍ يدويّ
+      plateFormat: seed.plateFormat ?? (index % 5 === 0 ? 'standard' : index % 7 === 3 ? 'sport' : 'long'),
       sellerId: users[seed.seller].id,
       plateType: seed.plateType,
       // نمرّ بالتطبيع كما يمرّ إدخال المستخدم: البذرة تكتب «أ» و«ي» بالمألوف،

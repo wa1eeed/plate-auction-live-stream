@@ -26,6 +26,7 @@ function makeListing(overrides: Partial<Listing> = {}): Listing {
     reference: 'L26-00001',
     sellerId: SELLER,
     plateType: 'private',
+    plateFormat: 'long',
     arabicLetters: 'أ',
     latinLetters: 'A',
     plateNumbers: '1',
