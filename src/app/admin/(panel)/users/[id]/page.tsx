@@ -28,6 +28,7 @@ import {
   SALE_TYPE_LABELS,
 } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
+import { UserEditDialog } from '@/components/admin/user-edit-dialog'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { ContactCard } from '@/components/admin/contact-card'
 import { formatAmount } from '@/lib/domain/money'
@@ -98,7 +99,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
       <AdminHeader
         title={user.displayName}
         description={`${user.email}${user.city ? ` · ${user.city}` : ''}`}
-        action={<WalletActions userId={user.id} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <UserEditDialog user={user} />
+            <WalletActions userId={user.id} />
+          </div>
+        }
       />
 
       {/* رقم العضوية بارزًا لا مدفونًا في سطر: هو ما يُقتبَس في كل مراسلة عن

@@ -159,7 +159,14 @@ test('مهل الضمان تُضبط من اللوحة وتسري على ما ي
    * الأدمن ولا يجدهما.
    */
   await loginAdmin(page)
-  await page.goto('/admin/settings')
+  /*
+   * القسم في الرابط.
+   *
+   * الإعدادات صارت ستّة أقسام في عمود، وأوّلها الهويّة. و`?tab=` يفتح ما
+   * يُقصَد مباشرة — فيُحفظ رابط القسم ويُشارَك، ويعود إليه من حدّث الصفحة بعد
+   * حفظٍ بدل أن يُلقى في أوّل قسم.
+   */
+  await page.goto('/admin/settings?tab=auction')
 
   await expect(page.getByLabel('مهلة نقل الملكية (ساعة)')).toBeVisible()
   const review = page.getByLabel('مهلة مراجعة الإدارة (ساعة)')

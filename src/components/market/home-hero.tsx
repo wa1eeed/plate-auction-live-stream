@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { ArrowLeft, LayoutGrid, Plus, Radio } from 'lucide-react'
+import { ArrowLeft, LayoutGrid, LayoutList, Radio } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { formatAmount } from '@/lib/domain/money'
-import type { Plate } from '@/lib/domain/types'
+import type { BrandSettings, Plate } from '@/lib/domain/types'
 
 /**
  * قسم البطل.
@@ -19,10 +19,13 @@ import type { Plate } from '@/lib/domain/types'
 export function HomeHero({
   plates,
   stats,
+  brand,
 }: {
   /** أبرز ثلاث لوحات معروضة — الأولى في المقدّمة */
   plates: Plate[]
   stats: { active: number; liveAuctions: number; sold: number }
+  /** نصوص الواجهة الأولى — تُضبط من لوحة الإدارة لا من الكود */
+  brand: Pick<BrandSettings, 'heroBadge' | 'heroTitle' | 'heroHighlight' | 'heroBody'>
 }) {
   const [front, ...behind] = plates
 
@@ -46,25 +49,27 @@ export function HomeHero({
               ? stats.liveAuctions === 1
                 ? 'مزاد شغّال الحين'
                 : `${stats.liveAuctions} مزادات شغّالة الحين`
-              : 'سوق تداول لوحات المركبات'}
+              : brand.heroBadge}
           </span>
 
           <h1
             className="enter mt-5 text-balance text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-[3.4rem]"
             style={{ '--enter-delay': '60ms' } as React.CSSProperties}
           >
-            لوحتك تسوى أكثر
-            <br />
-            <span className="gold-text">بِعها بسعرها الصح</span>
+            {brand.heroTitle}
+            {brand.heroHighlight && (
+              <>
+                <br />
+                <span className="gold-text">{brand.heroHighlight}</span>
+              </>
+            )}
           </h1>
 
           <p
             className="enter mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted lg:mx-0"
             style={{ '--enter-delay': '120ms' } as React.CSSProperties}
           >
-            اعرض لوحتك بيع مباشر، أو بمزاد، أو استقبل عليها عروض — ومن نفس الحساب زايد على
-            لوحات غيرك. المزايدات توصلك لحظة بلحظة، وما يزايد عليك إلا اللي دافع عربونه،
-            وسعرك الاحتياطي ما يشوفه أحد غيرك.
+            {brand.heroBody}
           </p>
 
           <div
@@ -74,14 +79,15 @@ export function HomeHero({
             <Button asChild size="lg">
               <Link href="/market">
                 <LayoutGrid className="size-4" />
-                شوف اللوحات
+                شاهد سوق اللوحات
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
-              <Link href="/account/listings/new">
-                <Plus className="size-4" />
-                اعرض لوحتك
+              {/* إلى قائمة لوحاته لا إلى نموذج الإضافة: «إدارة» تشمل ما عُرض وما لم يُعرض */}
+              <Link href="/account/listings">
+                <LayoutList className="size-4" />
+                إدارة لوحاتك
               </Link>
             </Button>
           </div>

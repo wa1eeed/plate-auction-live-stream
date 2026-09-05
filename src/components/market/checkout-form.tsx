@@ -60,7 +60,7 @@ export function CheckoutForm({
       }
       router.push(`/checkout/${orderId}/thanks?ref=${encodeURIComponent(data.paymentReference)}`)
     } catch {
-      toast.error('تعذّر الاتصال بالخادم')
+      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {
       setBusy(false)
     }

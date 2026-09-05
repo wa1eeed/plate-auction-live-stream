@@ -1354,6 +1354,103 @@ export type PlatformEntry = {
  * لقطةٌ منها تُحفظ **مع كل فاتورة**: المنشأة قد تنتقل أو يتغيّر اسمها
  * النظامي، وفاتورةٌ صدرت قبل النقل تبقى شاهدةً على ما كان لا على ما صار.
  */
+/**
+ * أصلٌ مرفوع — شعارٌ أو أيقونة أو صورة مشاركة.
+ *
+ * البايتات في السجلّ لا في القرص: المنصّة تعمل بعملية واحدة بلا وحدة تخزين
+ * ملحقة، وملفٌّ يُكتب في قرص الحاوية يضيع مع أوّل إعادة نشر. والحجم مقيَّد
+ * عند الاستقبال فلا يُثقَل السجلّ بصورةٍ لا يحتاجها العرض.
+ */
+export type BrandAsset = {
+  /** البايتات بترميز base64 — بلا بادئة `data:` */
+  data: string
+  mime: string
+  /** اسم الملفّ الأصلي — يُعرض في اللوحة ليُعرف ما المرفوع */
+  fileName: string
+  bytes: number
+  updatedAt: string
+}
+
+/** أقصى ما يُقبل رفعه لكل أصل — بالبايت قبل الترميز. */
+export const BRAND_ASSET_LIMITS = {
+  logo: 512 * 1024,
+  icon: 256 * 1024,
+  ogImage: 1024 * 1024,
+} as const
+
+export type BrandAssetKind = keyof typeof BRAND_ASSET_LIMITS
+
+/**
+ * هويّة المنصّة وما تُؤرشَف به.
+ *
+ * كان الاسم والوصف والنصوص مكتوبةً في الكود، فتغييرها يحتاج نشرًا. وهي أوّل
+ * ما يبدّله من ينصب نسخته: اسمه، ولونه، وشعاره، وما يُقرأ عنه في نتائج البحث.
+ *
+ * والحقول الثلاثة الأخيرة ليست زينة: محرّكات البحث تقرأ `metaTitle` و
+ * `metaDescription`، ومحرّكات الإجابة تقرأ البيانات المنظَّمة المبنيّة من
+ * `legalName` و`sameAs`، وتحديد الموقع يُبنى من `geoRegion` و`geoPlace`.
+ */
+export type BrandSettings = {
+  /** الاسم الكامل — في العنوان وفي البيانات المنظَّمة */
+  name: string
+  /** الاسم القصير — في الترويسة وفي `%s — الاسم` */
+  shortName: string
+
+  // ---- نصّ الواجهة الأولى
+  heroBadge: string
+  heroTitle: string
+  heroHighlight: string
+  heroBody: string
+
+  // ---- الهوية البصرية
+  /** اللون الأساسي بصيغة `#RRGGBB` — يشتقّ منه تدرّج الذهبي كلّه */
+  primaryColor: string
+  logo: BrandAsset | null
+  icon: BrandAsset | null
+  ogImage: BrandAsset | null
+
+  // ---- ما تقرؤه محرّكات البحث
+  metaTitle: string
+  metaDescription: string
+  keywords: string[]
+
+  // ---- ما تقرؤه محرّكات الإجابة والتوليد
+  legalName: string
+  /** روابط الحسابات الرسمية — تربط الكيان بمواضعه الأخرى */
+  sameAs: string[]
+  /** رمز المنطقة ISO 3166-2 — مثل `SA-01` */
+  geoRegion: string
+  /** المدينة والبلد كما تُقرأ */
+  geoPlace: string
+  googleSiteVerification: string
+
+  updatedAt: string
+  updatedByAdminId: string | null
+}
+
+export const DEFAULT_BRAND_SETTINGS: Omit<BrandSettings, 'updatedAt' | 'updatedByAdminId'> = {
+  name: 'سوق تداول لوحات المركبات',
+  shortName: 'سوق اللوحات',
+  heroBadge: 'سوق تداول لوحات المركبات',
+  heroTitle: 'لوحتك تسوى أكثر',
+  heroHighlight: 'بِعها بسعرها الصح',
+  heroBody:
+    'اعرض لوحتك بيع مباشر، أو بمزاد، أو استقبل عليها عروض — ومن نفس الحساب زايد على لوحات غيرك. المزايدات توصلك لحظة بلحظة، وما يزايد عليك إلا اللي دافع عربونه، وسعرك الاحتياطي ما يشوفه أحد غيرك.',
+  primaryColor: '#D6A84B',
+  logo: null,
+  icon: null,
+  ogImage: null,
+  metaTitle: 'سوق تداول لوحات المركبات',
+  metaDescription:
+    'سوق ويب لتداول لوحات المركبات السعودية: اعرض لوحتك للبيع المباشر أو بمزاد أو استقبل العروض، وزايد على لوحات غيرك — بحساب واحد يبيع ويشتري.',
+  keywords: ['لوحات مركبات', 'مزاد لوحات', 'بيع لوحات سيارات', 'لوحات مميزة', 'السعودية'],
+  legalName: '',
+  sameAs: [],
+  geoRegion: 'SA',
+  geoPlace: 'السعودية',
+  googleSiteVerification: '',
+}
+
 export type TaxSettings = {
   /** بلا تفعيل لا تُصدَر فواتير — لا تُصدَر فاتورة برقم ضريبي فارغ */
   enabled: boolean

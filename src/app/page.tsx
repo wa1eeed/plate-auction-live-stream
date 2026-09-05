@@ -8,6 +8,7 @@ import { PlateCarousel } from '@/components/market/plate-carousel'
 import { Card, CardContent } from '@/components/ui/card'
 import { config, DEMO_PRIMARY_USER } from '@/lib/config'
 import { getMarketListings } from '@/lib/server/market-service'
+import { getBrand } from '@/lib/server/brand-service'
 import type { ListingCard } from '@/lib/domain/types'
 
 export const dynamic = 'force-dynamic'
@@ -15,28 +16,28 @@ export const dynamic = 'force-dynamic'
 const FEATURES = [
   {
     icon: Lock,
-    title: 'سعر احتياطي محمي',
-    body: 'الرقم لا يغادر خوادمنا — يراه البائع وحده، ولا تُباع اللوحة دونه. المزايد يرى «تحقّق» أو «لم يتحقّق» فقط.',
+    title: 'سعرك الأدنى سرّك',
+    body: 'أقل سعر تقبل به تكتبه ولا يشوفه أحد غيرك — ولوحتك ما تنباع بأقل منه. المزايد يعرف بس إذا وصل له أو ما وصل.',
   },
   {
     icon: Wallet,
     title: 'عربون يضمن الجدّية',
-    body: 'يُحجز من رصيد محفظتك عند أول مزايدة فلا يزايد إلا من يملك المبلغ، ويعود إليك فور خسارتك.',
+    body: 'نحجز العربون من محفظتك أول ما تزايد، فما يزايد عليك إلا اللي يقدر يدفع — ويرجع لك كامل لحظة ما تخسر.',
   },
   {
     icon: Timer,
     title: 'تمديد تلقائي',
-    body: 'مزايدة في الثواني الأخيرة تمدّ الوقت، فلا يُحسم المزاد بسرعة الاتصال بل بأعلى عرض.',
+    body: 'أي مزايدة في آخر لحظة تزيد الوقت — عشان تكسب اللوحة بأعلى سعر مو بأسرع نت.',
   },
   {
     icon: Gavel,
-    title: 'كشف مزايدات شفّاف',
-    body: 'كل مزايدة موثّقة بوقتها ومبلغها، والملغاة تظهر موسومة لا محذوفة.',
+    title: 'كل مزايدة مكشوفة',
+    body: 'كل مزايدة مكتوبة بوقتها ومبلغها، وحتى الملغاة تشوفها مكتوب عليها ملغاة — ما نخفي شي.',
   },
   {
     icon: ShieldCheck,
-    title: 'مزايدات لحظية',
-    body: 'المزايدات تصلك في اللحظة نفسها عبر اتصال دائم، لا بتحديث الصفحة ولا بانتظار دورة استطلاع.',
+    title: 'ما تفوتك مزايدة',
+    body: 'تشوف كل مزايدة لحظة ما تنزل، بدون ما تحدّث الصفحة — فما تفوتك فرصة وأنت تنتظر.',
   },
   {
     /*
@@ -45,8 +46,8 @@ const FEATURES = [
      * وكان مدفونًا في «كيف تعمل المنصّة» بينما تعرض الواجهة ستّ ميزات تشغيل.
      */
     icon: Lock,
-    title: 'مالك محجوز أمانةً',
-    body: 'تُسدّد للمنصّة لا للبائع، ولا يخرج المبلغ إلا بعد نقل الملكية وتحقّق الإدارة — أو يعود إليك إن لم تُنقل.',
+    title: 'مالك محفوظ لين تستلم',
+    body: 'تدفع لنا مو للبائع، ونمسك مالك لين تنتقل اللوحة باسمك — وإذا ما انتقلت يرجع لك.'
   },
   {
     icon: Tag,
@@ -56,7 +57,7 @@ const FEATURES = [
 ]
 
 export default async function HomePage() {
-  const listings = await getMarketListings()
+  const [listings, brand] = await Promise.all([getMarketListings(), getBrand()])
   const serverTime = new Date().toISOString()
 
   const open = listings.filter((card) => card.status === 'active')
@@ -73,6 +74,7 @@ export default async function HomePage() {
 
       <main id="main" className="flex-1">
         <HomeHero
+          brand={brand}
           plates={open.slice(0, 3).map((card) => card.plate)}
           stats={{
             active: open.length,
@@ -123,10 +125,10 @@ export default async function HomePage() {
         <section className="border-t border-ink-600/70 bg-ink-900/30">
           <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-extrabold sm:text-3xl">مبنيّة على قواعد واضحة</h2>
+              <h2 className="text-2xl font-extrabold sm:text-3xl">بِع واشترِ وأنت مطمئن</h2>
               <p className="mt-3 text-pretty text-sm leading-relaxed text-muted">
-                كل قاعدة حرجة تُنفَّذ على الخادم لا في المتصفّح: المبلغ المطلوب، والوقت،
-                والهوية، والعربون. ما تراه في الواجهة تسهيل لا حراسة.
+                مالك محفوظ عندنا حتى تستلم لوحتك، وما يزايد عليك إلا اللي دافع عربونه،
+                وسعرك اللي ما تبي أحد يشوفه ما يشوفه أحد. كل شي مكتوب وواضح من أول خطوة.
               </p>
             </div>
 

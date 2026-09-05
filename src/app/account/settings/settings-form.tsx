@@ -57,7 +57,7 @@ export function SettingsForm({ user }: { user: User }) {
       toast.success('حُفظت بياناتك')
       router.refresh()
     } catch {
-      toast.error('تعذّر الاتصال بالخادم')
+      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     }
   })
 

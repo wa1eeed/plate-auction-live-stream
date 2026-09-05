@@ -22,6 +22,7 @@ import type {
   PlatformEntry,
   TaxInvoice,
   TaxSettings,
+  BrandSettings,
   User,
   Wallet,
 } from '@/lib/domain/types'
@@ -218,6 +219,8 @@ export interface AuctionStore {
   updatePlatformEntry(id: string, patch: Partial<PlatformEntry>): Promise<PlatformEntry>
 
   // ---------------------------------------------------- الضريبة وأوامر الصرف
+  getBrandSettings(): Promise<BrandSettings>
+  updateBrandSettings(patch: Partial<BrandSettings>): Promise<BrandSettings>
   getTaxSettings(): Promise<TaxSettings>
   updateTaxSettings(patch: Partial<TaxSettings>): Promise<TaxSettings>
 

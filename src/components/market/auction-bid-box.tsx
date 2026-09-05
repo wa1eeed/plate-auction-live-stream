@@ -109,7 +109,7 @@ export function AuctionBidBox({
       await onDone()
       router.refresh()
     } catch {
-      toast.error('تعذّر الاتصال بالخادم')
+      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {
       inFlight.current = false
       setBusy(false)

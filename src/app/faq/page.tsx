@@ -8,6 +8,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { Button } from '@/components/ui/button'
 import { FAQ_CATEGORY_LABELS, type FaqCategory } from '@/lib/domain/types'
 import { listPublicFaq } from '@/lib/server/admin-service'
+import { faqJsonLd, jsonLdHtml } from '@/lib/server/structured-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +29,23 @@ export default async function FaqPage() {
     groups.set(item.category, list)
   }
 
+  /*
+   * الأسئلة كبياناتٍ منظَّمة كذلك.
+   *
+   * محرّكات الإجابة تقتبس سؤالًا وجوابًا مفصولين — ونصُّ الصفحة وحده يُقتبَس
+   * مقطوعًا من سياقه أو لا يُقتبس. و`FAQPage` يعطيها الزوج كما هو، فتُنسَب
+   * الإجابة إلى المنصّة بدل أن تُعاد صياغتها من فقرةٍ لا حدود لها.
+   */
+  const faqLd = faqJsonLd(items)
+
   return (
     <PageShell>
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(faqLd) }}
+        />
+      )}
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
         <header className="mb-8 text-center">

@@ -6,7 +6,7 @@ test.describe('الصفحة الرئيسية', () => {
     await page.goto('/')
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText('لوحتك تسوى')
-    await expect(page.getByRole('link', { name: /شوف اللوحات/ }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /شاهد سوق اللوحات/ }).first()).toBeVisible()
 
     for (const heading of ['مزادات جارية', 'بيع مباشر', 'على السوم']) {
       await expect(page.getByRole('heading', { name: new RegExp(heading) })).toBeVisible()

@@ -15,6 +15,7 @@ import type {
   Disbursement,
   TaxInvoice,
   TaxSettings,
+  BrandSettings,
   FaqItem,
   LedgerEntry,
   Listing,
@@ -35,6 +36,7 @@ import {
   DEFAULT_COMMISSION_SETTINGS,
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_TAX_SETTINGS,
+  DEFAULT_BRAND_SETTINGS,
   EMPTY_PAYOUT_ACCOUNT,
 } from '@/lib/domain/types'
 import { buildEntry, emptyWallet, type NewLedgerEntry } from '@/lib/domain/wallet'
@@ -80,6 +82,7 @@ export type MemoryDatabase = {
   /** الفواتير الضريبية — سلسلة لا تنقطع ولا يُعدَّل فيها صادر */
   invoices: TaxInvoice[]
   taxSettings: TaxSettings
+  brandSettings: BrandSettings
   faq: FaqItem[]
   listings: Listing[]
   bids: Bid[]
@@ -138,6 +141,11 @@ export function emptyDatabase(): MemoryDatabase {
     invoices: [],
     taxSettings: {
       ...DEFAULT_TAX_SETTINGS,
+      updatedAt: new Date(0).toISOString(),
+      updatedByAdminId: null,
+    },
+    brandSettings: {
+      ...DEFAULT_BRAND_SETTINGS,
       updatedAt: new Date(0).toISOString(),
       updatedByAdminId: null,
     },
@@ -747,6 +755,19 @@ export class MemoryStore implements AuctionStore {
   }
 
   // ---------------------------------------------------- الضريبة وأوامر الصرف
+
+  async getBrandSettings(): Promise<BrandSettings> {
+    return clone(this.db.brandSettings)
+  }
+
+  async updateBrandSettings(patch: Partial<BrandSettings>): Promise<BrandSettings> {
+    this.db.brandSettings = {
+      ...this.db.brandSettings,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    }
+    return clone(this.db.brandSettings)
+  }
 
   async getTaxSettings(): Promise<TaxSettings> {
     return clone(this.db.taxSettings)

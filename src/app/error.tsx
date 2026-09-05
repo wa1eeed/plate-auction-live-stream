@@ -19,8 +19,8 @@ export default function GlobalError({ error, reset }: { error: Error; reset: () 
           <AlertTriangle className="mx-auto mb-4 size-10 text-danger" />
           <h1 className="mb-2 text-xl font-bold">حدث خطأ غير متوقع</h1>
           <p className="mb-6 text-sm text-muted">
-            تعذّر عرض هذه الصفحة. أعد المحاولة — بياناتك ومزايداتك محفوظة على الخادم ولم
-            يتأثّر شيء منها.
+            ما قدرنا نعرض هذه الصفحة. جرّب مرّة ثانية — حسابك ومزايداتك ومحفظتك كلّها
+            محفوظة وما تأثّر منها شي.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button onClick={reset}>

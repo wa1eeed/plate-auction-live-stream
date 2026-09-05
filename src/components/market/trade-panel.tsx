@@ -74,7 +74,7 @@ export function TradePanel({
       }
       router.push(`/checkout/${data.orderId}`)
     } catch {
-      toast.error('تعذّر الاتصال بالخادم')
+      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {
       inFlight.current = false
       setBusy(false)
@@ -104,7 +104,7 @@ export function TradePanel({
         router.refresh()
         return true
       } catch {
-        toast.error('تعذّر الاتصال بالخادم')
+        toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
         return false
       } finally {
         inFlight.current = false

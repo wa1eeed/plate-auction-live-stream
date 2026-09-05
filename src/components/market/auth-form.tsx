@@ -105,7 +105,7 @@ export function AuthForm({
         router.push(nextUrl)
         router.refresh()
       } catch {
-        toast.error('تعذّر الاتصال بالخادم')
+        toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
       }
     },
     // شبكة أمان: لا يفشل الإرسال بصمت أبدًا

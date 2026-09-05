@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Gavel, Gem, HandCoins, ShieldCheck, Tag } from 'lucide-react'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
+import { BrandMark } from './brand-mark'
+import { getBrand } from '@/lib/server/brand-service'
 
 const COLUMNS = [
   {
@@ -39,7 +41,8 @@ const COLUMNS = [
  * «كيف يعمل» و«الأسئلة الشائعة» بتفصيل أوفى، وتُثقلان آخر ما يقرؤه الزائر.
  * مكانهما ضمانات المنصّة الثلاث — وهي ما يهمّ من وصل إلى هنا.
  */
-export function SiteFooter() {
+export async function SiteFooter() {
+  const brand = await getBrand()
   return (
     <footer className="relative mt-auto overflow-hidden border-t border-ink-600/70 bg-ink-900/40">
       <div
@@ -49,15 +52,9 @@ export function SiteFooter() {
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <Link href="/" className="flex items-center gap-2.5 font-extrabold">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-gold-500 text-ink-950">
-                <Gavel className="size-4.5" />
-              </span>
-              سوق اللوحات
-            </Link>
+            <BrandMark />
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-              سوق ويب لتداول لوحات المركبات السعودية — بيع مباشر أو مزاد أو استقبال عروض،
-              بحساب واحد يبيع ويشتري.
+              {brand.metaDescription}
             </p>
 
             <div className="mt-5 w-[220px] opacity-80">
@@ -105,7 +102,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-ink-600/70 pt-6 text-xs text-muted">
-          <p>© {new Date().getFullYear()} سوق تداول لوحات المركبات</p>
+          <p>© {new Date().getFullYear()} {brand.name}</p>
           <nav aria-label="روابط عامة" className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link href="/faq" className="transition-colors hover:text-paper">
               الأسئلة الشائعة

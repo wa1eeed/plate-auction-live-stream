@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { Gavel, LogIn, Plus } from 'lucide-react'
+import { LogIn, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BrandMark } from './brand-mark'
 import { getCurrentUser } from '@/lib/server/require-user'
 import { getWalletView } from '@/lib/server/wallet-service'
 import { HeaderNav } from './header-nav'
@@ -24,15 +25,10 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
-        <Link
-          href="/"
-          className="group flex shrink-0 items-center gap-2.5 font-extrabold transition-opacity hover:opacity-90"
-        >
-          <span className="flex size-9 items-center justify-center rounded-xl bg-gold-500 text-ink-950 shadow-[var(--shadow-gold)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-spring)] group-hover:-rotate-6">
-            <Gavel className="size-4.5" />
-          </span>
-          <span className="hidden text-[15px] sm:inline">سوق اللوحات</span>
-        </Link>
+        <BrandMark
+          className="group transition-opacity hover:opacity-90"
+          nameClassName="hidden text-[15px] sm:inline"
+        />
 
         <HeaderNav active={active} />
 

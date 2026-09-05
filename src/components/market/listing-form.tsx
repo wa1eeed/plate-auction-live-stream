@@ -157,7 +157,7 @@ export function ListingForm({
       router.push('/account/listings')
       router.refresh()
     } catch {
-      toast.error('تعذّر الاتصال بالخادم')
+      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     }
   },
   // ورفضُ التحقّق يُقال أيضًا: ضغطة بلا أثر ظاهر تبدو عطلًا
