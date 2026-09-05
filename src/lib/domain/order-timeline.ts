@@ -618,7 +618,7 @@ export function adminOrderTask(
 
 export function currentOrderStage(
   steps: OrderTimelineStep[],
-  order: Pick<Order, 'status' | 'transferDueAt' | 'confirmDueAt'>,
+  order: Pick<Order, 'status' | 'paymentDueAt' | 'transferDueAt' | 'confirmDueAt'>,
   side: OrderSide,
 ): { step: OrderTimelineStep; audience: 'you' | 'other'; deadline: string | null } {
   const step =
@@ -628,12 +628,24 @@ export function currentOrderStage(
 
   const turn = orderTurn(order.status)
 
-  const deadline =
-    order.status === 'escrow_held'
-      ? order.transferDueAt
-      : order.status === 'ownership_transferred'
-        ? order.confirmDueAt
-        : null
+  return { step, audience: turn === side ? 'you' : 'other', deadline: orderDeadline(order) }
+}
 
-  return { step, audience: turn === side ? 'you' : 'other', deadline }
+/**
+ * موعد المرحلة الجارية — مصدرٌ واحد لعدّادها ولترتيبها.
+ *
+ * ومهلة السداد كانت ساقطةً منه: `awaiting_settlement` تُرجع `null`، فتُعرض
+ * الصفقة التي على صاحبها أن يسدّد بلا عدّاد أصلًا — وهي أحوج المراحل إليه،
+ * لأنّ انقضاءها يُتبَع باقتطاعٍ من العربون وإعادة إرساء.
+ *
+ * ومنه تُرتَّب القائمة أيضًا، فيوافق ما يُقرأ أوّلًا ما يُعدّ أوّلًا — ولو
+ * قُرئ موعدٌ ورُتّب بغيره لبدا الترتيب عشوائيًّا.
+ */
+export function orderDeadline(
+  order: Pick<Order, 'status' | 'paymentDueAt' | 'transferDueAt' | 'confirmDueAt'>,
+): string | null {
+  if (order.status === 'awaiting_settlement') return order.paymentDueAt
+  if (order.status === 'escrow_held') return order.transferDueAt
+  if (order.status === 'ownership_transferred') return order.confirmDueAt
+  return null
 }

@@ -48,14 +48,27 @@ export async function getWalletView(userId: string): Promise<WalletView> {
   const entries = await store.listLedger({ userId })
   const deposits = await store.listDeposits({ userId })
 
-  const decorated = []
-  for (const deposit of deposits) {
-    const listing = await store.getListing(deposit.listingId)
-    decorated.push({
-      ...deposit,
-      plateLabel: listing ? `${listing.arabicLetters} ${listing.plateNumbers}` : '—',
-    })
+  /*
+   * أسماء اللوحات تُقرأ مرّةً واحدة لكل إعلان.
+   *
+   * العرابين والقيود كلاهما يشير إلى إعلانات، وبعضها الإعلان نفسه — فقراءةُ
+   * كلّ سطرٍ على حدة تعيد الطلب عشرات المرّات على محفظةٍ نشِطة.
+   */
+  const plateNames = new Map<string, string>()
+  const plateOf = (listingId: string) => plateNames.get(listingId) ?? null
+  const ids = new Set<string>([
+    ...deposits.map((deposit) => deposit.listingId),
+    ...entries.map((entry) => entry.listingId).filter((id): id is string => Boolean(id)),
+  ])
+  for (const id of ids) {
+    const listing = await store.getListing(id)
+    if (listing) plateNames.set(id, `${listing.arabicLetters} ${listing.plateNumbers}`)
   }
+
+  const decorated = deposits.map((deposit) => ({
+    ...deposit,
+    plateLabel: plateOf(deposit.listingId) ?? '—',
+  }))
 
   const dueCommission = (await store.listPlatformEntries({ userId, settled: false }))
     .filter((entry) => !entry.reversedAt)
@@ -65,7 +78,7 @@ export async function getWalletView(userId: string): Promise<WalletView> {
     balance: wallet.balance,
     held: wallet.held,
     available: availableBalance(wallet),
-    statement: buildStatement(entries, wallet),
+    statement: buildStatement(entries, wallet, plateOf),
     deposits: decorated,
     dueCommission,
   }

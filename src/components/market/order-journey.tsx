@@ -1,7 +1,7 @@
 'use client'
 
-import { Check, ChevronDown, CircleDot, Clock3, ShieldCheck, Undo2, Wallet, X } from 'lucide-react'
-import { CompactCountdown } from './auction-countdown'
+import { Check, ChevronDown, CircleDot, ShieldCheck, Undo2, Wallet, X } from 'lucide-react'
+import { DeadlineMeter } from './deadline-meter'
 import { LocalTime } from './local-time'
 import { OrderTimeline } from './order-timeline'
 import type {
@@ -288,10 +288,20 @@ export function OrderStageCallout({
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted">{step.hint}</p>
 
+      {/*
+        * المهلة عدّادٌ يعبر الصفر لا سطرٌ يموت عنده.
+        *
+        * كان «يتبقّى ٠٠:٠٠» بعد انقضائها — ومن تأخّر لا يعرف أساعةً تأخّر أم
+        * ثلاثة أيام، والفرق بينهما هو الفرق بين تنبيهٍ ومصادرةِ عربون.
+        */}
       {deadline && (
-        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
-          <Clock3 className="size-3.5" />
-          يتبقّى <CompactCountdown endsAt={deadline} serverTime={serverTime} />
+        <p className="mt-2.5">
+          <DeadlineMeter
+            deadline={deadline}
+            serverTime={serverTime}
+            label="يتبقّى"
+            overdueLabel="تأخّر منذ"
+          />
         </p>
       )}
       </div>

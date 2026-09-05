@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { DealWon } from './deal-won'
 import { OrderList } from './order-list'
 import { EmptyState } from './plate-row'
-import { orderBucket, type OrderBucket, type OrderSide } from '@/lib/domain/order-timeline'
+import { orderDeadline, orderBucket, type OrderBucket, type OrderSide } from '@/lib/domain/order-timeline'
 import type { AccountOrder } from '@/lib/domain/types'
 import { useTablistKeys, tabIndexOf } from '@/components/ui/tablist'
 import { cn } from '@/lib/utils'
@@ -45,6 +45,21 @@ export function OrderTabs({
   const groups = useMemo(() => {
     const map: Record<OrderBucket, AccountOrder[]> = { you: [], running: [], done: [] }
     for (const order of orders) map[orderBucket(order, side)].push(order)
+
+    /*
+     * الأقرب موعدًا أوّلًا، والمتأخّر قبله.
+     *
+     * كانت الصفقات تُعرض بترتيب إنشائها، فتقع صفقةٌ تجاوزت مهلتها أسفل قائمةٍ
+     * ما فيها ما يستعجل — ومن يفتح القسم يقرأه من أعلاه. والترتيب بالموعد
+     * يجعل ما يحترق أوّل ما يُرى، وما لا موعد له في آخرها.
+     */
+    const urgency = (order: AccountOrder) => {
+      const due = orderDeadline(order)
+      return due ? Date.parse(due) : Number.POSITIVE_INFINITY
+    }
+    for (const bucket of ['you', 'running'] as const) {
+      map[bucket].sort((a, b) => urgency(a) - urgency(b))
+    }
     return map
   }, [orders, side])
 

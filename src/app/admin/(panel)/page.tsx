@@ -9,6 +9,7 @@ import {
   FileText,
   Gavel,
   Handshake,
+  TrendingUp,
   Landmark,
   ShieldCheck,
   Users,
@@ -16,10 +17,12 @@ import {
 } from 'lucide-react'
 import { AdminHeader, MetricCard, MetricGroup, Money } from '@/components/admin/admin-ui'
 import { TrustPanel } from '@/components/admin/trust-panel'
+import { GrowthPanel } from '@/components/admin/growth-panel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatAmount } from '@/lib/domain/money'
-import { getMetrics, listAdminOrders } from '@/lib/server/admin-service'
+import { getGrowthMetrics, getMetrics, listAdminOrders } from '@/lib/server/admin-service'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { formatTimestamp } from '@/lib/utils'
 
@@ -29,7 +32,11 @@ export const metadata = { title: 'المؤشرات' }
 
 export default async function AdminDashboard() {
   await requireAdminId()
-  const [metrics, orders] = await Promise.all([getMetrics(), listAdminOrders()])
+  const [metrics, orders, growth] = await Promise.all([
+    getMetrics(),
+    listAdminOrders(),
+    getGrowthMetrics(),
+  ])
   const overdue = orders.filter((order) => order.overdue).slice(0, 6)
   const depositShare = metrics.walletBalance
     ? Math.round((metrics.heldDeposits / metrics.walletBalance) * 100)
@@ -47,6 +54,31 @@ export default async function AdminDashboard() {
         <TrustPanel metrics={metrics} />
       </div>
 
+      {/*
+        * المؤشّرات ثلاثة أسئلة لا قائمةٌ واحدة.
+        *
+        * «كم يجري الآن؟» و«أين المال؟» و«إلى أين نمضي؟» — أسئلةٌ يسألها
+        * المشغّل في أوقاتٍ مختلفة ولأغراضٍ مختلفة، وعرضُها في عمودٍ واحد
+        * يجعل من يبحث عن واحدةٍ يمرّ على الاثنتين. والأمانة تبقى فوقها كلّها
+        * لأنّها تُسأل في كل وقت.
+        */}
+      <Tabs defaultValue="operations" className="space-y-5">
+        <TabsList>
+          <TabsTrigger value="operations">
+            <Gavel className="size-3.5" />
+            الأداء التشغيلي
+          </TabsTrigger>
+          <TabsTrigger value="money">
+            <Wallet className="size-3.5" />
+            الأداء المالي
+          </TabsTrigger>
+          <TabsTrigger value="growth">
+            <TrendingUp className="size-3.5" />
+            مؤشرات النمو
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="operations" className="space-y-5">
       <MetricGroup title="النشاط">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -74,6 +106,9 @@ export default async function AdminDashboard() {
         </div>
       </MetricGroup>
 
+        </TabsContent>
+
+        <TabsContent value="money" className="space-y-5">
       <MetricGroup title="الأموال" tone="success">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -152,8 +187,14 @@ export default async function AdminDashboard() {
           />
         </div>
       </MetricGroup>
+        </TabsContent>
 
-      <section>
+        <TabsContent value="growth">
+          <GrowthPanel growth={growth} />
+        </TabsContent>
+      </Tabs>
+
+      <section className="mt-6">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-bold text-muted">يحتاج إجراءً الآن</h2>
           <div className="flex gap-1">

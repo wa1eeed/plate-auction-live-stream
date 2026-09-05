@@ -92,7 +92,8 @@ test.describe('أوامر الصرف', () => {
     const walletPage = await walletContext.newPage()
     await loginUser(walletPage, user!)
     await walletPage.goto('/account/wallet')
-    await expect(walletPage.getByText('سحب رصيد').first()).toBeVisible()
+    // في جدول الكشف لا في منتقي النوع فوقه — خياراته بأسماء القيود نفسها
+    await expect(walletPage.locator('table').getByText('سحب رصيد').first()).toBeVisible()
     await walletContext.close()
   })
 

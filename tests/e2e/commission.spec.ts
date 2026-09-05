@@ -119,6 +119,9 @@ test.describe('عمولة المنصّة', () => {
     await buyerPage.getByLabel('كلمة المرور').fill(BUYER.password)
     await buyerPage.getByRole('button', { name: 'دخول', exact: true }).click()
     await buyerPage.waitForURL('**/account')
+    // يُقرأ رقم عضويته وهو في حسابه — بمُحدِّدٍ ينتظر ظهوره لا بنصٍّ يُلتقط قبل الرسم
+    const reference = (await buyerPage.getByText(/^U26-\d+$/).first().textContent())?.trim()
+    expect(reference, 'رقم عضوية المشتري غير ظاهر في حسابه').toBeTruthy()
 
     // العمولة ظاهرة **قبل** الضغط: 300 + 15٪ = 345
     await buyerPage.goto(`/market/${target.id}`)
@@ -134,20 +137,26 @@ test.describe('عمولة المنصّة', () => {
       return (await response.json()).orderId as string
     }, target.id)
 
-    // نشحن رصيد المشتري ليكفي الثمن والعمولة
-    await adminPage.evaluate(async (email) => {
-      const html = await (await fetch('/admin/users')).text()
-      const doc = new DOMParser().parseFromString(html, 'text/html')
-      const row = [...doc.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes(email))
-      const href = row?.querySelector('a[href^="/admin/users/"]')?.getAttribute('href')
-      const detail = await (await fetch(href!)).text()
+    /*
+     * نشحن رصيد المشتري ليكفي الثمن والعمولة.
+     *
+     * وكان يُبحث عنه بمسح `tbody tr` في صفحة المستخدمين — وقد صارت بطاقات لا
+     * جدولًا، فلا يجد صفًّا، ويمضي الشحن إلى `/users/undefined/wallet` **بلا
+     * أن يعترض**: يبقى الاختبار أخضر حتى تنفد بذرةُ رصيدٍ لم يشحنها أحد.
+     * فالمعرّف يُقرأ من رقم عضويته، وكلّ خطوةٍ ترفع خطأها.
+     */
+    const topUp = await adminPage.evaluate(async (ref) => {
+      const detail = await (await fetch(`/admin/users/${ref}`)).text()
       const userId = detail.match(/usr_[a-z0-9]{10,}/)?.[0]
-      await fetch(`/api/admin/users/${userId}/wallet`, {
+      if (!userId) return { ok: false, body: 'لم يُستخرج معرّف المستخدم من ملفّه' }
+      const response = await fetch(`/api/admin/users/${userId}/wallet`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ type: 'topup', amount: 200_000, note: 'اختبار العمولة' }),
       })
-    }, USERS.majed.email)
+      return { ok: response.ok, body: await response.text() }
+    }, reference!)
+    expect(topUp.ok, topUp.body).toBe(true)
 
     /*
      * المشتري يسدّد من محفظته فتكتمل الصفقة وتُقتطع العمولة.
@@ -201,9 +210,16 @@ test.describe('عمولة المنصّة', () => {
       await expect(adminPage.getByText(label).first()).toBeVisible()
     }
 
-    // وتظهر في كشف حساب المشتري خصمًا
+    /*
+     * وتظهر في كشف حساب المشتري خصمًا — يُبحث عنها في الجدول لا في الصفحة.
+     *
+     * فوق الكشف منتقي نوعٍ خياراتُه بأسماء القيود نفسها، و`getByText` تصل إلى
+     * `<option>` مخفيّ داخل قائمةٍ مغلقة فتُصيبه قبل الصفّ المقصود.
+     */
     await buyerPage.goto('/account/wallet')
-    await expect(buyerPage.getByText('عمولة المنصّة').first()).toBeVisible()
+    await expect(
+      buyerPage.locator('table').getByText('عمولة المنصّة').first(),
+    ).toBeVisible()
 
     await setCommission(adminPage, { seller: OFF, buyer: OFF, vatEnabled: false, vatPercent: 15 })
     await adminContext.close()

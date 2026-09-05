@@ -10,6 +10,22 @@ import { useEffect, useRef, useState } from 'react'
  * صحة العد، والخادم يبقى المرجع الوحيد لنهاية المزاد.
  */
 export function useCountdown(endsAt: string | null, serverTime: string | null, frozenMs?: number | null) {
+  return Math.max(0, useSignedCountdown(endsAt, serverTime, frozenMs))
+}
+
+/**
+ * كالعدّاد، لكنّه يمضي إلى السالب بعد الموعد.
+ *
+ * `useCountdown` يقصّ عند الصفر لأنّ مزادًا انتهى لا يُعدّ بعده شيء. أمّا
+ * المهلة فما بعدها معنًى: صفقةٌ تأخّر سدادها ساعتين ليست كصفقةٍ تأخّرت
+ * يومين، ومن يقرأ «انتهت المهلة» لا يعرف أين هو من العقوبة. فالسالب هنا
+ * مقصود، ومن أراد القصّ فليقصّ.
+ */
+export function useSignedCountdown(
+  endsAt: string | null,
+  serverTime: string | null,
+  frozenMs?: number | null,
+) {
   const offsetRef = useRef(0)
 
   // القيمة الابتدائية تُشتقّ من قيمتين قادمتين من الخادم فقط، فتتطابق مع
@@ -17,7 +33,7 @@ export function useCountdown(endsAt: string | null, serverTime: string | null, f
   const [remaining, setRemaining] = useState(() => {
     if (frozenMs !== null && frozenMs !== undefined) return frozenMs
     if (!endsAt || !serverTime) return 0
-    return Math.max(0, new Date(endsAt).getTime() - new Date(serverTime).getTime())
+    return new Date(endsAt).getTime() - new Date(serverTime).getTime()
   })
 
   useEffect(() => {
@@ -35,7 +51,7 @@ export function useCountdown(endsAt: string | null, serverTime: string | null, f
       return
     }
     const target = new Date(endsAt).getTime()
-    const tick = () => setRemaining(Math.max(0, target - (Date.now() - offsetRef.current)))
+    const tick = () => setRemaining(target - (Date.now() - offsetRef.current))
     tick()
     const id = setInterval(tick, 100)
     return () => clearInterval(id)

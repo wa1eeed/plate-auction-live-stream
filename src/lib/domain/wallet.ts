@@ -181,7 +181,18 @@ export function paymentRemainingMs(
 
 // ---------------------------------------------------------------- كشف الحساب
 
-export type StatementLine = LedgerEntry & { debit: Halalas; credit: Halalas }
+export type StatementLine = LedgerEntry & {
+  debit: Halalas
+  credit: Halalas
+  /**
+   * اللوحة التي جرى القيد عليها — لقيود العربون والبيع والشراء.
+   *
+   * «حجز عربون» و«عربون عاد للمحفظة» يتكرّران في الكشف بلا ما يفرّق بينهما:
+   * من زايد على ثلاث لوحات يقرأ ثلاثة أسطر متطابقة ولا يعرف أيُّ عربونٍ عاد.
+   * والقيد يحمل `listingId` أصلًا — فما نقص إلّا وصلُه بلوحته عند العرض.
+   */
+  plateLabel: string | null
+}
 
 export type Statement = {
   lines: StatementLine[]
@@ -197,7 +208,12 @@ export type Statement = {
  * قيود الحجز وفكّه محايدة: لا تدخل في المجموعين لأنها لا تغيّر الرصيد الكلي،
  * لكنها تبقى ظاهرة في الكشف لأن المستخدم يحتاج تفسير انخفاض رصيده المتاح.
  */
-export function buildStatement(entries: LedgerEntry[], wallet: Wallet): Statement {
+export function buildStatement(
+  entries: LedgerEntry[],
+  wallet: Wallet,
+  /** اسم اللوحة بمعرّف إعلانها — يُبنى في الخادم حيث تُقرأ الإعلانات */
+  plateOf: (listingId: string) => string | null = () => null,
+): Statement {
   const lines = entries
     .slice()
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
@@ -205,6 +221,7 @@ export function buildStatement(entries: LedgerEntry[], wallet: Wallet): Statemen
       ...entry,
       debit: entry.direction === 'debit' ? entry.amount : 0,
       credit: entry.direction === 'credit' ? entry.amount : 0,
+      plateLabel: entry.listingId ? plateOf(entry.listingId) : null,
     }))
 
   return {

@@ -114,6 +114,109 @@ export async function getMetrics(): Promise<AdminMetrics> {
 }
 
 /**
+ * مؤشّرات النمو — نافذةٌ تُقارَن بما قبلها.
+ *
+ * الأرقام المطلقة تقول «كم» ولا تقول «إلى أين»: مئتا مستخدم رقمٌ لا معنى له
+ * حتى يُعرف أكانوا مئةً الشهر الماضي أم ثلاثمئة. فكلّ مؤشّرٍ هنا نافذةٌ
+ * وسابقتُها ونسبةُ ما بينهما.
+ *
+ * والنسب الثلاث الأخيرة تصف الصحّة لا الحجم: كم من المعروض يُباع، وبكم،
+ * وكم مزايدًا يجذب المزاد الواحد. ومنصّةٌ تنمو إعلاناتها ولا تنمو صفقاتها
+ * تُقرأ من هذه وحدها.
+ */
+export type Trend = { current: number; previous: number; deltaPercent: number | null }
+
+export type GrowthMetrics = {
+  /** طول النافذة بالأيام — النافذتان متساويتان */
+  windowDays: number
+  users: Trend
+  listings: Trend
+  orders: Trend
+  sales: Trend
+  /** نسبة ما بيع ممّا نُشر — بالمئة */
+  sellThrough: number
+  /** متوسّط قيمة الصفقة المكتملة */
+  averageSale: Halalas
+  /** متوسّط المزايدات على المزاد الواحد */
+  bidsPerAuction: number
+  /** مشترون أتمّوا أكثر من صفقة */
+  repeatBuyers: number
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function trendOf(stamps: string[], now: number, windowDays: number): Trend {
+  const window = windowDays * DAY_MS
+  let current = 0
+  let previous = 0
+  for (const stamp of stamps) {
+    const age = now - Date.parse(stamp)
+    if (age < 0) continue
+    if (age <= window) current += 1
+    else if (age <= window * 2) previous += 1
+  }
+  return { current, previous, deltaPercent: percentChange(current, previous) }
+}
+
+/** من صفرٍ إلى شيء لا نسبة له — تُترك `null` ولا تُكتب «∞٪». */
+function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+export async function getGrowthMetrics(windowDays = 7): Promise<GrowthMetrics> {
+  const store = getStore()
+  const now = Date.now()
+  const [users, listings, orders, bids] = await Promise.all([
+    store.listUsers(),
+    store.listListings({ includeDrafts: true }),
+    store.listAllOrders(),
+    store.listAllBids(),
+  ])
+
+  const completed = orders.filter((order) => order.status === 'completed')
+  const window = windowDays * DAY_MS
+  const salesIn = (from: number, to: number) =>
+    completed
+      .filter((order) => {
+        const age = now - Date.parse(order.completedAt ?? order.createdAt)
+        return age >= from && age <= to
+      })
+      .reduce((sum, order) => sum + order.amount, 0)
+
+  const salesNow = salesIn(0, window)
+  const salesBefore = salesIn(window, window * 2)
+
+  const published = listings.filter((listing) => listing.status !== 'draft')
+  const sold = listings.filter((listing) => listing.status === 'sold')
+  const auctions = listings.filter((listing) => listing.saleType === 'auction')
+  const acceptedBids = bids.filter((bid) => bid.status === 'accepted')
+
+  const byBuyer = new Map<string, number>()
+  for (const order of completed) byBuyer.set(order.buyerId, (byBuyer.get(order.buyerId) ?? 0) + 1)
+
+  return {
+    windowDays,
+    users: trendOf(users.map((user) => user.createdAt), now, windowDays),
+    listings: trendOf(published.map((listing) => listing.createdAt), now, windowDays),
+    orders: trendOf(orders.map((order) => order.createdAt), now, windowDays),
+    sales: {
+      current: salesNow,
+      previous: salesBefore,
+      deltaPercent: percentChange(salesNow, salesBefore),
+    },
+    sellThrough: published.length ? Math.round((sold.length / published.length) * 100) : 0,
+    averageSale: completed.length
+      ? Math.round(completed.reduce((sum, order) => sum + order.amount, 0) / completed.length)
+      : 0,
+    bidsPerAuction: auctions.length
+      ? Math.round((acceptedBids.length / auctions.length) * 10) / 10
+      : 0,
+    repeatBuyers: [...byBuyer.values()].filter((count) => count > 1).length,
+  }
+}
+
+/**
  * إيراد سبعة أيام — سلسلة تُقرأ منحنى لا جدولًا.
  *
  * تُحسب على الخادم من قيود الإيراد المحصَّلة، فلا مكتبة رسم ولا طلب ثانٍ:

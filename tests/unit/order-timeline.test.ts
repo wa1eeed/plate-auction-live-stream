@@ -191,11 +191,23 @@ describe('المرحلة الراهنة ولمن الدور', () => {
       side,
     )
 
-  it('قبل السداد: الدور على المشتري لا على البائع', () => {
+  it('قبل السداد: الدور على المشتري، ومهلته مهلة السداد', () => {
     const o = order()
     expect(stage(o, 'buyer').audience).toBe('you')
     expect(stage(o, 'seller').audience).toBe('other')
-    // ولا مهلة ضمان بعد — مهلة السداد شأن المحطّة نفسها
+    /*
+     * ومهلة السداد هي مهلة المرحلة.
+     *
+     * كانت تُرجع `null` فتُعرض الصفقة التي على صاحبها أن يسدّد بلا عدّاد —
+     * وهي أحوج المراحل إليه: انقضاؤها يُتبَع باقتطاعٍ من العربون وإعادة
+     * إرساء، فمقدار ما بقي هو مقدار ما بقي من الفرصة.
+     */
+    expect(stage(o, 'buyer').deadline).toBe(o.paymentDueAt)
+    expect(stage(o, 'seller').deadline).toBe(o.paymentDueAt)
+  })
+
+  it('وبلا مهلة سداد لا عدّاد', () => {
+    const o = order({ paymentDueAt: null })
     expect(stage(o, 'buyer').deadline).toBeNull()
   })
 

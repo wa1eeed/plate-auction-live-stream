@@ -171,7 +171,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
 
       {/* مؤشّرات موجزة */}
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="أنفق (صفقات مكتملة)" value={formatAmount(summary.totalSpent)} suffix="ريال" />
+        <Metric label="أنفق (مشتريات مكتملة)" value={formatAmount(summary.totalSpent)} suffix="ريال" />
         <Metric label="حصّل (مبيعات مكتملة)" value={formatAmount(summary.totalEarned)} suffix="ريال" tone="success" />
         <Metric label="شُحن لمحفظته" value={formatAmount(summary.topupTotal)} suffix="ريال" />
         <Metric
