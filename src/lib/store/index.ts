@@ -1,5 +1,6 @@
 import { emptyDatabase, MemoryStore } from './memory-store'
 import { seedDatabase } from './seed'
+import { applySettingsFile, writeSettingsFile } from './settings-file'
 import type { AuctionStore } from './types'
 
 /**
@@ -14,7 +15,15 @@ const globalRef = globalThis as typeof globalThis & { __auctionStore?: AuctionSt
 function createStore(): AuctionStore {
   const db = emptyDatabase()
   seedDatabase(db)
-  return new MemoryStore(db)
+  /*
+   * البذرة أوّلًا ثمّ ما ضبطته الإدارة فوقها.
+   *
+   * الترتيب مقصود: البذرة تملأ كل حقلٍ بافتراضيّه — ومنها الحقول التي أُضيفت
+   * في نسخةٍ أحدث من الملفّ المحفوظ — ثمّ يحلّ المحفوظ محلّ ما حُفظ منه وحده.
+   * ولو قُلبا لبقيت الحقول الجديدة فارغةً على نسخةٍ مرقّاة.
+   */
+  applySettingsFile(db)
+  return new MemoryStore(db).onSettingsChange(writeSettingsFile)
 }
 
 export function getStore(): AuctionStore {

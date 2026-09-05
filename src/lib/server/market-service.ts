@@ -581,6 +581,10 @@ export async function getListingDetail(
         : (highest?.amount ?? listing.startingPrice)
   const commissionNow = computeCommission(commissionSettings, currentPrice)
 
+  const unpaid = (await store.listOrders({ listingId: listing.id })).find(
+    (row) => row.status === 'awaiting_settlement',
+  )
+
   return {
     id: listing.id,
     reference: listing.reference,
@@ -642,6 +646,16 @@ export async function getListingDetail(
       status: bid.status,
       createdAt: bid.createdAt,
       isMine: viewerId === bid.bidderId,
+      /*
+       * المهلة لصاحبها وللبائع وحدهما.
+       *
+       * الكشف عامّ وأسماؤه مقنّعة، وحالُ سدادِ رجلٍ شأنه وشأن من يبيعه —
+       * فمن لا يعنيه الأمر لا يصله الحقل أصلًا، لا يصله ويُخفى بالتنسيق.
+       */
+      paymentDueAt:
+        unpaid && unpaid.buyerId === bid.bidderId && (viewerId === listing.sellerId || viewerId === bid.bidderId)
+          ? unpaid.paymentDueAt
+          : null,
     })),
     myOffers,
     serverTime: new Date().toISOString(),
@@ -841,35 +855,39 @@ export async function respondToOffer(input: {
     throw new ServiceError('الإعلان لم يعد متاحًا', 409, 'LISTING_NOT_ACTIVE')
   }
 
+  /*
+   * قبولٌ واحدٌ قائم في كل وقت.
+   *
+   * اللوحة تبقى معروضةً حتى يصل المال، فلا شيء في حالتها يمنع البائع من قبول
+   * عرضٍ ثانٍ وهو ينتظر سداد الأوّل — فتُنشأ صفقتان على لوحةٍ واحدة، ويسدّد
+   * اثنان ثمنَ ما يملكه أحدهما. والحارس هنا لا هناك: الحالة لم تعد تحرسه.
+   *
+   * وإذا تخلّف الأوّل صارت صفقته `defaulted` فيُرفع الحظر من نفسه، ويقبل
+   * البائع غيره بلا تدخّل.
+   */
+  const standing = (await store.listOrders({ listingId: listing.id })).find(
+    (row) => row.status === 'awaiting_settlement',
+  )
+  if (standing) {
+    throw new ServiceError(
+      'على هذه اللوحة عرضٌ مقبولٌ ينتظر سداده — لا يُقبل غيره حتى يُسدَّد أو تنقضي مهلته',
+      409,
+      'AWAITING_SETTLEMENT',
+    )
+  }
+
   const updated = await store.updateOffer(offer.id, { status: 'accepted', respondedAt: now })
-  await store.updateListing(listing.id, {
-    status: 'sold',
-    soldToUserId: offer.buyerId,
-    soldAmount: offer.amount,
-    endedAt: now,
-  })
 
   /*
-   * بقية العروض المعلّقة تُرفض تلقائيًا — ويُقال لأصحابها.
+   * ولا تُعدّ مباعةً بالقبول — تُعدّ مباعةً بالسداد.
    *
-   * كانت تُغلق في صمت: يُقبل عرضٌ فتسقط البقيّة بلا إشعار، فلا يعرف صاحبها
-   * أنّ لوحته ذهبت إلّا أن يعود إلى الصفحة. والرفض الصريح يُشعر صاحبه
-   * (أسفله)، فما وجهُ أن يُحرم منه من رُفض ضمنًا؟ وهو نظير «تجاوزك غيرك» في
-   * المزاد، وذاك يصل كل مزايدٍ قائم.
+   * السوم بلا عربون، فقبولُه وعدٌ لا يضمنه مال. وكانت اللوحة تُرفع من السوق
+   * لحظة القبول وتسقط بقيّةُ السوم معها، فإن لم يسدّد صاحبُ الوعد بقيت
+   * محجوبةً حتى تنقضي مهلته — يخسر البائع أيّامًا ومشترين كانوا قائمين.
+   *
+   * فتبقى معروضةً، ويبقى غيرُه يعرض عليها، ولا تُغلق إلّا حين يصل المال
+   * (`captureOrderEscrow`) — وهناك تُرفض بقيّةُ السوم ويُشعَر أصحابها.
    */
-  for (const other of await store.listOffers({ listingId: listing.id })) {
-    if (other.id !== offer.id && other.status === 'pending') {
-      await store.updateOffer(other.id, { status: 'declined', respondedAt: now })
-      await notify(store, {
-        userId: other.buyerId,
-        type: 'offer_declined',
-        title: 'قُبل عرضٌ آخر',
-        body: `بيعت «${listing.arabicLetters} ${listing.plateNumbers}» لعرضٍ آخر، فأُغلق عرضك.`,
-        href: `/market/${listing.id}`,
-        listingId: listing.id,
-      })
-    }
-  }
 
   const order = await store.createOrder({
     listingId: listing.id,

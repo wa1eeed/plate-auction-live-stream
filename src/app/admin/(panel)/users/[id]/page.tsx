@@ -40,6 +40,7 @@ import { getUserDetail } from '@/lib/server/admin-service'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { isServiceError } from '@/lib/server/market-service'
 import { cn } from '@/lib/utils'
+import { OverdueTag } from '@/components/market/overdue-tag'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +65,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
     throw error
   }
 
+  const serverTime = new Date().toISOString()
   const { user, wallet, ledger, deposits, listings, purchases, sales, bids, payments, notifications, summary } =
     detail
   const statement = buildStatement(ledger, {
@@ -278,9 +280,13 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
                     )}
                   </Td>
                   <Td>
-                    <Badge variant={bid.isHighest ? 'success' : 'muted'}>
-                      {bid.isHighest ? 'الأعلى' : 'تجاوزه غيره'}
-                    </Badge>
+                    <span className="flex flex-wrap items-center gap-1">
+                      <Badge variant={bid.isHighest ? 'success' : 'muted'}>
+                        {bid.isHighest ? 'الأعلى' : 'تجاوزه غيره'}
+                      </Badge>
+                      {/* ومن رست عليه ولم يسدّد يُوسَم هنا لا في تابٍ آخر */}
+                      <OverdueTag deadline={bid.paymentDueAt} serverTime={serverTime} />
+                    </span>
                   </Td>
                   <Td>
                     <Badge variant={bid.listingStatus === 'active' ? 'gold' : 'muted'}>

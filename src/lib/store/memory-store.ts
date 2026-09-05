@@ -175,6 +175,20 @@ const clone = <T>(value: T): T =>
   value === null || value === undefined ? value : structuredClone(value)
 
 export class MemoryStore implements AuctionStore {
+  /**
+   * يُستدعى بعد كل تبديلٍ في الإعدادات.
+   *
+   * يُحقن من خارج الصنف حتى يبقى المخزن خاليًا من نظام الملفّات: الاختبارات
+   * تُنشئه بلا حافظ فلا يُكتب شيء، والخادم يمرّر الحافظ عند الإقلاع.
+   */
+  private persist: (db: MemoryDatabase) => void = () => {}
+
+  /** يُشغّل حفظ الإعدادات على القرص — يُستدعى مرّة عند بناء المخزن. */
+  onSettingsChange(handler: (db: MemoryDatabase) => void): this {
+    this.persist = handler
+    return this
+  }
+
   readonly kind = 'memory' as const
   private readonly mutex = new KeyedMutex()
 
@@ -765,6 +779,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.auctionSettings)
   }
 
@@ -780,6 +795,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.commissionSettings)
   }
 
@@ -795,6 +811,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.brandSettings)
   }
 
@@ -808,6 +825,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.pageSettings)
   }
 
@@ -821,6 +839,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.taxSettings)
   }
 
@@ -961,6 +980,7 @@ export class MemoryStore implements AuctionStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     }
+    this.persist(this.db)
     return clone(this.db.paymentSettings)
   }
 
@@ -986,6 +1006,7 @@ export class MemoryStore implements AuctionStore {
     const now = new Date().toISOString()
     const item: FaqItem = { ...input, id: newId('faq'), createdAt: now, updatedAt: now }
     this.db.faq.push(item)
+    this.persist(this.db)
     return clone(item)
   }
 
@@ -993,11 +1014,13 @@ export class MemoryStore implements AuctionStore {
     const item = this.db.faq.find((f) => f.id === id)
     if (!item) throw new Error('السؤال غير موجود')
     Object.assign(item, patch, { updatedAt: new Date().toISOString() })
+    this.persist(this.db)
     return clone(item)
   }
 
   async deleteFaq(id: string): Promise<void> {
     this.db.faq = this.db.faq.filter((f) => f.id !== id)
+    this.persist(this.db)
   }
 
   // ------------------------------------------------------------- الإدارة

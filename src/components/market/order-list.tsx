@@ -24,9 +24,10 @@ import { CardTag, type CardTagTone } from './card-tag'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { cn, formatTimestamp } from '@/lib/utils'
 import { OrderSettlementCard } from './order-timeline'
+import { OverdueTag } from './overdue-tag'
 import { OrderJourney, OrderStageCallout } from './order-journey'
 import { OrderEscrowActions } from './order-actions'
-import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
+import { currentOrderStage, orderDeadline, orderMoneyMarker } from '@/lib/domain/order-timeline'
 
 const SOURCE_LABELS: Record<AccountOrder['source'], string> = {
   auction: 'رست بمزاد',
@@ -191,6 +192,8 @@ function OrderCard({
             </CardTag>
             <CardTag tone={SOURCE_TONE[order.source]}>{SOURCE_LABELS[order.source]}</CardTag>
             <CardTag tone="muted">{PLATE_TYPE_LABELS[order.plate.plateType]}</CardTag>
+            {/* التأخّر وسمٌ تحت اللوحة كبقيّة وسومها — يُرى مع البطاقة لا داخلها */}
+            <OverdueTag deadline={orderDeadline(order)} serverTime={serverTime} />
           </div>
         </div>
 

@@ -20,6 +20,7 @@ import { FaqList } from '@/components/market/faq-list'
 import { LocalTime, LocalZoneNote } from '@/components/market/local-time'
 import { Badge } from '@/components/ui/badge'
 import { OwnerTag } from '@/components/market/listing-card'
+import { OverdueTag } from '@/components/market/overdue-tag'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
@@ -451,6 +452,12 @@ function BidLedger({ detail }: { detail: ListingDetail }) {
                         {bid.status === 'cancelled' && (
                           <span className="text-[11px] text-danger">ملغاة</span>
                         )}
+                        {/* من رست عليه ولم يسدّد — يراه البائع وصاحبه وحدهما */}
+                        <OverdueTag
+                          deadline={bid.paymentDueAt}
+                          serverTime={detail.serverTime}
+                          className="mt-1"
+                        />
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-muted">
                         <LocalTime iso={bid.createdAt} />

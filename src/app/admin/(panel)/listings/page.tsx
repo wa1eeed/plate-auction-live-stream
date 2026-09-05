@@ -81,7 +81,20 @@ export default async function AdminListingsPage() {
 
 function ListingCard({ row }: { row: AdminListingRow }) {
   const detail = `/admin/listings/${row.reference}`
-  const price = row.highestAmount ?? (row.saleType === 'fixed' ? row.price : row.startingPrice)
+  /*
+   * لكلّ طريقةٍ سعرُها المعلن — والسوم كان يسقط بينها.
+   *
+   * `offers` لا سعر افتتاح لها، فتقرأ `startingPrice` وهي صفرٌ في هذا النوع
+   * فيعرض الجدول **٠ ريال** لكل إعلانات السوم. و`minimumOffer` هو ما تُعلنه،
+   * وهو ما تعرضه به بطاقة السوق وصفحة اللوحة.
+   */
+  const price =
+    row.highestAmount ??
+    (row.saleType === 'fixed'
+      ? row.price
+      : row.saleType === 'offers'
+        ? row.minimumOffer
+        : row.startingPrice)
   const closed = isClosedListing(row.status)
   const actionable = !closed || row.status === 'suspended'
 

@@ -5,6 +5,7 @@ import { resetStoreForTests } from '@/lib/store'
 import { resetRateLimits } from '@/lib/server/rate-limit'
 import { getNotifications, markRead, notify } from '@/lib/server/notification-service'
 import { finalizeDueAuctions, placeBid, placeOffer, respondToOffer } from '@/lib/server/market-service'
+import { captureOrderEscrow } from '@/lib/server/escrow-service'
 import { getRealtimeRegistry, userTopic, type RealtimeSocket } from '@/lib/server/realtime'
 import { halalasToRiyals } from '@/lib/domain/money'
 import type { Listing } from '@/lib/domain/types'
@@ -237,19 +238,38 @@ describe('إشعارات العروض', () => {
       amountRiyals: floor + 1_000,
     })
 
-    await respondToOffer({ offerId: offer.id, sellerId: listing.sellerId, decision: 'accept' })
+    const accept = await respondToOffer({
+      offerId: offer.id,
+      sellerId: listing.sellerId,
+      decision: 'accept',
+    })
 
     const accepted = (await getNotifications(winner)).items.find((n) => n.type === 'offer_accepted')
     expect(accepted, 'لا إشعار لمن قُبل عرضه').toBeTruthy()
     expect(accepted!.href).toBe('/account/purchases')
 
     /*
-     * ومن سقط عرضه ضمنًا يُشعَر كما يُشعَر من رُدّ صراحةً.
+     * ومن سقط عرضه يُشعَر — عند السداد لا عند القبول.
      *
-     * كانت البقيّة تُغلق في صمت، فلا يعرف صاحبها أنّ اللوحة ذهبت إلّا أن يعود
-     * إلى الصفحة — وهو نظير «تجاوزك غيرك» في المزاد، وذاك يصل كل مزايدٍ قائم.
+     * القبول وعدٌ لا يضمنه مال (السوم بلا عربون)، فتبقى اللوحة معروضة ويبقى
+     * سومُ غيره قائمًا حتى يصل المال. فإذا وصل أُغلقت وسقط الباقي، ويُقال
+     * لأصحابه — وكان يسقط في صمت.
      */
+    expect(
+      (await getNotifications(loser)).items.some((n) => n.type === 'offer_declined'),
+      'أُسقط عرضه قبل أن يصل مالُ أحد',
+    ).toBe(false)
+
+    expect(
+      (await store.getListing(offer.listingId))?.status,
+      'أُغلقت اللوحة بوعدٍ لا بمال',
+    ).toBe('active')
+
+    // يصل المال فتُغلق اللوحة ويسقط الباقي بإشعاره
+    await captureOrderEscrow(store, accept.order!, null)
+
     const declined = (await getNotifications(loser)).items.find((n) => n.type === 'offer_declined')
     expect(declined, 'سقط عرضه في صمت').toBeTruthy()
+    expect((await store.getListing(offer.listingId))?.status).toBe('sold')
   })
 })

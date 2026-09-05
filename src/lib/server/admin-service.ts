@@ -324,6 +324,13 @@ export type AdminUserDetail = {
     /** عربونه على هذه اللوحة: كم هو، وأمحجوزٌ هو أم عاد */
     depositAmount: Halalas
     depositStatus: DepositStatus | null
+    /**
+     * مهلة سداده على هذه اللوحة إن رست عليه ولم يسدّد بعد.
+     *
+     * وبها يُعرف المتأخّر في الجدول نفسه: كان يُقرأ «الأعلى» ولا شيء يقول إنّ
+     * صاحبه مدينٌ بمهلةٍ انقضت — فيُبحث عنه في تابٍ آخر.
+     */
+    paymentDueAt: string | null
   }[]
   payments: Payment[]
   notifications: Notification[]
@@ -433,6 +440,9 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
       (await store.listBids(listingId)).filter((bid) => bid.status === 'accepted'),
     )
     const bond = deposits.find((row) => row.listingId === listingId) ?? null
+    const owed = (await store.listOrders({ listingId })).find(
+      (row) => row.buyerId === userId && row.status === 'awaiting_settlement',
+    )
     bids.push({
       listingId,
       plate: toPlate(target),
@@ -444,6 +454,7 @@ export async function getUserDetail(handle: string): Promise<AdminUserDetail> {
       endsAt: target.endsAt,
       depositAmount: bond?.amount ?? 0,
       depositStatus: bond?.status ?? null,
+      paymentDueAt: owed?.paymentDueAt ?? null,
     })
   }
   bids.sort((a, b) => Number(b.isHighest) - Number(a.isHighest))

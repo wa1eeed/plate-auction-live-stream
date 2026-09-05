@@ -222,7 +222,14 @@ describe('البيع المباشر', () => {
 })
 
 describe('العروض', () => {
-  it('يقبل البائع عرضًا فيُغلق الإعلان وتُرفض بقية العروض', async () => {
+  /*
+   * القبول وعدٌ، والسداد بيع.
+   *
+   * السوم بلا عربون، فلا شيء يضمن قبولَه. وكانت اللوحة تُرفع من السوق لحظة
+   * القبول وتسقط بقيّةُ السوم معها، فإن لم يسدّد صاحبُ الوعد بقيت محجوبةً
+   * حتى تنقضي مهلته — يخسر البائع أيّامًا ومشترين كانوا قائمين.
+   */
+  it('القبول لا يُغلق الإعلان ولا يُسقط بقيّة السوم', async () => {
     const listing = findBy((l) => l.saleType === 'offers' && l.status === 'active')
     const buyers = db.users.filter((u) => u.id !== listing.sellerId)
 
@@ -244,12 +251,34 @@ describe('العروض', () => {
     })
     expect(result.order).not.toBeNull()
 
-    const closed = await store.getListing(listing.id)
-    expect(closed?.status).toBe('sold')
-    expect(closed?.soldToUserId).toBe(buyers[0].id)
+    const still = await store.getListing(listing.id)
+    expect(still?.status, 'رُفعت اللوحة من السوق بوعدٍ لا يضمنه مال').toBe('active')
+    expect(still?.soldToUserId).toBeNull()
 
     const remaining = await store.listOffers({ listingId: listing.id })
-    expect(remaining.filter((o) => o.status === 'pending')).toHaveLength(0)
+    expect(remaining.filter((o) => o.status === 'pending')).toHaveLength(1)
+  })
+
+  it('ولا يُقبل عرضٌ ثانٍ ما دام الأوّل ينتظر سداده', async () => {
+    const listing = findBy((l) => l.saleType === 'offers' && l.status === 'active')
+    const buyers = db.users.filter((u) => u.id !== listing.sellerId)
+    const first = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[0].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+    const second = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[1].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 500,
+    })
+
+    await respondToOffer({ offerId: first.id, sellerId: listing.sellerId, decision: 'accept' })
+
+    // وإلّا سدّد اثنان ثمنَ لوحةٍ يملكها أحدهما
+    await expect(
+      respondToOffer({ offerId: second.id, sellerId: listing.sellerId, decision: 'accept' }),
+    ).rejects.toThrow(/ينتظر سداده/)
   })
 
   it('يرفض عرضًا دون أن يُغلق الإعلان', async () => {

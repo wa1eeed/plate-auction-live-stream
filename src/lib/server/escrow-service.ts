@@ -60,6 +60,41 @@ export async function captureOrderEscrow(
   await chargeOrderCommission(order, adminId, external)
 
   const now = Date.now()
+
+  /*
+   * اللوحة تُغلق حين يصل المال لا حين يُقبل الوعد.
+   *
+   * السوم بلا عربون، فبقيت لوحته معروضةً بعد قبوله حتى يسدّد صاحبه — وهنا
+   * وصل المال، فتُغلق الآن وتسقط بقيّةُ السوم عليها ويُشعَر أصحابها.
+   *
+   * والشرط `active` يجعلها لا تمسّ ما أُغلق قبلها: المزاد يُغلق عند حسمه،
+   * والبيع المباشر عند شرائه — وكلاهما مضمونٌ بمالٍ أو عربون.
+   */
+  if (listing.status === 'active') {
+    await store.updateListing(listing.id, {
+      status: 'sold',
+      soldToUserId: order.buyerId,
+      soldAmount: order.amount,
+      endedAt: new Date(now).toISOString(),
+    })
+
+    for (const other of await store.listOffers({ listingId: listing.id })) {
+      if (other.status !== 'pending') continue
+      await store.updateOffer(other.id, {
+        status: 'declined',
+        respondedAt: new Date(now).toISOString(),
+      })
+      await notify(store, {
+        userId: other.buyerId,
+        type: 'offer_declined',
+        title: 'بيعت اللوحة لغيرك',
+        body: `سُدّد ثمن «${listing.arabicLetters} ${listing.plateNumbers}» لعرضٍ آخر، فأُغلق عرضك.`,
+        href: `/market/${listing.id}`,
+        listingId: listing.id,
+      })
+    }
+  }
+
   const updated = await store.updateOrder(order.id, {
     status: 'escrow_held',
     paidAt: new Date(now).toISOString(),

@@ -75,6 +75,17 @@ COPY --from=build     --chown=app:app /app/.next        ./.next
 COPY --chown=app:app public         ./public
 COPY --chown=app:app package.json next.config.mjs server.mjs ./
 
+# ---- مجلّد الإعدادات الدائم
+#
+# ما تضبطه الإدارة — الهويّة والصفحات والأسئلة والعمولة والدفع — يُكتب هنا
+# فيبقى بعد إعادة النشر. وبلا ربط مجلّدٍ دائم بهذا المسار في كوليفاي يبقى
+# داخل الحاوية، والحاوية تُستبدل مع كل نشرة فيعود الضبط افتراضيًّا.
+#
+#   Coolify → Storages → Volume Mount: /app/data
+ENV PLATFORM_DATA_DIR=/app/data
+RUN mkdir -p /app/data && chown -R app:app /app/data
+VOLUME ["/app/data"]
+
 USER app
 EXPOSE 3000
 
