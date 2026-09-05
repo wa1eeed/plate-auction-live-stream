@@ -3,10 +3,8 @@ import type { PlateEmblem, PlateSize, PlateType, PlateFormat } from '@/lib/domai
 import { toArabicIndicDigits } from '@/lib/saudi-plate-mapping'
 import { EMBLEM_ART, EmblemShapes, STRIP_SYMBOL } from './EmblemGraphic'
 import {
-  ARABIC_ASCENT_SHARE,
   ARABIC_DIGIT_INK,
   ARABIC_LETTER_INK,
-  LATIN_ASCENT_SHARE,
   LATIN_CAP_INK,
   LATIN_DIGIT_INK,
   inkOf,
@@ -143,12 +141,22 @@ type Geometry = {
   countryBox?: { x: number; y: number; width: number; height: number }
 }
 
+/*
+ * سُمك الإطار نسبةٌ من عرض اللوحة لا مقدارٌ ثابت.
+ *
+ * كلّ اللوحات تُعرض بعرضٍ واحد في بطاقات السوق، فالمقادير الثابتة تُكبَّر
+ * بتكبير اللوحة: سبعُ وحداتٍ في الطويلة (٩٣٠) خيطٌ رفيع، وسبعٌ في الاعتيادية
+ * (٤٦٠) شريطٌ عريض ضِعفَه. والنسبة تُخرجها كلَّها بسُمكٍ واحدٍ على الشاشة.
+ */
+const FRAME_SHARE = 7 / 930
+const frameOf = (width: number) => Math.round(width * FRAME_SHARE * 10) / 10
+
 const LONG_GEOMETRY: Geometry = {
   viewBox: '0 0 930 200',
   width: 930,
   height: 200,
   frameRadius: 20,
-  inset: 7,
+  inset: frameOf(930),
   strip: { x: 858, width: 65 },
   main: { x: 7, width: 851 },
   numbers: { center: 210, from: 90, to: 330 },
@@ -176,7 +184,7 @@ const LONG_TRANSPORT_GEOMETRY: Geometry = {
   width: 930,
   height: 200,
   frameRadius: 20,
-  inset: 7,
+  inset: frameOf(930),
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 916 },
   numbers: { center: 199, from: 9, to: 389 },
@@ -207,7 +215,7 @@ const STANDARD_GEOMETRY: Geometry = {
   width: 460,
   height: 230,
   frameRadius: 20,
-  inset: 7,
+  inset: frameOf(460),
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 379 },
   // خانة الأرقام أوسع من خانة الحروف — ٥٨٪ إلى ٤٢٪ كما في المصنوعة
@@ -215,7 +223,7 @@ const STANDARD_GEOMETRY: Geometry = {
   emblem: { center: 240, from: 235, to: 245, size: 0 },
   letters: { center: 309, from: 232, to: 386 },
   rows: { topBand: 16, bottomBand: 124, bandHeight: 88 },
-  fonts: { numbers: 108, letters: 108 },
+  fonts: { numbers: 170, letters: 170 },
   cellRadius: 10,
   cells: [
     { x: 9, y: 9, width: 218, height: 103 },
@@ -238,7 +246,7 @@ const SPORT_GEOMETRY: Geometry = {
   width: 760,
   height: 200,
   frameRadius: 20,
-  inset: 7,
+  inset: frameOf(760),
   strip: { x: 0, width: 0 },
   main: { x: 7, width: 746 },
   numbers: { center: 154, from: 9, to: 299 },
@@ -275,7 +283,7 @@ const MOTO_GEOMETRY: Geometry = {
   width: 430,
   height: 195,
   frameRadius: 16,
-  inset: 6,
+  inset: frameOf(430),
   strip: { x: 0, width: 0 },
   main: { x: 6, width: 348 },
   numbers: { center: 92, from: 8, to: 176 },
@@ -284,7 +292,7 @@ const MOTO_GEOMETRY: Geometry = {
   letters: { center: 265, from: 181, to: 349 },
   // الداخل 6..189 (183). شريطان بارتفاع 70 بهامش ~17 أعلى وأسفل
   rows: { topBand: 13, bottomBand: 105, bandHeight: 76 },
-  fonts: { numbers: 92, letters: 92 },
+  fonts: { numbers: 145, letters: 145 },
   cellRadius: 8,
   cells: [
     { x: 8, y: 8, width: 168, height: 87 },
@@ -390,7 +398,6 @@ export function SaudiLicensePlate({
     ],
     geo.rows.topBand,
     geo.rows.bandHeight,
-    ARABIC_ASCENT_SHARE,
   )
   /*
    * الصفّ اللاتينيّ أصغر قليلًا من العربيّ.
@@ -408,9 +415,6 @@ export function SaudiLicensePlate({
     ],
     geo.rows.bottomBand + (geo.rows.bandHeight * (1 - LATIN_SCALE)) / 2,
     geo.rows.bandHeight * LATIN_SCALE,
-    LATIN_ASCENT_SHARE,
-    // الرياضية صفٌّ وحيد لا جار له، فيُوسّط في شريطه بدل أن يعلق في أسفله
-    { center: geo.singleRow },
   )
   const [arabicNumberSize, arabicLetterSize] = topRow.sizes
   const [numberSize, latinLetterSize] = bottomRow.sizes
@@ -436,9 +440,21 @@ export function SaudiLicensePlate({
   // الضيّقة تُكدّس K S A رأسيًّا — «KSA» كلمةً واحدة لا تُقرأ في ستّين بكسلًا
   const narrowCountry = country ? country.width < country.height * 0.45 : false
   const cx = country ? country.x + country.width / 2 : 0
+  /*
+   * مواضع ما في كتلة الدولة — نِسبٌ من ارتفاعها.
+   *
+   * الضيّقة تحمل ثلاثة أشياء فوق بعضها في شريطٍ نحيل: شعارٌ ثمّ «السعودية»
+   * ثمّ K S A. وكان الشعار يمسّ «السعودية» في الطويلة — يفيض على أعلاها
+   * بوحدتين — لأنّ ما بينهما لم يكن مفروضًا بل ما تبقّى بعد الشعار. فصار
+   * لكلٍّ موضعه، بينهما فُرجةٌ مقصودة، وما فضل من الشريط قُسم بالسويّة
+   * أعلاه وأسفله. والعريضة تُبقي نسبها: شيئان لا ثلاثة، ولا تلاصُق فيها.
+   */
+  const strip = narrowCountry
+    ? { symbol: 0.215, symbolTop: 0.105, name: 0.435, letters: [0.61, 0.75, 0.89] }
+    : { symbol: 0.26, symbolTop: 0.05, name: 0.54, letters: [0.78] }
   // الشعار محدودٌ بالبعدين: عرضُ الكتلة يحكمه في الضيّقة وارتفاعُها في العريضة
   const countrySymbol = country
-    ? Math.min(country.width * (narrowCountry ? 0.74 : 0.44), country.height * 0.26)
+    ? Math.min(country.width * (narrowCountry ? 0.74 : 0.44), country.height * strip.symbol)
     : 0
   const art = showCenterEmblem && emblem !== 'none' && emblem !== 'custom' ? EMBLEM_ART[emblem] : null
 
@@ -591,14 +607,14 @@ export function SaudiLicensePlate({
                       * تُثبّت كلًّا في حصّته مهما تغيّر جاره.
                       */}
                     <g
-                      transform={`translate(${cx - countrySymbol / 2} ${country.y + country.height * 0.05}) scale(${countrySymbol / 100})`}
+                      transform={`translate(${cx - countrySymbol / 2} ${country.y + country.height * strip.symbolTop}) scale(${countrySymbol / 100})`}
                     >
                       <EmblemShapes art={STRIP_SYMBOL} monochrome={countryInk} box={100} />
                     </g>
 
                     <text
                       x={cx}
-                      y={country.y + country.height * (narrowCountry ? 0.36 : 0.54)}
+                      y={country.y + country.height * strip.name}
                       textAnchor="middle"
                       fill={countryInk}
                       fontSize={country.width * (narrowCountry ? 0.26 : 0.19)}
@@ -613,7 +629,7 @@ export function SaudiLicensePlate({
                         <text
                           key={letter}
                           x={cx}
-                          y={country.y + country.height * (0.5 + index * 0.14)}
+                          y={country.y + country.height * strip.letters[index]}
                           textAnchor="middle"
                           fill={countryInk}
                           fontSize={country.width * 0.44}
@@ -626,7 +642,7 @@ export function SaudiLicensePlate({
                     ) : (
                       <text
                         x={cx}
-                        y={country.y + country.height * 0.78}
+                        y={country.y + country.height * strip.letters[0]}
                         textAnchor="middle"
                         fill={countryInk}
                         fontSize={country.width * 0.32}
@@ -704,7 +720,7 @@ export function SaudiLicensePlate({
             <Unflip x={geo.numbers.center} active={mirrored}>
               <text
                 x={geo.numbers.center}
-                y={topRow.baseline}
+                y={topRow.baselines[0]}
                 textAnchor="middle"
                 fill="#0A0D12"
                 fontSize={arabicNumberSize}
@@ -720,7 +736,7 @@ export function SaudiLicensePlate({
             <Unflip x={geo.numbers.center} active={mirrored}>
               <text
                 x={geo.numbers.center}
-                y={bottomRow.baseline}
+                y={bottomRow.baselines[0]}
                 textAnchor="middle"
                 fill="#0A0D12"
                 fontSize={numberSize}
@@ -735,7 +751,7 @@ export function SaudiLicensePlate({
             <Unflip x={geo.letters.center} active={mirrored}>
               <text
                 x={geo.letters.center}
-                y={topRow.baseline}
+                y={topRow.baselines[1]}
                 textAnchor="middle"
                 fill="#0A0D12"
                 fontSize={arabicLetterSize}
@@ -751,7 +767,7 @@ export function SaudiLicensePlate({
             <Unflip x={geo.letters.center} active={mirrored}>
               <text
                 x={geo.letters.center}
-                y={bottomRow.baseline}
+                y={bottomRow.baselines[1]}
                 textAnchor="middle"
                 fill="#0A0D12"
                 fontSize={latinLetterSize}

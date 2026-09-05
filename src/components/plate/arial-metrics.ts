@@ -19,6 +19,8 @@ export type InkMetrics = { asc: number; desc: number }
 /** الحروف السبعة عشر المعتمدة في لوحات المركبات السعودية. */
 export const ARABIC_LETTER_INK: Record<string, InkMetrics> = {
   أ: { asc: 0.876, desc: -0.1094 },
+  // الألف بلا همزة تَرِد في البيانات، وحدُّها حدُّ أختها فلا يتجاوز الشريط
+  ا: { asc: 0.876, desc: -0.1094 },
   ب: { asc: 0.4893, desc: 0.0693 },
   ح: { asc: 0.5273, desc: 0.2031 },
   د: { asc: 0.6045, desc: -0.1431 },
@@ -63,69 +65,47 @@ export type RowItem = {
 }
 
 export type RowLayout = {
-  /** خطّ قاعدة مشترك لكل عناصر الصفّ */
-  baseline: number
+  /** خطّ قاعدة لكل عنصر، بالترتيب نفسه */
+  baselines: number[]
   /** حجم الخط النهائي لكل عنصر، بالترتيب نفسه */
   sizes: number[]
 }
 
-export type RowOptions = {
-  /**
-   * يُوسّط حبر الصفّ في شريطه بدل تثبيت قاعدته في أسفله.
-   *
-   * القاعدة الثابتة تلزم حيث يتجاور صفّان: العربيّ فوق واللاتينيّ تحت، ولو
-   * تحرّك أحدهما بحجم حروفه اختلّ ما بينهما. أمّا الصفّ الوحيد — الرياضية —
-   * فلا جار له يُحاذيه، وحجمه يحدّه العرض لا الارتفاع، فيخرج أقصر من شريطه
-   * ويتجمّع الفائض كلّه فوقه هامشًا. والتوسيط يقسم الفائض نصفين.
-   */
-  center?: boolean
-}
+/**
+ * نصيب الحبر من شريطه.
+ *
+ * الشريط ليس حدًّا يُملأ حتى آخره: للحرف حَولَه فراغٌ في اللوحة المصنوعة. وهذا
+ * المقدار مأخوذٌ من الطويلة الخصوصية كما استقرّت — سبعون بالمئة — فتخرج
+ * اللوحات كلّها بمقاسٍ واحدٍ إلى شريطها، والشريطُ نسبةٌ من ارتفاع اللوحة.
+ */
+const INK_FILL = 0.7
+
+/** ارتفاع حبر المحرف نسبةً إلى حجم خطّه — ما فوق القاعدة وما تحتها معًا. */
+const inkHeight = (ink: InkMetrics) => Math.max(ink.asc + ink.desc, 0.001)
 
 /**
- * نصيب ما فوق خطّ القاعدة من ارتفاع الشريط، لكل صفّ حسب حاجته الحقيقية.
+ * يوزّع عناصر صفّ داخل شريط رأسي: لكلٍّ حجمٌ يجعل حبره بارتفاعٍ واحد، ومَوضعٌ
+ * يُوسّطه في الشريط.
  *
- * الصفّ العربي ينزل تحت القاعدة حتى 0.212em (حرف «م»)، فيحتاج نصيبًا للنزول.
- * الصفّ اللاتيني لا ينزل عمليًا (0.0127em)، فلو أعطيناه النصيب نفسه ضاع خُمس
- * الشريط فارغًا وبدا المحتوى منزاحًا لأعلى — وهو ما حدث فعلًا في أول محاولة.
- */
-export const ARABIC_ASCENT_SHARE = 0.805
-export const LATIN_ASCENT_SHARE = 0.983
-
-/**
- * يوزّع عناصر صفّ داخل شريط رأسي بحيث لا يلامس أي حبر حوافّ اللوحة.
+ * المقاس يُطلب بالحبر لا بحجم الخطّ. وكان يُطلب بحجم الخطّ فيختلف ما يُرى:
+ * حبر اللاتينيّ ‎0.73em‎ وحبر الأرقام العربية ‎0.58em‎، فحجمان متساويان يخرجان
+ * ارتفاعين متفاوتين بالرُّبع — ومنه جاء «77» أطول من «٧٧» فوقه في الطويلة،
+ * و«1» أطول من «١» في الاعتيادية. وحين يُطلب الحبر يتساوى المرئيّ، ويبقى
+ * فرقٌ مقصود: اللاتينيّ أصغر بمعامله لأنّ حروفه أعرض وأثخن فتُقرأ أضخم.
  *
- * خطّ القاعدة ثابت داخل الشريط — لا يتبع أطول عنصر — حتى تستقرّ الصفوف في
- * الموضع نفسه مهما اختلف عدد الحروف بين لوحة وأخرى. وحجم كل عنصر يُقيَّد
- * بنصيبه من الشريط حسب مقاييسه، فيتساوى ارتفاع الحبر المرئي بين العربي
- * واللاتيني كما تبدو اللوحة الحقيقية.
+ * ولا قاعدة مشتركة: كلٌّ يُوسَّط في شريطه. القاعدة الواحدة تُساوي المواضع لا
+ * المرئيّ — فيعلو ما قصُر صعوده على ما طال، وقد كان «٧٧» يعلو «ر ر» بخمسٍ
+ * وعشرين وحدة وهما في صفٍّ واحد.
+ *
+ * وضيقُ الخانة يحدّ الحجم قبل الشريط، فيخرج الحبر أقصر — وهو حدٌّ لا حيلة فيه.
  */
-export function layoutRow(
-  items: RowItem[],
-  bandTop: number,
-  bandHeight: number,
-  ascentShare: number,
-  options: RowOptions = {},
-): RowLayout {
-  const ascBudget = bandHeight * ascentShare
-  const descBudget = bandHeight - ascBudget
-
-  const sizes = items.map((item) => {
-    const byAscent = ascBudget / Math.max(item.ink.asc, 0.001)
-    const byDescent = item.ink.desc > 0 ? descBudget / item.ink.desc : Number.POSITIVE_INFINITY
-    return Math.min(item.widthLimit, byAscent, byDescent)
+export function layoutRow(items: RowItem[], bandTop: number, bandHeight: number): RowLayout {
+  const target = bandHeight * INK_FILL
+  const sizes = items.map((item) => Math.min(item.widthLimit, target / inkHeight(item.ink)))
+  const baselines = items.map((item, index) => {
+    const above = item.ink.asc * sizes[index]
+    const below = item.ink.desc * sizes[index]
+    return bandTop + (bandHeight - (above + below)) / 2 + above
   })
-
-  if (!options.center) return { baseline: bandTop + ascBudget, sizes }
-
-  /*
-   * التوسيط يقيس الحبر الخارج لا الميزانية المرصودة.
-   *
-   * القاعدة تُحسب بعد أن استقرّت الأحجام: أعلى صعودٍ بينها وأعمق نزول هما
-   * علوّ الكتلة الحقيقيّ، فتُنزَل في وسط الشريط. والقاعدة تبقى واحدة لكل
-   * العناصر — لو وُسّط كلٌّ على حدة لتفاوتت قواعد الأرقام والحروف في الصفّ.
-   */
-  const inkAbove = Math.max(...items.map((item, index) => item.ink.asc * sizes[index]))
-  const inkBelow = Math.max(...items.map((item, index) => item.ink.desc * sizes[index]))
-  const slack = bandHeight - (inkAbove + inkBelow)
-  return { baseline: bandTop + slack / 2 + inkAbove, sizes }
+  return { baselines, sizes }
 }

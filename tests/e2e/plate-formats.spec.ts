@@ -136,11 +136,13 @@ test.describe('نوع إصدار اللوحة', () => {
             const text = t.textContent ?? ''
             return text !== 'السعودية' && !['K', 'S', 'A', 'KSA'].includes(text)
           })
-          if (w / h < 3.7 || !glyphs.length) return null
+          const ink = glyphs.map((g) => g.textContent).join(' ')
+          // الرياضية وحدها صفٌّ واحد: لا عربية فيها، وصفّان لا يُوسَّطان معًا
+          if (!glyphs.length || /[؀-ۿ]/.test(ink)) return null
           const boxes = glyphs.map((g) => (g as SVGGraphicsElement).getBBox())
           const top = Math.min(...boxes.map((b) => b.y))
           const bottom = Math.max(...boxes.map((b) => b.y + b.height))
-          return { height: h, drift: (top + bottom) / 2 - h / 2, ink: glyphs.map((g) => g.textContent).join(' ') }
+          return { height: h, drift: (top + bottom) / 2 - h / 2, ink }
         })
         .filter(Boolean),
     )
