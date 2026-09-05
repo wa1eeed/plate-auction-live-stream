@@ -90,6 +90,15 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 { "user": { /* User */ } }
 ```
 
+### المعرّف والمعرض
+
+| المسار | الوظيفة |
+| --- | --- |
+| `GET /api/handles/available?handle=` | هل المعرّف متاح — نعم/لا وسببًا، **بلا اسم صاحبه**، ولا يُقال لصاحبه إنّ معرّفه مأخوذ |
+| `PATCH /api/account/showcase` | معرّف المعرض، وهل يُعرض بالاسم أم بالمعرّف |
+
+التفصيل في [المعرض العلنيّ والمعرّفات](showcase-and-handles.md).
+
 ---
 
 ## الإعلانات
@@ -372,6 +381,9 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `GET /robots.txt` | يولّده `src/app/robots.ts` |
 | `GET /sitemap.xml` | يولّده `src/app/sitemap.ts` — يشمل كل إعلان منشور |
 | `GET /ws` | ترقية WebSocket — [البروتوكول](realtime-protocol.md) |
+| `GET /brand/{logo\|icon\|og}` | أصول الهويّة من السجلّ، بتخزينٍ طويل يُبطله `?v=` |
+| `GET /@{handle}` · `GET /u/{id}` | [المعرض العلنيّ](showcase-and-handles.md) |
+| `GET /about` · `GET /terms` · `GET /how-it-works` | [صفحات محرَّرة](brand-and-pages.md) — غير المنشورة تردّ 404 |
 
 ---
 
@@ -393,6 +405,9 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `GET PATCH /api/admin/settings/auction` | قواعد المزاد |
 | `GET PATCH /api/admin/settings/commission` | العمولة والضريبة |
 | `GET PATCH /api/admin/settings/payments` | بوابات الدفع |
+| `GET PATCH /api/admin/settings/brand` | الهويّة والأرشفة — الأصول base64 بحدود `BRAND_ASSET_LIMITS` |
+| `GET PATCH /api/admin/settings/pages` | [صفحات المنصّة](brand-and-pages.md#4-صفحات-المنصّة-pagesettings) |
+| `PATCH /api/admin/users/{id}` | تعديل بيانات المستخدم من اللوحة |
 | `PATCH /api/admin/payments/{id}` | تأكيد حوالة أو رفضها |
 | `DELETE /api/admin/listings/{id}` | إيقاف إعلان — لا حذف |
 | `GET POST /api/admin/faq` · `PATCH DELETE /api/admin/faq/{id}` | إدارة الأسئلة |
