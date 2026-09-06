@@ -51,3 +51,55 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', () => {
   // بلا `respondWith`: يمضي الطلب إلى الشبكة كما لو لم يكن هنا عاملٌ أصلًا
 })
+
+/*
+ * الدفع: إشعارٌ يظهر ولو كان الجهاز مقفلًا.
+ *
+ * والمتصفّح **يُلزم** بعرض إشعارٍ لكلّ دفعةٍ تصل، فبلا `showNotification` يعرض
+ * هو «حُدِّث هذا الموقع في الخلفية» — وهي أسوأ من أيّ عبارةٍ نكتبها.
+ */
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = {}
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'سوق اللوحات', {
+      body: data.body || '',
+      icon: data.icon || '/app-icon.svg',
+      badge: '/app-icon.svg',
+      // وسمٌ لكلّ نوع: الثاني يحلّ محلّ الأوّل ولا يتراكمان على الشاشة
+      tag: data.tag || 'general',
+      dir: 'rtl',
+      lang: 'ar',
+      data: { href: data.href || '/account' },
+    }),
+  )
+})
+
+/*
+ * الضغط يفتح ما يخصّ الإشعار — ونافذةً قائمة إن وُجدت.
+ *
+ * فتحُ نافذةٍ جديدة مع كلّ إشعار يترك للمزايد خمسَ نوافذ للمنصّة نفسها؛
+ * والصواب أن تُركَّز القائمة وتُنقل إلى الوجهة.
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const href = (event.notification.data && event.notification.data.href) || '/account'
+
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of clients) {
+        if (new URL(client.url).origin !== self.location.origin) continue
+        await client.focus()
+        if ('navigate' in client) await client.navigate(href)
+        return
+      }
+      await self.clients.openWindow(href)
+    })(),
+  )
+})

@@ -11,6 +11,7 @@ import type {
 } from '@/lib/domain/types'
 import { getStore } from '@/lib/store'
 import type { AuctionStore } from '@/lib/store/types'
+import { pushNotification } from './push-service'
 import { publishRealtime, userTopic } from './realtime'
 
 export type NotifyInput = {
@@ -45,6 +46,14 @@ export async function notify(store: AuctionStore, input: NotifyInput): Promise<v
       body: notification.body,
       href: notification.href,
     })
+    /*
+     * والدفع بعد البثّ لا قبله.
+     *
+     * البثّ يبلغ من هو ناظرٌ الآن، والدفع من أغلق جهازه — فترتيبهما يعني أن
+     * يصل الناظرَ إشعارُه قبل أن يُنتظر ردُّ خادمٍ خارجيّ. ولا يُنتظر أصلًا:
+     * فشلُ الدفع لا يُبطل إشعارًا وقع في السجلّ.
+     */
+    pushNotification(store, notification)
   } catch {
     // لا نُسقط العملية الأصلية من أجل إشعار
   }

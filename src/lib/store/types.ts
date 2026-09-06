@@ -12,6 +12,7 @@ import type {
   LedgerEntry,
   Listing,
   Notification,
+  PushSubscriptionRecord,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -84,6 +85,11 @@ export type NewDisbursement = Omit<
 >
 export type NewPayment = Omit<Payment, 'id' | 'reference' | 'createdAt' | 'updatedAt' | 'settledAt' | 'settledByAdminId'>
 export type NewNotification = Omit<Notification, 'id' | 'createdAt' | 'readAt'>
+
+export type NewPushSubscription = Pick<
+  PushSubscriptionRecord,
+  'userId' | 'endpoint' | 'p256dh' | 'auth'
+>
 
 export type PlaceBidCommand = {
   listingId: string
@@ -195,6 +201,9 @@ export interface AuctionStore {
   listNotifications(userId: string, limit?: number): Promise<Notification[]>
   countUnreadNotifications(userId: string): Promise<number>
   createNotification(input: NewNotification): Promise<Notification>
+  savePushSubscription(input: NewPushSubscription): Promise<PushSubscriptionRecord>
+  listPushSubscriptions(userId: string): Promise<PushSubscriptionRecord[]>
+  deletePushSubscription(endpoint: string): Promise<boolean>
   markNotificationsRead(userId: string, ids?: string[]): Promise<number>
 
   // ---- المدفوعات

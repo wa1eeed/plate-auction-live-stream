@@ -40,6 +40,9 @@ HOST=0.0.0.0
 BID_RATE_LIMIT_WINDOW_MS=10000
 BID_RATE_LIMIT_MAX=6
 PLATFORM_DATA_DIR=/app/data                 # مجلّد دائم — انظر القسم 4
+VAPID_PUBLIC_KEY=                           # بلا المفتاحين لا إشعارات دفع
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com        # https: أو mailto: — وإلّا عُطّل الدفع
 ```
 
 `SESSION_SECRET` يوقّع الجلسات **ويحمي مسار المسح الداخلي**. في الإنتاج يرمي

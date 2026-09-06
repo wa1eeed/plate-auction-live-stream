@@ -22,6 +22,7 @@ import type {
   LedgerEntry,
   Listing,
   Notification,
+  PushSubscriptionRecord,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -56,6 +57,7 @@ import type {
   NewFaqItem,
   NewListing,
   NewNotification,
+  NewPushSubscription,
   NewPayment,
   NewOffer,
   NewOrder,
@@ -74,6 +76,7 @@ export type MemoryDatabase = {
   ledger: LedgerEntry[]
   deposits: Deposit[]
   notifications: Notification[]
+  pushSubscriptions: PushSubscriptionRecord[]
   payments: Payment[]
   paymentSettings: PaymentSettings
   auctionSettings: AuctionSettings
@@ -124,6 +127,7 @@ export function emptyDatabase(): MemoryDatabase {
     ledger: [],
     deposits: [],
     notifications: [],
+    pushSubscriptions: [],
     payments: [],
     paymentSettings: {
       ...DEFAULT_PAYMENT_SETTINGS,
@@ -708,6 +712,48 @@ export class MemoryStore implements AuctionStore {
       this.db.notifications = this.db.notifications.filter((n) => !drop.has(n.id))
     }
     return clone(notification)
+  }
+
+  // ------------------------------------------------------- اشتراكات الدفع
+
+  async savePushSubscription(input: NewPushSubscription): Promise<PushSubscriptionRecord> {
+    const now = new Date().toISOString()
+    /*
+     * `endpoint` مفتاحٌ طبيعيّ: الجهاز الواحد لا يُسجَّل مرّتين.
+     *
+     * والصفحة تُعيد إرسال اشتراكها في كلّ فتح، فبلا هذا الدمج تنمو القائمة
+     * نسخًا من الجهاز نفسه ويصله الإشعار مرّاتٍ.
+     * وقد يبدّل صاحبُ الجهاز حسابه، فيتبع `userId` آخرَ من أكّده.
+     */
+    const existing = this.db.pushSubscriptions.find((row) => row.endpoint === input.endpoint)
+    if (existing) {
+      existing.userId = input.userId
+      existing.p256dh = input.p256dh
+      existing.auth = input.auth
+      existing.lastSeenAt = now
+      return clone(existing)
+    }
+
+    const record: PushSubscriptionRecord = {
+      ...input,
+      id: newId('psh'),
+      createdAt: now,
+      lastSeenAt: now,
+    }
+    this.db.pushSubscriptions.push(record)
+    return clone(record)
+  }
+
+  async listPushSubscriptions(userId: string): Promise<PushSubscriptionRecord[]> {
+    return clone(this.db.pushSubscriptions.filter((row) => row.userId === userId))
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<boolean> {
+    const before = this.db.pushSubscriptions.length
+    this.db.pushSubscriptions = this.db.pushSubscriptions.filter(
+      (row) => row.endpoint !== endpoint,
+    )
+    return this.db.pushSubscriptions.length < before
   }
 
   async markNotificationsRead(userId: string, ids?: string[]): Promise<number> {

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { InstallApp } from './install-app'
+import { PushToggle } from './push-toggle'
 import { SoundToggle } from './sound-toggle'
 import { cn } from '@/lib/utils'
 
@@ -80,6 +81,9 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
           <span className="text-sm font-semibold text-muted">أصوات المنصّة</span>
           <SoundToggle />
         </div>
+
+        {/* إشعارات الجهاز لصاحب حسابٍ وحده: لا مَن يُشعَر قبل أن يكون له حساب */}
+        {signedIn && <PushToggle />}
 
         {!signedIn && (
           <div className="mt-auto grid gap-2">
