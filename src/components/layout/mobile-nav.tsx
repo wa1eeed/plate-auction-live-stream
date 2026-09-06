@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { InstallApp } from './install-app'
 import { SoundToggle } from './sound-toggle'
 import { cn } from '@/lib/utils'
 
@@ -64,6 +65,13 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
             </nav>
           </>
         )}
+
+        {/*
+          * التثبيت في الدُرج: يُقصد ولا يعترض — ولا يظهر لمن ثبّته أصلًا.
+          * وبلا فاصلٍ خاصٍّ به: هو يختفي في أكثر الحالات، والفاصل لا يختفي
+          * معه — فيبقى خطّان متلاصقان بلا شيء بينهما.
+          */}
+        <InstallApp />
 
         {/* مفتاح الأصوات على الجوال: زرّ الترويسة مخفيّ دون `sm`، والجوال هو
             حيث ينفع التنبيه الصوتي أكثر — شريط مزايدة ثابت وشاشة صغيرة */}

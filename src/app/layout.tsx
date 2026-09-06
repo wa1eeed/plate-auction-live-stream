@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Tajawal } from 'next/font/google'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
+import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
 import { StagingBanner } from '@/components/layout/staging-banner'
 import { assetUrl, brandColorCss, getBrand } from '@/lib/server/brand-service'
 import { jsonLdHtml, organizationJsonLd, websiteJsonLd } from '@/lib/server/structured-data'
@@ -36,7 +37,22 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: brand.keywords.length > 0 ? brand.keywords : undefined,
     applicationName: brand.name,
     alternates: { canonical: '/' },
-    icons: icon ? { icon: [{ url: icon }], apple: [{ url: icon }] } : undefined,
+    icons: {
+      icon: icon ? [{ url: icon }] : [{ url: '/app-icon.svg', type: 'image/svg+xml' }],
+      apple: icon ? [{ url: icon }] : [{ url: '/app-icon.svg' }],
+    },
+    /*
+     * iOS لا يقرأ البيان في التثبيت.
+     *
+     * سفاري يبني أيقونة الشاشة الرئيسية واسمَها من هذه الوسوم وحدها، ويتجاهل
+     * `manifest.json` فيهما. فبدونها يُثبَّت التطبيق باسم عنوان الصفحة الطويل
+     * ولقطةٍ من الشاشة بدل الأيقونة.
+     */
+    appleWebApp: {
+      capable: true,
+      title: brand.shortName,
+      statusBarStyle: 'default',
+    },
     verification: brand.googleSiteVerification
       ? { google: brand.googleSiteVerification }
       : undefined,
@@ -59,6 +75,14 @@ export async function generateMetadata(): Promise<Metadata> {
       // تحديد الموقع لمحرّكات تقرؤه: أوسمة `geo` القديمة ما زالت تُقرأ
       ...(brand.geoRegion ? { 'geo.region': brand.geoRegion } : {}),
       ...(brand.geoPlace ? { 'geo.placename': brand.geoPlace } : {}),
+      /*
+       * الوسم المهجور يبقى — لأنّ الأجهزة تبقى.
+       *
+       * `appleWebApp.capable` يُخرج `mobile-web-app-capable` وحده، وهو ما
+       * تقرؤه iOS 17 فما فوق. وما دونها لا يعرف إلّا القديم، فيُثبَّت التطبيق
+       * عندها بشريط سفاري فوقه فلا يُقرأ تطبيقًا. وسطرٌ واحد يشمل الجهازين.
+       */
+      'apple-mobile-web-app-capable': 'yes',
     },
   }
 }
@@ -114,6 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <StagingBanner />
         {children}
         <Toaster />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   )
