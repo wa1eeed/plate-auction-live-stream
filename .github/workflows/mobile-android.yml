@@ -17,6 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    # سياق `secrets` **لا يُقرأ في `if`** — يُرفض الملفّ كلّه به. و`env` يُقرأ،
+    # فيُمرَّر السرّ هنا ويُفحص وجودُه هناك.
+    env:
+      PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -88,12 +93,11 @@ jobs:
 
       # ------------------------------------------------- الرفع إلى Play
       - name: رفع إلى مسار الاختبار الداخليّ
-        # لا يقع إلّا بوسم إصدارٍ وبحساب خدمةٍ مضبوط — فلا يُرفع بناءٌ تجريبيّ.
-        # و`secrets` وحدها تُقرأ في `if` — أمّا `env` الخطوة فلا تُتاح فيه بعد.
+        # لا يقع إلّا بوسم إصدارٍ وبحساب خدمةٍ مضبوط — فلا يُرفع بناءٌ تجريبيّ
         if: >-
           steps.signing.outputs.signed == 'true' &&
           startsWith(github.ref, 'refs/tags/v') &&
-          secrets.PLAY_SERVICE_ACCOUNT_JSON != ''
+          env.PLAY_JSON != ''
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
