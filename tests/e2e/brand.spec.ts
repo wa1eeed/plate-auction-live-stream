@@ -283,10 +283,25 @@ test.describe('عرض الشعار', () => {
     const logo = guest.locator('header img').first()
     await expect(logo).toBeVisible()
 
-    const shape = await logo.evaluate((el) => {
-      const box = el.getBoundingClientRect()
-      return { ratio: box.width / box.height, fit: getComputedStyle(el).objectFit }
-    })
+    /*
+     * يُقرأ من **استعلامٍ طازج** لا من مقبضٍ مأخوذ قبله.
+     *
+     * المقبض يُؤخذ قبل الترطيب، فيستبدل React العنصر ويُفصَل المأخوذ من
+     * الشجرة. و`getComputedStyle` على عنصرٍ مفصول يعيد قيمًا **فارغة** لا
+     * خاطئة — فيُقرأ «مقصوص» وهو معروضٌ صحيحًا. وذلك ما كان يُسقط هذا الفحص
+     * في لينكس وحده: توقيتُ الترطيب هناك غيرُه على جهاز التطوير.
+     */
+    const read = () =>
+      guest.evaluate(() => {
+        const el = document.querySelector('header img')
+        if (!el) return null
+        const box = el.getBoundingClientRect()
+        return { ratio: box.width / box.height, fit: getComputedStyle(el).objectFit }
+      })
+
+    await expect.poll(async () => (await read())?.fit ?? '').toBe('contain')
+
+    const shape = (await read())!
     // نسبة الصورة ١٦:٤٫٥ محفوظة — لا مربّع
     expect(shape.fit, 'الشعار مقصوص').toBe('contain')
     expect(shape.ratio, `النسبة ${shape.ratio}`).toBeGreaterThan(2)

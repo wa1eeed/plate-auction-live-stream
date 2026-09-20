@@ -417,7 +417,14 @@ test.describe('لوحة المستخدم والإشعارات', () => {
 
     await minePage.goto('/account')
     await expect(minePage.getByRole('heading', { name: 'يحتاج تصرّفك' })).toBeVisible()
-    await expect(minePage.getByText(/تجاوزك مزايد في/)).toBeVisible()
+    /*
+     * يُقصد ما في **الصفحة** لا ما في الجرس.
+     *
+     * الإشعار يظهر في موضعين معًا: قائمة «آخر التنبيهات» في لوحة الحساب،
+     * ولوحة الجرس التي تُصيَّر معها. فمنتقٍ غير محصور يطابق الاثنين ويخفق
+     * بـ`strict mode` — وكلاهما صحيح.
+     */
+    await expect(minePage.locator('#main').getByText(/تجاوزك مزايد في/)).toBeVisible()
 
     // والجرس يحمل العدّاد ويفتح على الإشعار
     const bell = minePage.getByRole('button', { name: /الإشعارات/ })
