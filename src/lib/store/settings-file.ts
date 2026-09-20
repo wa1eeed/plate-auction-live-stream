@@ -24,6 +24,7 @@ const SLICES = [
   'brandSettings',
   'pageSettings',
   'auctionSettings',
+  'mobileSettings',
   'commissionSettings',
   'paymentSettings',
   'taxSettings',

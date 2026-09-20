@@ -1163,15 +1163,39 @@ export type PublicPaymentOptions = {
  * والاشتراك يضيعان معًا ويعودان معًا — يسجّل المستخدم دخوله فتُعيد صفحتُه
  * إرسال اشتراك جهازها من نفسها. وثباتُهما معًا يأتي بقاعدة بيانات لا بملفّ.
  */
-export type PushSubscriptionRecord = {
+/**
+ * منصّة الجهاز — تحدّد **كيف** يُرسَل إليه لا أين يُخزَّن.
+ *
+ * الويب يُرسَل إليه بمعيار Web Push مشفَّرًا من طرفٍ إلى طرف (عنوانٌ ومفتاحان)،
+ * والأصيل برمزٍ من APNs أو FCM. وجدولٌ واحد يسعهما لأنّ ما فوقه واحد: مَن
+ * صاحب الجهاز، وهل يريد الإشعارات، ومتى رُئي آخر مرّة.
+ */
+export type DevicePlatform = 'web' | 'ios' | 'android'
+
+/**
+ * جهازٌ واحد لمستخدم — لا حسابٌ ولا شخص.
+ *
+ * للمستخدم أجهزةٌ لا جهاز: جوّالٌ وحاسوب، ولكلٍّ رمزُه. فحفظُ رمزٍ واحدٍ لكلّ
+ * مستخدم يُسكت إشعاراته على ما عدا آخر جهازٍ فتحه.
+ *
+ * و`pushToken` هو المفتاح الطبيعيّ: للويب عنوانُ خادم الدفع، وللأصيل رمزُ
+ * APNs/FCM. والصفحة تُعيد إرساله في كلّ فتح — لأنّ الاشتراك يعيش في الذاكرة
+ * كما يعيش صاحبه — فبلا دمجٍ عليه تنمو القائمة نسخًا من الجهاز نفسه.
+ */
+export type UserDevice = {
   id: string
   userId: string
-  /** المفتاح الطبيعيّ: جهازٌ واحد لا يُسجَّل مرّتين */
-  endpoint: string
-  p256dh: string
-  auth: string
+  platform: DevicePlatform
+  /** المفتاح الطبيعيّ — عنوانُ الويب أو رمزُ APNs/FCM */
+  pushToken: string
+  /** للويب وحده: مفتاحا التشفير. وللأصيل `null` — الرمز نفسه يكفي */
+  webKeys: { p256dh: string; auth: string } | null
+  /** نسخة التطبيق — تُقرأ في الإدارة، وتُفيد في تشخيص عطبٍ يخصّ نسخةً بعينها */
+  appVersion: string | null
+  /** إطفاءٌ من داخل المنصّة بلا نزعِ إذن النظام — فيعود بضغطة */
+  notificationsEnabled: boolean
   createdAt: string
-  /** آخر مرّة أكّد فيها الجهاز اشتراكه — تُحدَّث في كلّ فتح */
+  /** آخر مرّة أكّد فيها الجهاز نفسه — تُحدَّث في كلّ فتح */
   lastSeenAt: string
 }
 
@@ -1221,6 +1245,46 @@ export const URGENT_NOTIFICATIONS: readonly NotificationType[] = [
   'order_awaiting_confirmation',
   'order_disputed',
 ]
+
+/**
+ * ما يُدفَع إلى الأجهزة، ونصُّه — يُضبط من اللوحة لا من الكود.
+ *
+ * والقائمة مشتقّة من `URGENT_NOTIFICATIONS` لا مستقلّة عنها: ما لا يستدعي
+ * تصرّفًا فورًا يُقرأ في الجرس متى فُتحت المنصّة، ودفعُه إلى شاشةٍ مقفلة ضجيجٌ
+ * يُعلَّم صاحبُه أن يتجاهله.
+ */
+export type PushTemplate = {
+  /** إطفاءُ نوعٍ بعينه — يبقى في الجرس ولا يُدفَع */
+  enabled: boolean
+  title: string
+  body: string
+}
+
+/**
+ * المتغيّرات المسموحة في القوالب — **بياناتٌ علنية وحدها**.
+ *
+ * حمولة الدفع تمرّ بخادم صانع المتصفّح، فلا يوضع فيها ما تحجبه المنصّة عن
+ * قارئها. ورقمُ اللوحة معروضٌ في صفحةٍ علنية فلا حرج فيه؛ **والمبالغ لا
+ * تُتاح أصلًا**: سومُ غيرِك محجوبٌ عنك في الواجهة، فوضعُه في إشعارٍ يمرّ بطرفٍ
+ * ثالث يهدم الحجب من بابٍ آخر.
+ *
+ * ولا يُنفَّذ من القالب شيء: استبدالُ نصٍّ بنصّ، لا تعبيرٌ ولا كود.
+ */
+export const PUSH_TEMPLATE_VARIABLES = ['{{plate}}'] as const
+
+export type MobileSettings = {
+  pushTypes: Record<string, PushTemplate>
+  /**
+   * أقلّ نسخةٍ مدعومة، والمستحسنة — **تُحفظ ولا تُلزِم**.
+   *
+   * البنية جاهزة لمن يريد إلزامًا لاحقًا، ولا يقع اليوم: تطبيقٌ يوقف صاحبَه
+   * عن المزايدة لأنّ رقمًا في الخادم تبدّل خطرٌ لا يُتحمَّل بلا إعدادٍ صريح.
+   */
+  minVersion: string | null
+  recommendedVersion: string | null
+  updatedAt: string
+  updatedByAdminId: string | null
+}
 
 export type Notification = {
   id: string
@@ -1298,6 +1362,48 @@ export type AuctionSettings = {
 
   updatedAt: string
   updatedByAdminId: string | null
+}
+
+/**
+ * نصوصٌ افتراضية لكلّ نوعٍ يُدفَع.
+ *
+ * مقتضبةٌ عمدًا: الإشعار يُقرأ على شاشةٍ مقفلة بسطرٍ ونصف، وما زاد يُقصّ. وهو
+ * **نداءٌ إلى الصفحة** لا بديلٌ عنها — التفصيل يُقرأ بعد الضغط حيث يُطبَّق
+ * الحجب لكلّ قارئ بحسبه.
+ */
+/** أسماءٌ عربية لأنواع الإشعارات — تُقرأ في الإدارة لا في الكود. */
+export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
+  outbid: 'تجاوزَك مزايد',
+  auction_won: 'رست عليك اللوحة',
+  offer_received: 'وصلك سوم',
+  deposit_forfeited: 'صودر عربونك',
+  order_defaulted: 'أُغلقت صفقة متخلّفة',
+  commission_due: 'عمولةٌ مستحقّة',
+  payment_due_soon: 'مهلة السداد توشك',
+  payment_overdue: 'انقضت مهلة السداد',
+  order_awaiting_transfer: 'وصل المال — انقل الملكية',
+  order_awaiting_confirmation: 'وصل إثبات النقل',
+  order_disputed: 'اعتراضٌ على صفقة',
+}
+
+export const DEFAULT_PUSH_TEMPLATES: Record<string, PushTemplate> = {
+  outbid: { enabled: true, title: 'تجاوزَك مزايد', body: 'ارجع إلى {{plate}} قبل أن ينتهي وقتها.' },
+  auction_won: { enabled: true, title: 'رست عليك اللوحة', body: '{{plate}} صارت لك — يبقى السداد.' },
+  offer_received: { enabled: true, title: 'وصلك سوم', body: 'سومٌ جديد على {{plate}} ينتظر ردّك.' },
+  deposit_forfeited: { enabled: true, title: 'صودر عربونك', body: 'انقضت مهلة السداد على {{plate}}.' },
+  order_defaulted: { enabled: true, title: 'أُغلقت صفقتك', body: 'لم يصل سدادك عن {{plate}} في مهلته.' },
+  commission_due: { enabled: true, title: 'عمولةٌ مستحقّة', body: 'لم يكفِ رصيدك لاقتطاعها — اشحن محفظتك.' },
+  payment_due_soon: { enabled: true, title: 'مهلة سدادك توشك', body: 'سدّد {{plate}} قبل انقضاء المهلة.' },
+  payment_overdue: { enabled: true, title: 'انقضت مهلة السداد', body: 'صفقة {{plate}} تجاوزت مهلتها.' },
+  order_awaiting_transfer: { enabled: true, title: 'وصل المال', body: 'انقل ملكية {{plate}} وارفع إثباتها.' },
+  order_awaiting_confirmation: { enabled: true, title: 'وصل إثبات النقل', body: 'صفقة {{plate}} تنتظر تحقّق الإدارة.' },
+  order_disputed: { enabled: true, title: 'اعتراضٌ على صفقة', body: 'صفقة {{plate}} فيها اعتراض ينتظر الفصل.' },
+}
+
+export const DEFAULT_MOBILE_SETTINGS: Omit<MobileSettings, 'updatedAt' | 'updatedByAdminId'> = {
+  pushTypes: DEFAULT_PUSH_TEMPLATES,
+  minVersion: null,
+  recommendedVersion: null,
 }
 
 export const DEFAULT_AUCTION_SETTINGS: Omit<AuctionSettings, 'updatedAt' | 'updatedByAdminId'> = {

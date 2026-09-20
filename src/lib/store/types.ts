@@ -12,7 +12,8 @@ import type {
   LedgerEntry,
   Listing,
   Notification,
-  PushSubscriptionRecord,
+  UserDevice,
+  MobileSettings,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -86,10 +87,10 @@ export type NewDisbursement = Omit<
 export type NewPayment = Omit<Payment, 'id' | 'reference' | 'createdAt' | 'updatedAt' | 'settledAt' | 'settledByAdminId'>
 export type NewNotification = Omit<Notification, 'id' | 'createdAt' | 'readAt'>
 
-export type NewPushSubscription = Pick<
-  PushSubscriptionRecord,
-  'userId' | 'endpoint' | 'p256dh' | 'auth'
->
+export type NewUserDevice = Pick<
+  UserDevice,
+  'userId' | 'platform' | 'pushToken' | 'webKeys'
+> & { appVersion?: string | null }
 
 export type PlaceBidCommand = {
   listingId: string
@@ -201,9 +202,16 @@ export interface AuctionStore {
   listNotifications(userId: string, limit?: number): Promise<Notification[]>
   countUnreadNotifications(userId: string): Promise<number>
   createNotification(input: NewNotification): Promise<Notification>
-  savePushSubscription(input: NewPushSubscription): Promise<PushSubscriptionRecord>
-  listPushSubscriptions(userId: string): Promise<PushSubscriptionRecord[]>
-  deletePushSubscription(endpoint: string): Promise<boolean>
+  getMobileSettings(): Promise<MobileSettings>
+  updateMobileSettings(
+    patch: Partial<Omit<MobileSettings, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ): Promise<MobileSettings>
+  saveUserDevice(input: NewUserDevice): Promise<UserDevice>
+  listUserDevices(userId: string): Promise<UserDevice[]>
+  countDevicesByPlatform(): Promise<Record<string, number>>
+  setDeviceNotifications(pushToken: string, enabled: boolean): Promise<boolean>
+  deleteUserDevice(pushToken: string): Promise<boolean>
   markNotificationsRead(userId: string, ids?: string[]): Promise<number>
 
   // ---- المدفوعات

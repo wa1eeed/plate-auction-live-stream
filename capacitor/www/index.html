@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>سوق اللوحات</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0; min-height: 100dvh; display: grid; place-items: center;
+        padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem;
+        background: #f4f6fa; color: #0f1720;
+        font-family: -apple-system, system-ui, 'Segoe UI', Tahoma, sans-serif; text-align: center;
+      }
+      .card { max-width: 22rem; }
+      img { width: 4.5rem; height: 4.5rem; }
+      h1 { margin: 1rem 0 .5rem; font-size: 1.05rem; }
+      p { margin: 0; font-size: .85rem; line-height: 1.85; color: #56637a; }
+      button {
+        margin-top: 1.5rem; width: 100%; border: 0; border-radius: .875rem;
+        padding: .9rem 1rem; background: #d6a84b; color: #080b10;
+        font: inherit; font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      هذه الصفحة **لا تُعرض في الحال المعتاد**: التطبيق يفتح خادم المنصّة.
+      وهي ما يبقى في الحزمة متى تعذّر الوصول إليه — فتقول ما وقع ولا تعرض
+      أرقامًا محفوظة: المزاد يتبدّل في الثانية، ورقمٌ قديم يُبنى عليه قرارٌ
+      أسوأ من لا رقم.
+    -->
+    <div class="card">
+      <img src="app-icon.svg" alt="" />
+      <h1>تعذّر الوصول إلى المنصّة</h1>
+      <p>تحقّق من اتصالك بالإنترنت ثمّ أعد المحاولة. المزادات تتغيّر لحظةً بلحظة، فلا نعرض لك أرقامًا محفوظة.</p>
+      <button type="button" onclick="location.reload()">أعد المحاولة</button>
+    </div>
+  </body>
+</html>

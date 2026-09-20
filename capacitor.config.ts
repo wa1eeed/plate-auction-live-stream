@@ -1,0 +1,88 @@
+import type { CapacitorConfig } from '@capacitor/cli'
+
+/**
+ * إعدادُ الغلاف الأصيل — تطبيقٌ واحد يُخرج iOS وأندرويد.
+ *
+ * ولماذا `server.url` لا حزمةٌ ساكنة؟ لأنّ الواجهة **تُصيَّر على الخادم**:
+ * خمسٌ وأربعون صفحةً كلُّها مكوّنات خادم، وتسعٌ وثمانون ملفًّا تعلن
+ * `force-dynamic`، والجلسة تُقرأ خادميًّا في ثمانين موضعًا بكوكي `httpOnly`.
+ * فلا مبنًى ساكنًا يُحزَم، ولا يُستخرج إلّا بإعادة كتابة المنصّة — انظر
+ * [MOBILE_APP_IMPLEMENTATION_PLAN.md](./MOBILE_APP_IMPLEMENTATION_PLAN.md).
+ *
+ * **وليس هذا إطارًا حول موقع.** الغلاف يحمل طبقةً أصيلة حقيقية: إشعارات
+ * APNs و FCM، وروابط كونية، وشاشة إقلاع، وشريط حالة، وزرّ رجوع، واهتزازًا،
+ * وورقة مشاركة — ويتخاطب مع الواجهة عبر جسرٍ برمجيّ.
+ *
+ * وميزةٌ لا تُشترى بغيرها: الأصل يبقى `https://mazad.nx.sa`، فتبقى كوكي
+ * الجلسة `httpOnly` عاملةً كما هي. ولو حُزمت الواجهة لصار الأصل
+ * `capacitor://` فتصير الكوكي عابرةَ موقعٍ ولا تُرسَل مع `sameSite=lax` —
+ * فيلزم رمزٌ يُحفظ في الجهاز، وهو سطحُ أمانٍ جديد بلا مقابل.
+ */
+const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://mazad.nx.sa'
+
+const config: CapacitorConfig = {
+  appId: 'sa.nx.mazad',
+  appName: 'سوق اللوحات',
+
+  /*
+   * مجلّدٌ يُحزَم ولا يُعرض في الحال المعتاد.
+   *
+   * Capacitor يشترط `webDir` موجودًا، والتطبيق يفتح الخادم. وما فيه صفحةُ
+   * تعذّرٍ ساكنة تظهر متى انقطع الوصول — فيقرأ صاحبها سببًا بدل شاشةٍ بيضاء.
+   */
+  webDir: 'capacitor/www',
+
+  server: {
+    url: appUrl,
+    /*
+     * `cleartext: false` صراحةً: لا HTTP بلا تشفير في أيّ حال.
+     * والجلسة تسافر في الكوكي، فنقلُها على قناةٍ مكشوفة لا يُحتمل.
+     */
+    cleartext: false,
+    /*
+     * النطاق مسموحٌ للتنقّل داخل التطبيق، وما عداه يُفتح في متصفّح النظام.
+     * ورابطٌ خارجيّ يُفتح داخل الغلاف يُخفي شريطَ العنوان عمّن يحتاجه ليعرف
+     * أين هو — وهو باب تصيّد.
+     */
+    allowNavigation: [new URL(appUrl).host],
+  },
+
+  ios: {
+    /*
+     * الخلفية تُطابق `theme_color` في البيان و`themeColor` في التخطيط.
+     * ثلاثةُ ألوانٍ تختلف تُنتج وميضًا عند الإقلاع وعند شدّ الصفحة.
+     */
+    backgroundColor: '#f4f6fa',
+    /** شدّ الصفحة لا يكشف خلفيةً بيضاء تحت المحتوى */
+    scrollEnabled: true,
+    contentInset: 'always',
+  },
+
+  android: {
+    backgroundColor: '#f4f6fa',
+    /** لا نسمح بمحتوى مكشوف — يطابق `cleartext: false` أعلاه */
+    allowMixedContent: false,
+    captureInput: true,
+  },
+
+  plugins: {
+    SplashScreen: {
+      /*
+       * تُخفى بأمرٍ من الواجهة لا بمؤقّت.
+       *
+       * المؤقّت يخمّن متى صارت الصفحة جاهزة: إن قصُر ظهرت شاشةٌ بيضاء تحته،
+       * وإن طال انتظر صاحبُه بلا سبب. والواجهة تعرف اللحظة فتأمر بإخفائها.
+       */
+      launchAutoHide: false,
+      backgroundColor: '#f4f6fa',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+    },
+    PushNotifications: {
+      /** الشارة والصوت والتنبيه — والمستخدم يضبطها من نظامه بعدُ */
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+  },
+}
+
+export default config

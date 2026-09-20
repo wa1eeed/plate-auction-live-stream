@@ -22,7 +22,8 @@ import type {
   LedgerEntry,
   Listing,
   Notification,
-  PushSubscriptionRecord,
+  UserDevice,
+  MobileSettings,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -36,6 +37,7 @@ import type {
 } from '@/lib/domain/types'
 import {
   DEFAULT_AUCTION_SETTINGS,
+  DEFAULT_MOBILE_SETTINGS,
   DEFAULT_COMMISSION_SETTINGS,
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_TAX_SETTINGS,
@@ -57,7 +59,7 @@ import type {
   NewFaqItem,
   NewListing,
   NewNotification,
-  NewPushSubscription,
+  NewUserDevice,
   NewPayment,
   NewOffer,
   NewOrder,
@@ -76,10 +78,11 @@ export type MemoryDatabase = {
   ledger: LedgerEntry[]
   deposits: Deposit[]
   notifications: Notification[]
-  pushSubscriptions: PushSubscriptionRecord[]
+  userDevices: UserDevice[]
   payments: Payment[]
   paymentSettings: PaymentSettings
   auctionSettings: AuctionSettings
+  mobileSettings: MobileSettings
   commissionSettings: CommissionSettings
   /** إيرادات المنصّة: عمولات وضرائب وعرابين مُصادَرة */
   platformEntries: PlatformEntry[]
@@ -127,7 +130,7 @@ export function emptyDatabase(): MemoryDatabase {
     ledger: [],
     deposits: [],
     notifications: [],
-    pushSubscriptions: [],
+    userDevices: [],
     payments: [],
     paymentSettings: {
       ...DEFAULT_PAYMENT_SETTINGS,
@@ -136,6 +139,11 @@ export function emptyDatabase(): MemoryDatabase {
     },
     auctionSettings: {
       ...DEFAULT_AUCTION_SETTINGS,
+      updatedAt: new Date(0).toISOString(),
+      updatedByAdminId: null,
+    },
+    mobileSettings: {
+      ...DEFAULT_MOBILE_SETTINGS,
       updatedAt: new Date(0).toISOString(),
       updatedByAdminId: null,
     },
@@ -714,46 +722,88 @@ export class MemoryStore implements AuctionStore {
     return clone(notification)
   }
 
-  // ------------------------------------------------------- اشتراكات الدفع
+  // ------------------------------------------------------------ إعدادات التطبيق
 
-  async savePushSubscription(input: NewPushSubscription): Promise<PushSubscriptionRecord> {
+  async getMobileSettings(): Promise<MobileSettings> {
+    return clone(this.db.mobileSettings)
+  }
+
+  async updateMobileSettings(
+    patch: Partial<Omit<MobileSettings, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ): Promise<MobileSettings> {
+    this.db.mobileSettings = {
+      ...this.db.mobileSettings,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+      updatedByAdminId: adminId,
+    }
+    this.persist(this.db)
+    return clone(this.db.mobileSettings)
+  }
+
+  // ---------------------------------------------------------- أجهزة المستخدم
+
+  async saveUserDevice(input: NewUserDevice): Promise<UserDevice> {
     const now = new Date().toISOString()
     /*
-     * `endpoint` مفتاحٌ طبيعيّ: الجهاز الواحد لا يُسجَّل مرّتين.
+     * `pushToken` مفتاحٌ طبيعيّ: الجهاز الواحد لا يُسجَّل مرّتين.
      *
-     * والصفحة تُعيد إرسال اشتراكها في كلّ فتح، فبلا هذا الدمج تنمو القائمة
-     * نسخًا من الجهاز نفسه ويصله الإشعار مرّاتٍ.
-     * وقد يبدّل صاحبُ الجهاز حسابه، فيتبع `userId` آخرَ من أكّده.
+     * والصفحة تُعيد إرساله في كلّ فتح، فبلا هذا الدمج تنمو القائمة نسخًا من
+     * الجهاز نفسه ويصله الإشعار مرّاتٍ. وقد يبدّل صاحبُ الجهاز حسابه، فيتبع
+     * `userId` آخرَ من أكّده — وإلّا وصلت إشعاراتُ الأوّل إلى الثاني.
      */
-    const existing = this.db.pushSubscriptions.find((row) => row.endpoint === input.endpoint)
+    const existing = this.db.userDevices.find((row) => row.pushToken === input.pushToken)
     if (existing) {
       existing.userId = input.userId
-      existing.p256dh = input.p256dh
-      existing.auth = input.auth
+      existing.platform = input.platform
+      existing.webKeys = input.webKeys
+      if (input.appVersion !== undefined) existing.appVersion = input.appVersion
       existing.lastSeenAt = now
       return clone(existing)
     }
 
-    const record: PushSubscriptionRecord = {
-      ...input,
-      id: newId('psh'),
+    const record: UserDevice = {
+      id: newId('dev'),
+      userId: input.userId,
+      platform: input.platform,
+      pushToken: input.pushToken,
+      webKeys: input.webKeys,
+      appVersion: input.appVersion ?? null,
+      // جهازٌ سُجّل إنّما سُجّل ليُنبَّه — والإطفاء فعلٌ لاحقٌ صريح
+      notificationsEnabled: true,
       createdAt: now,
       lastSeenAt: now,
     }
-    this.db.pushSubscriptions.push(record)
+    this.db.userDevices.push(record)
     return clone(record)
   }
 
-  async listPushSubscriptions(userId: string): Promise<PushSubscriptionRecord[]> {
-    return clone(this.db.pushSubscriptions.filter((row) => row.userId === userId))
+  /** عدد الأجهزة المسجَّلة لكلّ منصّة — تُقرأ في الإدارة وحدها. */
+  async countDevicesByPlatform(): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {}
+    for (const device of this.db.userDevices) {
+      if (!device.notificationsEnabled) continue
+      counts[device.platform] = (counts[device.platform] ?? 0) + 1
+    }
+    return counts
   }
 
-  async deletePushSubscription(endpoint: string): Promise<boolean> {
-    const before = this.db.pushSubscriptions.length
-    this.db.pushSubscriptions = this.db.pushSubscriptions.filter(
-      (row) => row.endpoint !== endpoint,
-    )
-    return this.db.pushSubscriptions.length < before
+  async listUserDevices(userId: string): Promise<UserDevice[]> {
+    return clone(this.db.userDevices.filter((row) => row.userId === userId))
+  }
+
+  async setDeviceNotifications(pushToken: string, enabled: boolean): Promise<boolean> {
+    const device = this.db.userDevices.find((row) => row.pushToken === pushToken)
+    if (!device) return false
+    device.notificationsEnabled = enabled
+    return true
+  }
+
+  async deleteUserDevice(pushToken: string): Promise<boolean> {
+    const before = this.db.userDevices.length
+    this.db.userDevices = this.db.userDevices.filter((row) => row.pushToken !== pushToken)
+    return this.db.userDevices.length < before
   }
 
   async markNotificationsRead(userId: string, ids?: string[]): Promise<number> {

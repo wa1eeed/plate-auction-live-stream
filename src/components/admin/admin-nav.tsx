@@ -18,6 +18,7 @@ import {
   Receipt,
   ScrollText,
   Settings,
+  Smartphone,
   ShieldAlert,
   Users,
 } from 'lucide-react'
@@ -89,6 +90,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
     title: 'النظام',
     links: [
       { href: '/admin/pages', label: 'صفحات المنصّة', icon: FileType },
+      { href: '/admin/mobile', label: 'التطبيق', icon: Smartphone },
       { href: '/admin/faq', label: 'الأسئلة الشائعة', icon: HelpCircle },
       { href: '/admin/audit', label: 'سجلّ التدقيق', icon: ScrollText },
       { href: '/admin/settings', label: 'الإعدادات', icon: Settings },

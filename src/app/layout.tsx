@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Tajawal } from 'next/font/google'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
+import { NativeShell } from '@/components/layout/native-shell'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
 import { StagingBanner } from '@/components/layout/staging-banner'
 import { assetUrl, brandColorCss, getBrand } from '@/lib/server/brand-service'
@@ -139,6 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         <Toaster />
         <ServiceWorkerRegistrar />
+        <NativeShell />
       </body>
     </html>
   )

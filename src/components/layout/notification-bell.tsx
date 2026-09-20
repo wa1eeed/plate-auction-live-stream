@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useRealtime } from '@/lib/hooks/use-realtime'
 import { useSound } from '@/lib/hooks/use-sound'
+import { haptic } from '@/lib/haptics'
 import { URGENT_NOTIFICATIONS as URGENT } from '@/lib/domain/types'
 import { cn, formatTimestamp } from '@/lib/utils'
 import {
@@ -88,6 +89,14 @@ export function NotificationBell({ userId }: { userId: string }) {
               ? 'outbid'
               : 'alert',
         )
+        /*
+         * والعاجل وحده يهتزّ.
+         *
+         * الاهتزاز أشدّ من الصوت مقاطعةً — يُحسّ في الجيب ولا يُطفئه وضعُ
+         * الصمت — فيُقصَر على ما يستدعي تصرّفًا الآن: تجاوزٌ، أو مهلةٌ توشك،
+         * أو لوحةٌ رست. وما عداه يُقرأ في الجرس متى فُتحت المنصّة.
+         */
+        if (latest && URGENT.includes(latest.type)) haptic('warning')
       }
       previousUnread.current = data.unread
     } catch {
@@ -101,6 +110,28 @@ export function NotificationBell({ userId }: { userId: string }) {
   useEffect(() => {
     if (unread > 0) router.refresh()
   }, [unread, router])
+
+  /*
+   * شارةُ الأيقونة — الرقم على أيقونة التطبيق في الشاشة الرئيسية.
+   *
+   * تعمل للمثبَّت وحده (ولغلافه الأصيل)، وتُتجاهل في تبويب متصفّح — ولذلك لا
+   * يُسأل عنها ولا يُفحص: `catch` صامت، فمتصفّحٌ لا يدعمها لا يُسقط جرسًا يعمل.
+   *
+   * وتُمسح عند الصفر لا تُترك برقمٍ قديم: أيقونةٌ تقول «٣» وليس وراءها شيء
+   * تُعلَّم صاحبَها ألّا يصدّقها.
+   */
+  useEffect(() => {
+    const badge = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void>
+      clearAppBadge?: () => Promise<void>
+    }
+    try {
+      if (unread > 0) void badge.setAppBadge?.(unread)?.catch(() => undefined)
+      else void badge.clearAppBadge?.()?.catch(() => undefined)
+    } catch {
+      // شارةٌ لم تُرسم — والعدد ظاهرٌ على الجرس نفسه
+    }
+  }, [unread])
 
   async function markAllRead() {
     if (unread === 0) return

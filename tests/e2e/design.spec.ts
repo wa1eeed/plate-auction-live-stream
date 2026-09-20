@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { clickWhenHydrated, stableCount } from '../support/ui'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 test.describe('الصفحة الرئيسية', () => {
@@ -532,11 +533,18 @@ test.describe('الجوال عند 360px', () => {
     await page.setViewportSize({ width: 375, height: 812 })
     await loginUser(page, USERS.majed)
     await page.goto('/account/wallet')
-    await expect(page.locator('.admin-table tfoot tr')).toBeVisible()
-
+    /*
+     * الصفحة فيها أكثر من `.admin-table`، فيُقصد **الظاهر** منها.
+     *
+     * والمنتقي المطلق يطابق الاثنين فيخفق بـ`strict mode violation`، و
+     * `document.querySelector` يأخذ أوّلهما في الـDOM لا أوّلهما على الشاشة —
+     * فيقيس صفًّا من جدولٍ آخر ويقارنه ببطاقةٍ من ثالث.
+     */
     const foot = await page.evaluate(() => {
-      const row = document.querySelector('.admin-table tfoot tr')!
-      const card = document.querySelector('.admin-table tbody tr')!
+      const rows = [...document.querySelectorAll('.admin-table tfoot tr')]
+      const row = rows.find((candidate) => candidate.getBoundingClientRect().width > 0)!
+      // البطاقة من **جدول الصفّ نفسه** فلا يُقارن عرضٌ بعرضٍ من جدولين
+      const card = row.closest('table')!.querySelector('tbody tr')!
       return {
         labels: [...row.querySelectorAll('td')].map(
           (td) => getComputedStyle(td, '::before').content,
@@ -735,7 +743,7 @@ test.describe('تصفّح السوق على دفعات', () => {
 
     await page.goto('/market')
     await page.locator('article').first().waitFor()
-    const first = await page.locator('article').count()
+    const first = await stableCount(page.locator('article'))
     expect(first).toBeLessThanOrEqual(12)
 
     const more = page.getByRole('button', { name: 'عرض المزيد' })
@@ -743,7 +751,11 @@ test.describe('تصفّح السوق على دفعات', () => {
     await expect(page.getByText(/عُرضت \d+ من \d+/)).toBeVisible()
 
     const before = apiCalls
-    await more.click()
+    /*
+     * الزرّ يُكتب في تصيير الخادم ويستبدله الترطيب، فتقع النقرة على عنصرٍ
+     * يُفصَل من الشجرة في أثنائها — `element was detached from the DOM`.
+     */
+    await clickWhenHydrated(more, page.locator('article'))
     await expect
       .poll(() => page.locator('article').count())
       .toBeGreaterThan(first)

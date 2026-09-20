@@ -1,4 +1,5 @@
 import webpush from 'web-push'
+import { fcmConfigured, sendFcm } from './fcm'
 import { appUrl } from '@/lib/config'
 import { URGENT_NOTIFICATIONS, type Notification, type NotificationType } from '@/lib/domain/types'
 import type { AuctionStore } from '@/lib/store/types'
@@ -82,8 +83,21 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
   const keys = vapid()
   if (!keys) return
 
-  const subscriptions = await store.listPushSubscriptions(userId)
-  if (subscriptions.length === 0) return
+  /*
+   * لكلّ منصّةٍ قناتها — والجهاز الذي لا قناة له يُترك ولا يُحذف.
+   *
+   * إرسالُ رمز APNs عبر Web Push يفشل، ويُقرأ الفشل «اشتراكًا ميّتًا» فيُحذف
+   * الجهاز — فيخسر تسجيلَه لا إشعارًا واحدًا. ولذلك يُفرَز قبل الإرسال.
+   */
+  const all = (await store.listUserDevices(userId)).filter(
+    (device) => device.notificationsEnabled,
+  )
+  const devices = all.filter((device) => device.platform === 'web' && device.webKeys)
+  const nativeDevices = fcmConfigured()
+    ? all.filter((device) => device.platform !== 'web')
+    : []
+
+  if (devices.length === 0 && nativeDevices.length === 0) return
 
   /*
    * الأيقونة تُقرأ من السجلّ لا تُكتب ثابتة — بواجهة المخزن لا بنبشِ داخله.
@@ -93,12 +107,25 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
   const icon = brand?.icon ? '/brand/icon' : null
 
   await Promise.all(
-    subscriptions.map(async (subscription) => {
+    nativeDevices.map(async (device) => {
+      const result = await sendFcm(device.pushToken, {
+        title: payload.title,
+        body: payload.body,
+        href: payload.href,
+        tag: payload.tag,
+      }).catch(() => 'failed' as const)
+      // الميّت وحده يُحذف — والفشل العابر يُعاد إليه في الإشعار التالي
+      if (result === 'gone') await store.deleteUserDevice(device.pushToken)
+    }),
+  )
+
+  await Promise.all(
+    devices.map(async (device) => {
       try {
         await webpush.sendNotification(
           {
-            endpoint: subscription.endpoint,
-            keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+            endpoint: device.pushToken,
+            keys: device.webKeys!,
           },
           JSON.stringify({ ...payload, icon }),
           {
@@ -121,7 +148,7 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
          */
         const status = (error as { statusCode?: number }).statusCode
         if (status === 404 || status === 410) {
-          await store.deletePushSubscription(subscription.endpoint)
+          await store.deleteUserDevice(device.pushToken)
         }
       }
     }),
@@ -134,15 +161,65 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
  * ولا يُنتظر ولا يُسقط شيئًا: الإشعار وقع في السجلّ وبُثّ لحظيًّا، وفشلُ الدفع
  * لا يُبطل ذلك ولا يُبطل العملية التي أنتجته.
  */
-export function pushNotification(store: AuctionStore, notification: Notification): void {
+/**
+ * يملأ متغيّرات القالب — استبدالُ نصٍّ بنصّ، لا تنفيذَ شيء.
+ *
+ * والمتغيّر الذي لا قيمة له يُحذف مع ما حوله من فراغٍ زائد، فلا تُقرأ في
+ * الإشعار `{{plate}}` حرفيّةً ولا فجوةٌ بين كلمتين.
+ */
+function fillTemplate(text: string, values: Record<string, string | null>): string {
+  return text
+    .replace(/\{\{(\w+)\}\}/g, (_match, key: string) => values[key] ?? '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+export async function pushNotificationAsync(
+  store: AuctionStore,
+  notification: Notification,
+): Promise<void> {
   if (!shouldPush(notification.type)) return
   if (!pushConfigured()) return
 
-  void deliver(store, notification.userId, {
-    title: notification.title,
-    body: notification.body,
+  /*
+   * القالب يُقرأ من اللوحة، والإشعار احتياطُه.
+   *
+   * نوعٌ أطفأته الإدارة لا يُدفَع — ويبقى في الجرس يُقرأ متى فُتحت المنصّة.
+   * وقالبٌ بلا نصٍّ بعد ملئه يعود إلى نصّ الإشعار نفسه: إشعارٌ بلا عنوان يجعل
+   * المتصفّح يعرض «حُدِّث الموقع في الخلفية».
+   */
+  const settings = await store.getMobileSettings().catch(() => null)
+  const template = settings?.pushTypes?.[notification.type]
+  if (template && !template.enabled) return
+
+  /*
+   * وسمُ اللوحة يُقرأ من إعلانها — وهو بيانٌ علنيّ لا حرج فيه.
+   *
+   * وإشعارٌ بلا إعلان (عمولةٌ مستحقّة مثلًا) يملأ المتغيّر فراغًا، فيسقط من
+   * النصّ بلا أثر — ولذلك لا تُبنى الجملة على وجوده.
+   */
+  const listing = notification.listingId
+    ? await store.getListing(notification.listingId).catch(() => null)
+    : null
+  const plate = listing ? `${listing.arabicLetters} ${listing.plateNumbers}` : null
+  const title = template ? fillTemplate(template.title, { plate }) : ''
+  const body = template ? fillTemplate(template.body, { plate }) : ''
+
+  await deliver(store, notification.userId, {
+    title: title || notification.title,
+    body: body || notification.body,
     href: notification.href,
     // وسمٌ لكلّ نوع: إشعارٌ ثانٍ من نوعه يحلّ محلّ الأوّل ولا يتراكم فوقه
     tag: notification.type,
-  }).catch(() => undefined)
+  })
+}
+
+/**
+ * يُرسل عن إشعارٍ أُنشئ — إن كان ممّا يُدفع.
+ *
+ * ولا يُنتظر ولا يُسقط شيئًا: الإشعار وقع في السجلّ وبُثّ لحظيًّا، وفشلُ الدفع
+ * لا يُبطل ذلك ولا يُبطل العملية التي أنتجته.
+ */
+export function pushNotification(store: AuctionStore, notification: Notification): void {
+  void pushNotificationAsync(store, notification).catch(() => undefined)
 }

@@ -349,7 +349,17 @@ test.describe('لوحة المستخدم والإشعارات', () => {
     await page.goto('/account')
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText(USER.name)
-    await expect(page.getByText('الرصيد المتاح للمزايدة')).toBeVisible()
+    /*
+     * شجرةٌ واحدة قبل الفحص.
+     *
+     * الجرس يستدعي `router.refresh()` متى كان ثمّة إشعارٌ غير مقروء، وفي أثناء
+     * التحديث تتعايش شجرتا التصيير لحظةً — فينطبق المنتقي على عنصرين ويخفق
+     * `strict mode`. و`toHaveCount(1)` يُعيد المحاولة حتى تستقرّ، فلا تضعف
+     * الحراسة: عنصران باقيان يُخفقان كما كانا.
+     */
+    const balance = page.getByText('الرصيد المتاح للمزايدة')
+    await expect(balance).toHaveCount(1)
+    await expect(balance).toBeVisible()
     await expect(page.getByText('لوحاتي المعروضة')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'مزادات أنت فيها' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'آخر التنبيهات' })).toBeVisible()

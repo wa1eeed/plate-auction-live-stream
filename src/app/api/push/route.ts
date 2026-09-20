@@ -26,11 +26,16 @@ export async function GET() {
  * حرٍّ يعني تخزين ما يُملى علينا.
  */
 const subscribeSchema = z.object({
-  endpoint: z.string().url().max(1000),
-  keys: z.object({
-    p256dh: z.string().min(1).max(300),
-    auth: z.string().min(1).max(300),
-  }),
+  platform: z.enum(['web', 'ios', 'android']).default('web'),
+  /** الويب: عنوانٌ من صانع المتصفّح. والأصيل: رمز APNs/FCM — فلا يُشترط رابطًا */
+  endpoint: z.string().min(1).max(1000),
+  keys: z
+    .object({
+      p256dh: z.string().min(1).max(300),
+      auth: z.string().min(1).max(300),
+    })
+    .nullish(),
+  appVersion: z.string().max(40).nullish(),
 })
 
 /** يسجّل جهاز صاحب الجلسة — ويُعاد إرساله في كلّ فتح فيُحدَّث لا يتكرّر. */
@@ -38,11 +43,19 @@ export async function POST(request: Request) {
   try {
     const userId = await requireUserId()
     const input = subscribeSchema.parse(await readJson(request))
-    await getStore().savePushSubscription({
+    /*
+     * الويب لا يُسجَّل بلا مفتاحَي تشفير — بهما وحدهما يُرسَل إليه.
+     * وقبولُه بلا مفتاحين يُنتج جهازًا في الجدول لا سبيل إليه.
+     */
+    if (input.platform === 'web' && !input.keys) {
+      return ok({ saved: false, reason: 'مفتاحا التشفير مطلوبان لجهاز الويب' })
+    }
+    await getStore().saveUserDevice({
       userId,
-      endpoint: input.endpoint,
-      p256dh: input.keys.p256dh,
-      auth: input.keys.auth,
+      platform: input.platform,
+      pushToken: input.endpoint,
+      webKeys: input.keys ?? null,
+      appVersion: input.appVersion ?? null,
     })
     return ok({ saved: true })
   } catch (error) {
@@ -50,7 +63,7 @@ export async function POST(request: Request) {
   }
 }
 
-const unsubscribeSchema = z.object({ endpoint: z.string().url().max(1000) })
+const unsubscribeSchema = z.object({ endpoint: z.string().min(1).max(1000) })
 
 /**
  * يحذف جهازًا.
@@ -62,9 +75,9 @@ export async function DELETE(request: Request) {
   try {
     const userId = await requireUserId()
     const { endpoint } = unsubscribeSchema.parse(await readJson(request))
-    const mine = await getStore().listPushSubscriptions(userId)
-    if (!mine.some((row) => row.endpoint === endpoint)) return ok({ removed: false })
-    return ok({ removed: await getStore().deletePushSubscription(endpoint) })
+    const mine = await getStore().listUserDevices(userId)
+    if (!mine.some((row) => row.pushToken === endpoint)) return ok({ removed: false })
+    return ok({ removed: await getStore().deleteUserDevice(endpoint) })
   } catch (error) {
     return handleError(error)
   }

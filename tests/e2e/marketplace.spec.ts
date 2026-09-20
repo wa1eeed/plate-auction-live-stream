@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { stableCount } from '../support/ui'
 
 const USERS = {
   waleed: { email: 'waleed@demo.sa', password: 'demo1234', name: 'وليد العتيبي' },
@@ -43,7 +44,8 @@ test.describe('سوق تداول اللوحات', () => {
 
     const cards = page.locator('article')
     await expect(cards.first()).toBeVisible({ timeout: 15_000 })
-    const total = await cards.count()
+    // بعد الترطيب لا عنده: الخادم يكتب ما عنده والعميل يقصّه دفعةً أولى
+    const total = await stableCount(cards)
     expect(total).toBeGreaterThan(1)
 
     // البحث بالأرقام يصفّي النتائج
@@ -217,11 +219,23 @@ test.describe('سوق تداول اللوحات', () => {
 
     for (const path of ['/account', '/account/listings', '/account/bids', '/account/purchases']) {
       await page.goto(path)
-      await page.waitForTimeout(300)
-      const overflows = await page.evaluate(
-        () => document.documentElement.scrollWidth > window.innerWidth + 1,
-      )
-      expect(overflows, `${path}: تمرير أفقي على الجوال`).toBe(false)
+      /*
+       * يُنتظر **الاستقرار** لا مهلةٌ ثابتة.
+       *
+       * `waitForTimeout(300)` يقيس عند لحظةٍ بعينها: يكفي على جهازٍ فارغ
+       * ولا يكفي تحت حمل المجموعة، فشريط تبويبات الحساب يُقاس وهو يُوزَّع
+       * بعدُ فيفيض عرضًا لا يبقى. والمقصود حالٌ مستقرّة لا لقطةٌ في الطريق —
+       * وفيضٌ لا ينقضي يُخفق كما كان.
+       */
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () => document.documentElement.scrollWidth > window.innerWidth + 1,
+            ),
+          { message: `${path}: تمرير أفقي على الجوال` },
+        )
+        .toBe(false)
     }
   })
 })

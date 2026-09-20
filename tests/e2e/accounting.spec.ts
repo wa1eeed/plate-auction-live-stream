@@ -166,8 +166,15 @@ test.describe('الفواتير الضريبية', () => {
 
     for (const reference of others) {
       await page.goto(`/account/invoices/${reference}`)
-      // لا ورقة ولا إقرار بوجودها — «غير موجودة» لا «ممنوعة»
-      await expect(page.getByText('فاتورة ضريبية مبسّطة')).toHaveCount(0)
+      /*
+       * يُفحص **المحتوى** لا عنوان الصفحة.
+       *
+       * عنوان المستند نفسه «فاتورة ضريبية مبسّطة»، و Next يبثّ وسم `<title>`
+       * في الجسم — فمنتقٍ غيرُ محصور يلتقطه ويحسبه ورقةً ظهرت، وصفحةُ «غير
+       * موجود» معروضةٌ فعلًا. والمقصود ألّا يُرى رقمُ الفاتورة ولا ورقتها.
+       */
+      await expect(page.locator('main').getByText('فاتورة ضريبية مبسّطة')).toHaveCount(0)
+      await expect(page.locator('main').getByText(reference)).toHaveCount(0)
     }
   })
 

@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { BellOff, BellRing, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
+import { PushPrimer } from './push-primer'
+import {
+  appVersion,
+  devicePlatform,
+  isApplePlatform,
+  isNativeShell,
+  isStandalone,
+} from '@/lib/device'
 
 /**
  * يفكّ ترميز المفتاح العامّ إلى البايتات التي يطلبها المتصفّح.
@@ -36,12 +44,13 @@ type State = 'loading' | 'unavailable' | 'blocked' | 'off' | 'on' | 'busy'
 export function PushToggle() {
   const [state, setState] = useState<State>('loading')
   const [publicKey, setPublicKey] = useState<string | null>(null)
+  const [priming, setPriming] = useState(false)
 
   const supported =
     typeof window !== 'undefined' &&
-    'serviceWorker' in navigator &&
-    'PushManager' in window &&
-    'Notification' in window
+    // الغلاف الأصيل يدفع بقناته هو، فلا يُشترط فيه ما يشترطه المتصفّح
+    (isNativeShell() ||
+      ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window))
 
   useEffect(() => {
     let alive = true
@@ -80,14 +89,18 @@ export function PushToggle() {
       /*
        * إعادةُ إرسالٍ في كلّ فتح — شفاءٌ ذاتيّ.
        *
-       * الاشتراك محفوظٌ عندنا في ملفّ، لكنّ الملفّ قد يُفقد أو يُنشر على
-       * خادمٍ جديد بلا حجمٍ مربوط. والجهاز يعرف اشتراكه دائمًا، فإعادتُه
-       * تُرمّم ما ضاع بلا أن يُسأل صاحبه مرّة أخرى.
+       * الاشتراك يعيش في ذاكرة الخادم كما يعيش صاحبه، فيضيع مع كلّ نشرة.
+       * والجهاز يعرف اشتراكه دائمًا، فإعادتُه في كلّ فتح تُرمّم ما ضاع بلا أن
+       * يُسأل صاحبه مرّة أخرى — وهو ما يُغني عن حفظه على القرص.
        */
       await fetch('/api/push', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(existing.toJSON()),
+        body: JSON.stringify({
+          ...existing.toJSON(),
+          platform: devicePlatform(),
+          appVersion: appVersion(),
+        }),
       }).catch(() => undefined)
 
       if (alive) setState('on')
@@ -99,9 +112,35 @@ export function PushToggle() {
   }, [supported])
 
   const enable = useCallback(async () => {
-    if (!publicKey) return
     setState('busy')
     try {
+      /*
+       * داخل الغلاف: إذنُ النظام ورمزُ APNs/FCM — لا Web Push.
+       *
+       * قناتان مختلفتان بالكامل: الويب يشترك عند خادم صانع المتصفّح بمفتاحٍ
+       * عامّ ويُشفَّر من طرفٍ إلى طرف، والأصيل يأخذ رمزًا من آبل أو جوجل. ولا
+       * يعمل Web Push في غلاف WKWebView أصلًا.
+       *
+       * والتسجيل يقع في `NativeShell` متى مُنح الإذن — فيُسجَّل الجهاز في كلّ
+       * إقلاعٍ لا عند أوّل تفعيلٍ وحده.
+       */
+      if (isNativeShell()) {
+        const { PushNotifications } = await import('@capacitor/push-notifications')
+        const granted = await PushNotifications.requestPermissions()
+        if (granted.receive !== 'granted') {
+          setState(granted.receive === 'denied' ? 'blocked' : 'off')
+          return
+        }
+        await PushNotifications.register()
+        setState('on')
+        toast.success('ستصلك إشعارات المزايدات والمهل على هذا الجهاز')
+        return
+      }
+
+      if (!publicKey) {
+        setState('off')
+        return
+      }
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setState(permission === 'denied' ? 'blocked' : 'off')
@@ -118,7 +157,11 @@ export function PushToggle() {
       const saved = await fetch('/api/push', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(subscription.toJSON()),
+        body: JSON.stringify({
+          ...subscription.toJSON(),
+          platform: devicePlatform(),
+          appVersion: appVersion(),
+        }),
       })
       if (!saved.ok) throw new Error('save failed')
 
@@ -178,7 +221,19 @@ export function PushToggle() {
         checked={state === 'on'}
         disabled={state === 'busy'}
         aria-label="إشعارات الجهاز"
-        onCheckedChange={(next) => void (next ? enable() : disable())}
+        onCheckedChange={(next) => (next ? setPriming(true) : void disable())}
+      />
+
+      <PushPrimer
+        open={priming}
+        onOpenChange={setPriming}
+        /* iOS لا يمنح الإذن إلّا لمثبَّتٍ على الشاشة الرئيسية */
+        /* داخل الغلاف الأصيل لا شرطَ تثبيتٍ — التطبيق مثبَّتٌ بذاته */
+        needsInstallFirst={!isNativeShell() && isApplePlatform() && !isStandalone()}
+        onConfirm={() => {
+          setPriming(false)
+          void enable()
+        }}
       />
     </div>
   )

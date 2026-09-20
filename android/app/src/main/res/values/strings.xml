@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">سوق اللوحات</string>
+    <string name="title_activity_main">سوق اللوحات</string>
+    <string name="package_name">sa.nx.mazad</string>
+    <string name="custom_url_scheme">sa.nx.mazad</string>
+</resources>

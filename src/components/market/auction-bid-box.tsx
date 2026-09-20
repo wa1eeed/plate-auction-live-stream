@@ -10,6 +10,7 @@ import { quickBidSteps } from '@/lib/domain/auction'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import type { ListingDetail } from '@/lib/domain/types'
 import { useSound } from '@/lib/hooks/use-sound'
+import { haptic } from '@/lib/haptics'
 import { cn } from '@/lib/utils'
 import { AmountField } from './amount-field'
 
@@ -94,6 +95,7 @@ export function AuctionBidBox({
   async function submit() {
     if (inFlight.current) return
     if (belowMinimum) {
+      haptic('error')
       toast.error(`أقل مزايدة مقبولة ${formatAmount(detail.nextBidAmount)} ريال`)
       setAmount(detail.nextBidAmount)
       return
@@ -112,15 +114,19 @@ export function AuctionBidBox({
       })
       const data = await response.json()
       if (!response.ok) {
+        haptic('error')
         toast.error(data?.error?.message ?? 'تعذّر تسجيل المزايدة')
         return
       }
       play('bid')
+      // نبضةٌ مع الصوت: الإبهام يغطّي الزرّ، وقد يكون الصوت مُطفأً
+      haptic('success')
       toast.success('سُجّلت مزايدتك')
       if (data.extended) toast.info(`مُدّد المزاد ${data.addedSeconds} ثانية`)
       await onDone()
       router.refresh()
     } catch {
+      haptic('error')
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {
       inFlight.current = false
