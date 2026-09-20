@@ -3,9 +3,9 @@
 # ==============================================================
 #  سوق اللوحات — صورة إنتاج
 #
-#  لا خدمة قاعدة بيانات ولا volume: المخزن في الذاكرة (`MemoryStore`)
-#  وبيانات الديمو كودٌ في `src/lib/store/seed.ts` تُشحن داخل الصورة، فتُبذر
-#  متطابقة في كل إقلاع. وكل إعادة تشغيل تُرجع البيئة إلى حالة معلومة.
+#  الصورة بلا قاعدة بيانات بداخلها: `DATABASE_URL` يشير إلى خدمةٍ مجاورة،
+#  ويُرحَّل المخطَّط عند الإقلاع. وبلا الرابط يقع المخزن في الذاكرة ويبذر نفسه
+#  في كل إقلاع — صالحٌ للعرض، لا لبياناتٍ تبقى.
 #
 #  والعملية **واحدة لا تُنسخ**: `server.mjs` يحمل خادم Next وخادم WebSocket
 #  والحالة كلّها على `globalThis`. نسختان = عالمان، ومزايدون لا يرى بعضهم بعضًا.
@@ -74,6 +74,18 @@ COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
 COPY --from=build     --chown=app:app /app/.next        ./.next
 COPY --chown=app:app public         ./public
 COPY --chown=app:app package.json next.config.mjs server.mjs ./
+
+# ---- ما يحتاجه الإقلاع خارج حزمة Next
+#
+# `server.mjs` يُرحّل المخطَّط قبل أن يبدأ Next، فيستورد `scripts/db-migrate.mjs`
+# ويقرأ ملفّات `drizzle/*.sql`. وهما **ليسا** في حزمة Next: الأولى تُستورد وقت
+# التشغيل لا وقت البناء، والثانية بياناتٌ تُقرأ من القرص.
+#
+# ونسيانُهما لا يُسقط البناء — يُسقط الحاوية عند أوّل إقلاع بـ
+# `ERR_MODULE_NOT_FOUND`، فيردّ الوكيل «no available server» بلا أثرٍ في سجلّ
+# البناء. يحرسه `tests/unit/dockerfile.test.ts`.
+COPY --chown=app:app scripts ./scripts
+COPY --chown=app:app drizzle ./drizzle
 
 # ---- مجلّد الإعدادات الدائم
 #

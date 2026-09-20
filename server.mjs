@@ -38,8 +38,26 @@ const handle = app.getRequestHandler()
  * والترحيل SQL خالصة، فلا يحتاج إلى شيءٍ من كود التطبيق.
  */
 if (process.env.DATABASE_URL) {
-  const { migrate } = await import('./scripts/db-migrate.mjs')
-  await migrate(process.env.DATABASE_URL)
+  try {
+    const { migrate } = await import('./scripts/db-migrate.mjs')
+    await migrate(process.env.DATABASE_URL)
+  } catch (error) {
+    /*
+     * السقوط هنا **يجب** أن يُسقط العملية: خادمٌ يخدم على مخطَّطٍ ناقص يكتب
+     * مالًا في جداول لا تطابق الكود. لكنّه كان يسقط صامتًا — العملية تموت،
+     * والوكيل العكسي يردّ «no available server»، ولا شيء في سجلّ البناء.
+     * فيُطبع سببٌ مقروء قبل الخروج.
+     */
+    console.error('[db] فشل الترحيل — لن يُقلع الخادم على مخطَّطٍ ناقص')
+    console.error('[db] السبب:', redact(error?.message ?? String(error)))
+    if (error?.code) console.error('[db] الرمز:', error.code)
+    process.exit(1)
+  }
+}
+
+/** يمنع تسرّب بيانات الاتّصال إلى السجلّ — الرسائل قد تحمل الرابط كاملًا. */
+function redact(text) {
+  return String(text).replace(/\b[a-z+]+:\/\/[^\s'"]*/gi, '‹رابط محجوب›')
 }
 
 await app.prepare()
