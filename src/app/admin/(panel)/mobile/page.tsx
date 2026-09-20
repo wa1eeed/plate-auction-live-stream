@@ -1,4 +1,5 @@
 import { AdminHeader } from '@/components/admin/admin-ui'
+import { BroadcastForm } from '@/components/admin/broadcast-form'
 import { MobileSettingsForm } from '@/components/admin/mobile-settings-form'
 import { fcmConfigured } from '@/lib/server/fcm'
 import { pushConfigured } from '@/lib/server/push-service'
@@ -36,6 +37,9 @@ export default async function AdminMobilePage() {
         webPushReady={pushConfigured()}
         nativePushReady={fcmConfigured()}
       />
+      <div className="mt-6">
+        <BroadcastForm />
+      </div>
     </>
   )
 }

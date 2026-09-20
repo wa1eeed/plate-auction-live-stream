@@ -2,6 +2,7 @@
 
 import { Share2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { isNativeShell } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
 /**
@@ -10,6 +11,11 @@ import { cn } from '@/lib/utils'
  * `navigator.share` يفتح ورقة المشاركة الأصلية على الجوال — واتساب وتويتر
  * وغيرهما — وهي ما يتوقّعه من يشارك من جواله. وعلى الحاسوب لا تُتاح غالبًا،
  * فيُنسخ الرابط ويُقال إنّه نُسخ: زرٌّ لا يقول ما فعل يُضغط مرّتين.
+ *
+ * **وداخل الغلاف الأصيل تُقدَّم إضافةُ النظام عليها.** `navigator.share` غير
+ * مدعومة في WebView أندرويد أصلًا، فلو تُرك الأمر لها لسقط الزرّ إلى النسخ
+ * على كلّ هواتف أندرويد — وهو أضعف ما يُقدَّم لمن فتح تطبيقًا لا موقعًا.
+ * وعلى iOS تعمل الاثنتان، والأصيلة أقرب إلى ما يعرفه صاحب الجهاز.
  */
 export function ShareButton({
   title,
@@ -23,6 +29,11 @@ export function ShareButton({
   const share = async () => {
     const url = window.location.href
     try {
+      if (isNativeShell()) {
+        const { Share } = await import('@capacitor/share')
+        await Share.share({ title, url, dialogTitle: title })
+        return
+      }
       if (navigator.share) {
         await navigator.share({ title, url })
         return

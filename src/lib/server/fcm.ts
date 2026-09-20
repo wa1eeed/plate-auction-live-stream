@@ -76,7 +76,21 @@ async function accessToken(account: ServiceAccount): Promise<string | null> {
   return cachedToken.value
 }
 
-export type FcmMessage = { title: string; body: string; href: string | null; tag: string }
+export type FcmMessage = {
+  title: string
+  body: string
+  href: string | null
+  tag: string
+  /**
+   * رقم الشارة على أيقونة التطبيق — لـiOS وحده.
+   *
+   * آبل لا تحسبه من الإشعارات الواصلة: تعرض ما يُرسَل إليها حرفيًّا. والخادم
+   * وحده يعرف كم غير مقروء، فيُحسب عند الإرسال ويُرسَل معه.
+   *
+   * وأندرويد لا يحتاجه: النظام يضع نقطةً على الأيقونة من الإشعارات القائمة.
+   */
+  badge: number
+}
 
 /** نتيجةٌ تُفرّق بين الفشل العابر والرمز الميّت — والثاني وحده يُحذف صاحبه. */
 export type FcmResult = 'sent' | 'failed' | 'gone'
@@ -112,6 +126,7 @@ export async function sendFcm(token: string, message: FcmMessage): Promise<FcmRe
             payload: {
               aps: {
                 sound: 'default',
+                badge: message.badge,
                 /* يُوقظ التطبيق ليُحدّث الشارة من الخادم عند الاستلام */
                 'content-available': 1,
               },

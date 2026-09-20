@@ -1226,6 +1226,8 @@ export type NotificationType =
   | 'order_released'
   | 'order_refunded'
   /** أُعيد عرض لوحة زايد عليها — دعوة لا إلزام */
+  /** رسالةٌ تكتبها الإدارة وتُرسلها لشريحة — لا يولّدها حدثٌ في المنصّة */
+  | 'broadcast'
   | 'listing_relisted'
   /** أوقفت الإدارة إعلانه أو رفعت الإيقاف */
   | 'listing_suspended'
@@ -1233,6 +1235,13 @@ export type NotificationType =
 
 /** الأنواع التي تستدعي تصرّفًا فوريًا — تُبرز في الواجهة. */
 export const URGENT_NOTIFICATIONS: readonly NotificationType[] = [
+  /*
+   * البثّ يُدفَع — وهو سببُ إرساله أصلًا.
+   *
+   * ولا قالبَ له في `DEFAULT_PUSH_TEMPLATES` عمدًا: نصُّه يكتبه المرسل لكلّ
+   * بثّ، فقالبٌ ثابت يحلّ محلّ ما كتبه ويُرسل غيرَ ما أراد.
+   */
+  'broadcast',
   'outbid',
   'auction_won',
   'offer_received',
@@ -1253,6 +1262,29 @@ export const URGENT_NOTIFICATIONS: readonly NotificationType[] = [
  * تصرّفًا فورًا يُقرأ في الجرس متى فُتحت المنصّة، ودفعُه إلى شاشةٍ مقفلة ضجيجٌ
  * يُعلَّم صاحبُه أن يتجاهله.
  */
+/**
+ * شرائح البثّ الإداريّ — كلُّها **مشتقّة من حالةٍ قائمة** في المنصّة.
+ *
+ * ولا شريحةَ تُبنى بفلترٍ حرّ: بثٌّ يُوجَّه بمعايير يكتبها المرسل يصير أداةَ
+ * تنقيبٍ في المستخدمين، وما يُرسَل إلى شريحةٍ لا يُراجَع لا يُسترَدّ.
+ */
+export type BroadcastAudience =
+  /** كلّ من له حساب */
+  | 'all'
+  /** من له مزايدةٌ على إعلانٍ ما زال قائمًا */
+  | 'active_bidders'
+  /** من له إعلانٌ معروضٌ الآن */
+  | 'active_sellers'
+  /** مستخدمٌ بعينه — برقم عضويّته */
+  | 'user'
+
+export const BROADCAST_AUDIENCE_LABELS: Record<BroadcastAudience, string> = {
+  all: 'كلّ المستخدمين',
+  active_bidders: 'المزايدون على إعلانات قائمة',
+  active_sellers: 'أصحاب الإعلانات المعروضة',
+  user: 'مستخدمٌ بعينه',
+}
+
 export type PushTemplate = {
   /** إطفاءُ نوعٍ بعينه — يبقى في الجرس ولا يُدفَع */
   enabled: boolean
@@ -1384,6 +1416,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   order_awaiting_transfer: 'وصل المال — انقل الملكية',
   order_awaiting_confirmation: 'وصل إثبات النقل',
   order_disputed: 'اعتراضٌ على صفقة',
+  broadcast: 'رسالة من الإدارة',
 }
 
 export const DEFAULT_PUSH_TEMPLATES: Record<string, PushTemplate> = {

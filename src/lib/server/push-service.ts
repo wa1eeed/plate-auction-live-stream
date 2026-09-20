@@ -106,6 +106,16 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
   const brand = await store.getBrandSettings().catch(() => null)
   const icon = brand?.icon ? '/brand/icon' : null
 
+  /*
+   * عدد غير المقروء يُقرأ مرّةً لكلّ إرسال لا لكلّ جهاز.
+   *
+   * وهو للشارة على iOS: آبل تعرض ما يُرسَل إليها حرفيًّا ولا تحسبه، والخادم
+   * وحده يعرفه. وفشلُ قراءته لا يمنع الإشعار — تُرسَل بلا شارة.
+   */
+  const badge = nativeDevices.length
+    ? await store.countUnreadNotifications(userId).catch(() => 0)
+    : 0
+
   await Promise.all(
     nativeDevices.map(async (device) => {
       const result = await sendFcm(device.pushToken, {
@@ -113,6 +123,7 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
         body: payload.body,
         href: payload.href,
         tag: payload.tag,
+        badge,
       }).catch(() => 'failed' as const)
       // الميّت وحده يُحذف — والفشل العابر يُعاد إليه في الإشعار التالي
       if (result === 'gone') await store.deleteUserDevice(device.pushToken)

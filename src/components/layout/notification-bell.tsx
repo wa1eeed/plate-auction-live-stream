@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bell, CheckCheck, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trophy, Wallet, XCircle } from 'lucide-react'
+import { Bell, CheckCheck, Megaphone, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trophy, Wallet, XCircle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import {
 
 const ICONS: Record<NotificationType, React.ElementType> = {
   outbid: Gavel,
+  broadcast: Megaphone,
   auction_won: Trophy,
   auction_lost: Gavel,
   reserve_not_met: Gavel,
