@@ -20,8 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # بلا `version`: يتبع `packageManager` في `package.json` — وتحديدُه هنا
+      # يتعارض معه فيسقط قبل أن يبدأ شيء
       - uses: pnpm/action-setup@v4
-        with: { version: 10 }
 
       - uses: actions/setup-node@v4
         with:
