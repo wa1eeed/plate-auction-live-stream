@@ -76,6 +76,7 @@ jobs:
         # يُثبت أنّ المشروع يُترجم ويُربط — ولا يُنتج ما يُثبَّت على جهاز
         run: |
           xcodebuild build \
+            -project App.xcodeproj \
             -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Release \
@@ -98,6 +99,7 @@ jobs:
           PLIST
 
           xcodebuild archive \
+            -project App.xcodeproj \
             -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Release \
