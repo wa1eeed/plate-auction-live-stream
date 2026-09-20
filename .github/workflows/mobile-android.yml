@@ -1,0 +1,103 @@
+# بناء تطبيق أندرويد في السحابة — بلا Android Studio ولا Java على جهازك.
+#
+# جهاز `ubuntu-latest` يحمل Android SDK وJava مثبَّتين. وما ينقص هنا مفتاحُ
+# التوقيع وحده: بدونه يُبنى التطبيق **بلا توقيع** فيُتحقَّق أنّه يُترجم ويُحزَم
+# — وهو أكثر ما يُراد في البداية — ومعه يخرج `.aab` صالحٌ للرفع إلى Play.
+name: تطبيق أندرويد
+
+on:
+  # يدويًّا من تبويب Actions، أو بوسم إصدار — لا مع كلّ دفعة:
+  # بناءُ تطبيقٍ لا يُنشر يستهلك وقتًا ولا يُقرأ أحدٌ نتيجته.
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+
+      # Capacitor يشترط Node 22 فأحدث — والمشروع نفسه يعمل على 20
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: تثبيت الاعتماديات
+        run: pnpm install --frozen-lockfile
+
+      - name: مزامنة الغلاف
+        # يَنسخ `capacitor/www` ويُحدّث الإضافات في مشروع Gradle
+        run: npx cap sync android
+
+      # ----------------------------------------------------------- التوقيع
+      - name: تهيئة مفتاح التوقيع
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        # المفتاح سرٌّ يأتي من GitHub Secrets لا من المستودع. وغيابُه ليس
+        # خطأً: يُبنى بلا توقيع ويُقال ذلك في المخرجات.
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::لا مفتاح توقيع — سيُبنى تحقّقًا من الترجمة فقط"
+          else
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: بناء حزمة موقَّعة (AAB)
+        if: steps.signing.outputs.signed == 'true'
+        working-directory: android
+        env:
+          # تُقرأ في `build.gradle` عبر `project.findProperty`
+          ORG_GRADLE_PROJECT_MAZAD_STORE_FILE: release.keystore
+          ORG_GRADLE_PROJECT_MAZAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_MAZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_MAZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: بناء تحقّقٍ بلا توقيع
+        if: steps.signing.outputs.signed != 'true'
+        working-directory: android
+        # يُثبت أنّ المشروع يُترجم ويُحزَم — ولا يصلح للرفع إلى Play
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: رفع المخرجات
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ github.sha }}
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          # المستودع عامّ، والمخرجات تُنزَّل بمن له وصول — فلا تُترك أبدًا
+          retention-days: 7
+
+      # ------------------------------------------------- الرفع إلى Play
+      - name: رفع إلى مسار الاختبار الداخليّ
+        # لا يقع إلّا بوسم إصدارٍ وبحساب خدمةٍ مضبوط — فلا يُرفع بناءٌ تجريبيّ.
+        # و`secrets` وحدها تُقرأ في `if` — أمّا `env` الخطوة فلا تُتاح فيه بعد.
+        if: >-
+          steps.signing.outputs.signed == 'true' &&
+          startsWith(github.ref, 'refs/tags/v') &&
+          secrets.PLAY_SERVICE_ACCOUNT_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: sa.nx.mazad
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft

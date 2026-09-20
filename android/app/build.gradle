@@ -16,10 +16,34 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /*
+     * التوقيع من خصائص Gradle لا من ملفّ في المستودع.
+     *
+     * المفتاح سرٌّ: من ملكه وقّع باسمنا، ولا تقبل Play حزمةً بغيره بعد أوّل
+     * رفع. فيأتي من بيئة الأكشن (`ORG_GRADLE_PROJECT_MAZAD_*`) ولا يُودَع هنا.
+     *
+     * وغيابُه لا يُسقط البناء: تبقى `signingConfig` فارغةً فيُبنى ما يُتحقَّق
+     * به من الترجمة — ولا يصلح للرفع، وهو المقصود.
+     */
+    signingConfigs {
+        release {
+            def storeFilePath = project.findProperty('MAZAD_STORE_FILE')
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword project.findProperty('MAZAD_STORE_PASSWORD')
+                keyAlias project.findProperty('MAZAD_KEY_ALIAS')
+                keyPassword project.findProperty('MAZAD_KEY_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (project.findProperty('MAZAD_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
