@@ -15,8 +15,29 @@ import type { AuctionStore } from './types'
  */
 const globalRef = globalThis as typeof globalThis & { __auctionStore?: AuctionStore }
 
+/**
+ * البناء لا يلمس القاعدة.
+ *
+ * `next build` يُولّد صفحاتٍ ساكنة — صفحةَ «غير موجود» وأخواتِها — وتخطيطُ
+ * الجذر يقرأ الهويّة في `generateMetadata`. فيقع الاتّصال **داخل بناء الصورة**،
+ * حيث لا قاعدة أصلًا (أو لا جداول فيها بعد: الترحيل يجري عند إقلاع الخادم).
+ * فيسقط البناء بـ`relation "settings" does not exist` أو بتعذّر الاتّصال.
+ *
+ * ولا بيانات يُحتاج إليها هناك: ما يُولَّد ساكنًا قشرةٌ لا محتوى، وكلُّ صفحةٍ
+ * تحمل بياناتٍ حقيقيّة **ديناميكيّة** تُصيَّر عند الطلب.
+ *
+ * وثمنُه ظاهر: صفحة «غير موجود» تحمل هويّةً افتراضية لا المضبوطة — وهي الصفحة
+ * الوحيدة التي تُولَّد ساكنةً وتقرأ الهويّة.
+ */
+function isBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === 'phase-production-build'
+}
+
 function createStore(): AuctionStore {
-  if (isPostgresConfigured()) return new PostgresStore()
+  if (isPostgresConfigured() && !isBuildPhase()) return new PostgresStore()
+
+  /* في البناء: ذاكرةٌ بالافتراضيّات بلا بذرة — قشرةٌ نظيفة لا بيانات وهمية */
+  if (isBuildPhase()) return new MemoryStore(emptyDatabase())
 
   const db = emptyDatabase()
   seedDatabase(db)

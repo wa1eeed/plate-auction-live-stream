@@ -9,10 +9,12 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-build-test/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
+    ".next-live/types/**/*.ts",
     ".next-probe/types/**/*.ts",
     "next-env.d.ts",
-    ".next-live/types/**/*.ts"
+    ".next-imp/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

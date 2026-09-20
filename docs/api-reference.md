@@ -419,6 +419,7 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `GET PATCH /api/admin/settings/auction` | قواعد المزاد |
 | `GET PATCH /api/admin/settings/commission` | العمولة والضريبة |
 | `GET PATCH /api/admin/settings/payments` | بوابات الدفع |
+| `GET POST /api/admin/seed` | ملء قاعدةٍ **فارغة** ببيانات العرض — يُرفض على قاعدةٍ فيها مستخدمٌ أو إعلان، ويُقيَّد في التدقيق |
 | `GET PATCH /api/admin/settings/mobile` | إعدادات التطبيق: مفاتيح الدفع لكلّ نوع وقوالبُه، ونسخُ التطبيق. والمتغيّر غير المعروف **يُرفض عند الحفظ** |
 | `GET /api/admin/broadcast?audience=…` | عدد من ستبلغهم الشريحة — يُقرأ قبل الإرسال فلا يُبَثّ في العمياء |
 | `POST /api/admin/broadcast` | بثٌّ إداريّ `{ title, body, href, audience, reference }` — الوجهة مسارٌ داخليّ وحده، ومهلةُ دقيقةٍ بين بثّين |

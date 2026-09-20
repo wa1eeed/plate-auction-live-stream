@@ -17,6 +17,19 @@ import { PageShell } from '@/components/layout/page-shell'
 import { Button } from '@/components/ui/button'
 import { getStore } from '@/lib/store'
 
+/**
+ * ديناميكيّة — ونصُّها محرَّرٌ من اللوحة.
+ *
+ * كانت تُولَّد ساكنةً وقت البناء، وهي تقرأ `pageSettings` — فتعديلُ الإدارة
+ * لنصّها **لا يظهر حتى يُعاد البناء**. وهو عيبٌ صامت: تُحفظ في اللوحة ويُقال
+ * «حُفظ»، ولا يتبدّل شيءٌ في الصفحة.
+ *
+ * وكشفه انتقالُ التخزين إلى قاعدة: التصييرُ الساكن يقع في بناء الصورة، حيث لا
+ * جداول بعدُ — فسقط البناء بـ`relation "settings" does not exist`. وكان قبل
+ * ذلك يمرّ صامتًا لأنّ مخزن الذاكرة يُجيب بالبذرة.
+ */
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata(): Promise<Metadata> {
   const { howItWorks } = await getStore().getPageSettings()
   return { title: howItWorks.title, description: howItWorks.intro || undefined }
