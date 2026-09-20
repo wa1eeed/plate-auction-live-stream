@@ -374,11 +374,25 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 
 ---
 
+## الأجهزة والدفع
+
+| المسار | الجسم / الوظيفة |
+| --- | --- |
+| `GET /api/push` | حال الدفع ومفتاحه العامّ — يُقرأ قبل عرض الزرّ، فنسخةٌ بلا مفاتيح لا تعرض زرًّا لا يقع به شيء |
+| `POST /api/push` | تسجيل جهاز: `{ platform, endpoint, keys, appVersion }` — والويب لا يُسجَّل بلا مفتاحَي تشفير |
+| `DELETE /api/push` | حذف جهاز `{ endpoint }` — بجلسةٍ وإن كفى العنوان، وإلّا أسكت من عرفه إشعاراتِ غيره |
+
+**والرمز يُعاد إرساله في كلّ فتح**: الاشتراك يعيش في ذاكرة الخادم كما يعيش
+صاحبه، فالإعادة تُرمّم ما ضاع بلا أن يُسأل صاحبه مرّة أخرى.
+
 ## مسارات غير برمجية
 
 | المسار | الوصف |
 | --- | --- |
 | `GET /robots.txt` | يولّده `src/app/robots.ts` |
+| `GET /manifest.webmanifest` | بيان التطبيق — يُولَّد من إعدادات الهويّة |
+| `GET /.well-known/apple-app-site-association` | ارتباط النطاق بتطبيق iOS — **`application/json` بلا امتداد وبلا إعادة توجيه**، و404 بلا `APPLE_TEAM_ID` |
+| `GET /.well-known/assetlinks.json` | روابط تطبيق أندرويد — و404 بلا بصمةٍ صالحة: ملفٌّ بقائمةٍ فارغة يُقرأ إقرارًا بأنّ **لا تطبيق** لهذا النطاق فيُخزَّن النفي |
 | `GET /sitemap.xml` | يولّده `src/app/sitemap.ts` — يشمل كل إعلان منشور |
 | `GET /ws` | ترقية WebSocket — [البروتوكول](realtime-protocol.md) |
 | `GET /brand/{logo\|icon\|og}` | أصول الهويّة من السجلّ، بتخزينٍ طويل يُبطله `?v=` |
@@ -405,6 +419,9 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `GET PATCH /api/admin/settings/auction` | قواعد المزاد |
 | `GET PATCH /api/admin/settings/commission` | العمولة والضريبة |
 | `GET PATCH /api/admin/settings/payments` | بوابات الدفع |
+| `GET PATCH /api/admin/settings/mobile` | إعدادات التطبيق: مفاتيح الدفع لكلّ نوع وقوالبُه، ونسخُ التطبيق. والمتغيّر غير المعروف **يُرفض عند الحفظ** |
+| `GET /api/admin/broadcast?audience=…` | عدد من ستبلغهم الشريحة — يُقرأ قبل الإرسال فلا يُبَثّ في العمياء |
+| `POST /api/admin/broadcast` | بثٌّ إداريّ `{ title, body, href, audience, reference }` — الوجهة مسارٌ داخليّ وحده، ومهلةُ دقيقةٍ بين بثّين |
 | `GET PATCH /api/admin/settings/brand` | الهويّة والأرشفة — الأصول base64 بحدود `BRAND_ASSET_LIMITS` |
 | `GET PATCH /api/admin/settings/pages` | [صفحات المنصّة](brand-and-pages.md#4-صفحات-المنصّة-pagesettings) |
 | `PATCH /api/admin/users/{id}` | تعديل بيانات المستخدم من اللوحة |

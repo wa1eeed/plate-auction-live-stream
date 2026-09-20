@@ -195,11 +195,18 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e
 | المتغيّر | الافتراضي | الوصف |
 | --- | --- | --- |
 | `SESSION_SECRET` | — | **إلزامي في الإنتاج.** مفتاح توقيع الجلسات، 16 حرفًا فأكثر. يحمي أيضًا مسار المسح الداخلي |
-| `AUCTION_STORE` | `memory` | طبقة التخزين |
+| **`DATABASE_URL`** | — | **بوجوده يعمل التطبيق على PostgreSQL، وبغيابه على الذاكرة.** والذاكرة تُمحى مع كلّ إعادة تشغيل — [التفصيل](docs/database.md) |
+| `DATABASE_POOL_MAX` | `10` | سقف اتّصالات المَجمع |
+| ~~`AUCTION_STORE`~~ | `memory` | **مهجور** — لا يُقرأ في أيّ قرار. الاختيار بوجود `DATABASE_URL` نفسه |
 | `PLATFORM_DATA_DIR` | — | مجلّد دائم يُحفظ فيه **ما تضبطه الإدارة** (الهويّة والصفحات والعمولة والدفع). بلا ضبطه يعود الضبط افتراضيًّا مع كل إعادة تشغيل — [التفصيل](docs/deployment.md#4-إعدادات-تبقى-بعد-النشر) |
 | `DEMO_MODE` | `true` | تحميل بيانات Demo |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | العنوان العام لخريطة الموقع وروابط المشاركة |
 | `BID_RATE_LIMIT_WINDOW_MS` | `10000` | نافذة تحديد معدل التداول |
+| `VAPID_PUBLIC_KEY` · `VAPID_PRIVATE_KEY` · `VAPID_SUBJECT` | — | دفع الويب. وبلا صيغةٍ صالحة للأخير يُعدّ الدفع **معطّلًا معلنًا** لا صامتًا |
+| `FCM_PROJECT_ID` · `FCM_CLIENT_EMAIL` · `FCM_PRIVATE_KEY` | — | دفع التطبيق (و iOS عبره) — [التفصيل](docs/mobile-ci.md) |
+| `APPLE_TEAM_ID` · `APPLE_BUNDLE_ID` | — | ارتباط النطاق بتطبيق iOS؛ وبلا الأوّل يُردّ ملفّ الارتباط 404 |
+| `ANDROID_PACKAGE_ID` · `ANDROID_CERT_FINGERPRINTS` | — | روابط تطبيق أندرويد — والبصمة من لوحة Play لا من مفتاحك المحلّي |
+| `DEMO_ADMIN_EMAIL` · `DEMO_ADMIN_PASSWORD` | `admin@demo.sa` · `admin1234` | **اضبطهما في الإنتاج**: حساب الإدارة يُبنى منهما في كلّ إقلاع، والافتراضيّ مكتوبٌ في هذا المستودع |
 | `BID_RATE_LIMIT_MAX` | `6` | الحد الأقصى داخل النافذة |
 | `TAP_TEST_SECRET_KEY` | — | مفتاح Tap التجريبي — بدونه لا تُفعَّل البيئة التجريبية |
 | `TAP_LIVE_SECRET_KEY` | — | مفتاح Tap الحقيقي — بدونه لا تُفعَّل البيئة الحقيقية |
