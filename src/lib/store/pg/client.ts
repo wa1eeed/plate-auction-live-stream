@@ -97,6 +97,55 @@ export async function withTransaction<T>(run: (tx: Database) => Promise<T>): Pro
   return getDb().transaction(async (tx) => run(tx as unknown as Database))
 }
 
+/**
+ * أقفال استشارية — رقمُ نطاقٍ ثابتٌ للمنصّة، ورقمٌ لكلّ قفل.
+ *
+ * ورقمان لا نصٌّ مُجزّأ: `pg_try_advisory_lock` يأخذ عددين صحيحين، وتجزئةُ
+ * نصٍّ إلى عددٍ تُدخل احتمال تصادمٍ يجعل قفلين مختلفين قفلًا واحدًا — وهو
+ * عطبٌ لا يظهر إلّا تحت حملٍ نادر.
+ */
+const LOCK_NAMESPACE = 0x504c_4154 // 'PLAT'
+export const LOCKS = { sweep: 1 } as const
+
+/**
+ * يُشغّل العمل **إن ظفر بالقفل وحده** — ويُعيد `null` إن كان غيرُه فيه.
+ *
+ * ولماذا `try` لا الانتظار؟ لأنّ المقصود مسحٌ دوريّ يتكرّر كلّ خمس ثوانٍ: من
+ * لم يظفر به الآن لا حاجة به أن ينتظر، فالدورة التالية قريبة. والانتظارُ
+ * يكدّس اتّصالاتٍ معلّقة بلا فائدة.
+ *
+ * ⚠ **والقفل مربوطٌ بالاتّصال لا بالمَجمع.** فيُحجز اتّصالٌ واحد ويُقفل
+ * ويُفكّ عليه هو — ولو فُكّ على اتّصالٍ آخر من المَجمع لبقي الأوّل مقفولًا
+ * إلى أن يُغلق، فيتوقّف المسح إلى الأبد.
+ */
+export async function withAdvisoryLock<T>(
+  lock: (typeof LOCKS)[keyof typeof LOCKS],
+  run: () => Promise<T>,
+): Promise<T | null> {
+  getDb() // يضمن تهيئة المَجمع
+  const ref = globalThis as Ref
+  const pool = ref.__platePg?.pool
+  if (!pool) return run()
+
+  const client = await pool.connect()
+  try {
+    const got = await client.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_lock($1, $2) AS locked',
+      [LOCK_NAMESPACE, lock],
+    )
+    if (!got.rows[0]?.locked) return null
+
+    try {
+      return await run()
+    } finally {
+      // يُفكّ ولو سقط العمل — وإلّا بقي مقفولًا حتى يُغلق الاتّصال
+      await client.query('SELECT pg_advisory_unlock($1, $2)', [LOCK_NAMESPACE, lock])
+    }
+  } finally {
+    client.release()
+  }
+}
+
 /** يُغلق المَجمع — للاختبارات وللإطفاء النظيف. */
 export async function closeDb(): Promise<void> {
   const ref = globalThis as Ref

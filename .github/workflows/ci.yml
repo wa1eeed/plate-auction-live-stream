@@ -54,6 +54,55 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # ---- ما لا يُقاس بقراءة كود: الثغرات المعروفة والأسرار المسرَّبة
+  #
+  # ووظيفةٌ مستقلّة لا خطوةٌ في البوّابة: هذه تسقط بما لا نكتبه نحن — تحذيرٌ
+  # يُنشر اليوم في حزمةٍ لم تتغيّر عندنا. فخلطُها بفحص الكود يجعل إخفاق
+  # المستودع يبدو إخفاقَ آخر تعديل، ويُعلَّم بالتجاهل.
+  supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # التاريخ كلُّه: سرٌّ حُذف في تعديلٍ لاحق يبقى في الإيداع الذي أدخله
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # ---- ما يصل المستخدم: تبعيات الإنتاج وحدها، ويسقط البناء عليها
+      #
+      # و`--prod` لا `--dev`: ثغرةٌ في vitest لا تُشحن إلى أحد، وإسقاطُ
+      # البوّابة عليها يوقف العمل بلا خطرٍ يُدفع. وما يصل المستخدم لا يُساوَم.
+      - name: ثغرات في تبعيات الإنتاج
+        run: pnpm audit --prod --audit-level moderate
+
+      # ---- وأدوات التطوير تُعرَض ولا تُسقط
+      - name: ثغرات في أدوات التطوير (للعلم)
+        continue-on-error: true
+        run: pnpm audit --audit-level high
+
+      # ---- أسرارٌ مسرَّبة: في الشجرة وفي التاريخ
+      #
+      # مفتاحٌ يُدفع سهوًا لا يكفي حذفُه في تعديلٍ بعده — يبقى في الإيداع الذي
+      # أدخله، ويُقرأ من تاريخ المستودع. فيُفحص التاريخ لا آخر لقطةٍ منه.
+      # الصورة مباشرةً لا الإجراء الرسميّ: ذاك يطلب ترخيصًا للمؤسّسات،
+      # وبوّابةٌ تتوقّف على ترخيصٍ يومًا بوّابةٌ تُعطَّل.
+      - name: أسرار مسرَّبة — في الشجرة وفي التاريخ
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest \
+            detect --source . --config /repo/.gitleaks.toml --no-banner --redact
+
   image:
     needs: gate
     runs-on: ubuntu-latest
