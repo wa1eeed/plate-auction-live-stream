@@ -1,4 +1,6 @@
 import { emptyDatabase, MemoryStore } from './memory-store'
+import { isPostgresConfigured } from './pg/client'
+import { PostgresStore } from './pg/store'
 import { seedDatabase } from './seed'
 import { applySettingsFile, writeSettingsFile } from './settings-file'
 import type { AuctionStore } from './types'
@@ -7,12 +9,15 @@ import type { AuctionStore } from './types'
  * مثيل وحيد للتخزين. يُحفظ على `globalThis` حتى لا يُعاد إنشاؤه مع كل
  * إعادة تحميل ساخنة في وضع التطوير (وإلا فقدنا بيانات وضع Demo).
  *
- * التنفيذ الحالي في الذاكرة. الواجهة `AuctionStore` مجرّدة بالكامل، فإضافة
- * تنفيذ PostgreSQL لا تتطلّب تعديل أي مكوّن واجهة.
+ * **والاختيار بوجود `DATABASE_URL` لا بمتغيّرٍ يُكتب باليد.** رايةٌ منفصلة
+ * تعني حالةً رابعة: رابطٌ مضبوطٌ وراية مطفأة — فيُقلع التطبيق على الذاكرة
+ * بجانب قاعدةٍ عامرة، ولا يُكتشف ذلك إلّا بعد أن تضيع بيانات يوم.
  */
 const globalRef = globalThis as typeof globalThis & { __auctionStore?: AuctionStore }
 
 function createStore(): AuctionStore {
+  if (isPostgresConfigured()) return new PostgresStore()
+
   const db = emptyDatabase()
   seedDatabase(db)
   /*

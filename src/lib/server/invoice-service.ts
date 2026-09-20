@@ -91,7 +91,7 @@ export async function issueCommissionInvoice(
    * التجزئة تشمل رقم الفاتورة، فحسابها على رقمٍ يُمنح بعدها يجعل المخزَّن
    * لا يطابق ما يُعاد حسابه — وسلسلةٌ لا يُعاد التحقّق منها لا تكشف تلاعبًا.
    */
-  const reference = store.nextReference('invoice', issuedAt)
+  const reference = await store.nextReference('invoice', issuedAt)
 
   const digest = invoiceDigestInput({
     reference,

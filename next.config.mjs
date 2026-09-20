@@ -13,6 +13,15 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: false },
   experimental: { optimizePackageImports: ['lucide-react'] },
+
+  /**
+   * سائق القاعدة يبقى خارج الحزمة.
+   *
+   * `pg` يستورد `pg-native` استيرادًا اختياريًّا — إضافةً أصيلةً لا تُثبَّت
+   * عندنا — فيحاول Next حزمَها فيسقط البناء بـ«Module not found». وهو خارج
+   * المتصفّح أصلًا: يُطلَب في العملية وقت التشغيل لا يُحزَم في ملفّ.
+   */
+  serverExternalPackages: ['pg'],
   /**
    * مجلّد المخرجات قابل للتبديل عبر البيئة.
    * السبب: `pnpm test:e2e` يبني مبنى إنتاج، وإن كتبه في `.next` نفسه الذي

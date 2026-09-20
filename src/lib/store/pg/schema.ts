@@ -53,7 +53,6 @@ export const users = pgTable(
     bankName: text('bank_name'),
     bankIban: text('bank_iban'),
     bankAccountName: text('bank_account_name'),
-    status: text('status').notNull(),
     createdAt: stamp('created_at').notNull(),
   },
   (table) => [
@@ -153,6 +152,14 @@ export const bids = pgTable(
     status: text('status').notNull(),
     /** ترتيبٌ من الخادم — به يُفصل بين مزايدتين في المللي ثانية نفسها */
     serverSequence: integer('server_sequence').notNull(),
+    /**
+     * مفتاح الطلب من العميل — حارسُ التكرار.
+     *
+     * شبكةٌ متقطّعة تُعيد الطلب نفسه، فيصل مرّتين. وكان يُحرَس بخريطةٍ في
+     * الذاكرة؛ وفي القاعدة **فرادةٌ على (المزايد، المفتاح)** — حرسٌ لا يُخترق
+     * ولو وصل الطلبان إلى خادمين.
+     */
+    clientRequestId: text('client_request_id'),
     createdAt: stamp('created_at').notNull(),
     cancelledAt: stamp('cancelled_at'),
     cancellationReason: text('cancellation_reason'),
@@ -160,6 +167,7 @@ export const bids = pgTable(
   (table) => [
     index('bids_listing_idx').on(table.listingId, table.serverSequence),
     index('bids_bidder_idx').on(table.bidderId),
+    uniqueIndex('bids_request_key').on(table.bidderId, table.clientRequestId),
   ],
 )
 
@@ -209,6 +217,8 @@ export const orders = pgTable(
     releasedAt: stamp('released_at'),
     /** علامات التذكيرات المُرسَلة — `['24h','6h','overdue']` */
     remindersSent: jsonb('reminders_sent').notNull().default([]),
+    /** حارسُ التكرار في الشراء المباشر — كما في المزايدة */
+    clientRequestId: text('client_request_id'),
     createdAt: stamp('created_at').notNull(),
     completedAt: stamp('completed_at'),
   },
@@ -218,6 +228,7 @@ export const orders = pgTable(
     index('orders_listing_idx').on(table.listingId),
     /* المسح الدوريّ يبحث عن المتأخّر — حالةٌ وموعد */
     index('orders_status_due_idx').on(table.status, table.paymentDueAt),
+    uniqueIndex('orders_request_key').on(table.buyerId, table.clientRequestId),
   ],
 )
 

@@ -10,8 +10,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".next-e2e/types/**/*.ts",
+    ".next-probe/types/**/*.ts",
     "next-env.d.ts",
-    ".next-probe/types/**/*.ts"
+    ".next-live/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

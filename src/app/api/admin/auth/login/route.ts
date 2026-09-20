@@ -1,6 +1,7 @@
 import { fail, handleError, ok, readJson } from '@/lib/server/api'
 import { adminLoginSchema } from '@/lib/domain/schemas'
-import { verifyPassword } from '@/lib/server/crypto'
+import { hashPassword, verifyPassword } from '@/lib/server/crypto'
+import { DEMO_ADMIN } from '@/lib/config'
 import { rateLimit } from '@/lib/server/rate-limit'
 import { setAdminSession } from '@/lib/server/admin-session'
 import { getStore } from '@/lib/store'
@@ -19,6 +20,28 @@ export async function POST(request: Request) {
     }
 
     const store = getStore()
+
+    /*
+     * حساب الإدارة من البيئة — يُضمَن هنا لا في بذرةٍ لا تجري على قاعدة.
+     *
+     * مخزن الذاكرة يبذره عند الإقلاع؛ وقاعدةُ بياناتٍ تبدأ فارغة، فلولا هذا
+     * لأقلعت المنصّة بلا أدمن ولا بابَ لإنشائه. وهو `upsert` على البريد: من
+     * بدّل كلمته في متغيّرات النشر بدّلها هنا، ولا يبقى حسابٌ بكلمةٍ قديمة.
+     *
+     * ويقع قبل البحث لا بعده، فلا تُرفض أوّل محاولةٍ ثمّ تنجح الثانية.
+     */
+    if (store.kind === 'postgres' && 'ensureAdmin' in store) {
+      await (store as { ensureAdmin: (input: {
+        email: string
+        passwordHash: string
+        displayName: string
+      }) => Promise<void> }).ensureAdmin({
+        email: DEMO_ADMIN.email,
+        passwordHash: hashPassword(DEMO_ADMIN.password),
+        displayName: DEMO_ADMIN.displayName,
+      })
+    }
+
     const account = await store.findAdminByEmail(body.email)
     // رسالة واحدة للبريد الخاطئ ولكلمة المرور الخاطئة: لا نكشف وجود الحساب
     if (!account || !verifyPassword(body.password, account.passwordHash)) {

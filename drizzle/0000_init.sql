@@ -26,6 +26,7 @@ CREATE TABLE "bids" (
 	"amount" bigint NOT NULL,
 	"status" text NOT NULL,
 	"server_sequence" integer NOT NULL,
+	"client_request_id" text,
 	"created_at" timestamp with time zone NOT NULL,
 	"cancelled_at" timestamp with time zone,
 	"cancellation_reason" text
@@ -234,6 +235,7 @@ CREATE TABLE "orders" (
 	"payout_ledger_entry_id" text,
 	"released_at" timestamp with time zone,
 	"reminders_sent" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"client_request_id" text,
 	"created_at" timestamp with time zone NOT NULL,
 	"completed_at" timestamp with time zone,
 	CONSTRAINT "orders_reference_unique" UNIQUE("reference")
@@ -323,7 +325,6 @@ CREATE TABLE "users" (
 	"bank_name" text,
 	"bank_iban" text,
 	"bank_account_name" text,
-	"status" text NOT NULL,
 	"created_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
@@ -337,6 +338,7 @@ CREATE TABLE "wallets" (
 CREATE INDEX "audits_created_idx" ON "audits" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "bids_listing_idx" ON "bids" USING btree ("listing_id","server_sequence");--> statement-breakpoint
 CREATE INDEX "bids_bidder_idx" ON "bids" USING btree ("bidder_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "bids_request_key" ON "bids" USING btree ("bidder_id","client_request_id");--> statement-breakpoint
 CREATE INDEX "deposits_user_idx" ON "deposits" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "deposits_listing_user_key" ON "deposits" USING btree ("listing_id","user_id");--> statement-breakpoint
 CREATE INDEX "disbursements_status_idx" ON "disbursements" USING btree ("status");--> statement-breakpoint
@@ -352,6 +354,7 @@ CREATE INDEX "orders_buyer_idx" ON "orders" USING btree ("buyer_id");--> stateme
 CREATE INDEX "orders_seller_idx" ON "orders" USING btree ("seller_id");--> statement-breakpoint
 CREATE INDEX "orders_listing_idx" ON "orders" USING btree ("listing_id");--> statement-breakpoint
 CREATE INDEX "orders_status_due_idx" ON "orders" USING btree ("status","payment_due_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "orders_request_key" ON "orders" USING btree ("buyer_id","client_request_id");--> statement-breakpoint
 CREATE INDEX "payments_user_idx" ON "payments" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "payments_charge_key" ON "payments" USING btree ("tap_charge_id");--> statement-breakpoint
 CREATE INDEX "platform_entries_type_idx" ON "platform_entries" USING btree ("type","settled");--> statement-breakpoint

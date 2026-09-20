@@ -28,6 +28,20 @@ const registry = (globalThis.__plateRealtime ??= { sockets: new Set(), seq: new 
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
+/*
+ * ترحيل المخطَّط قبل أن يبدأ Next.
+ *
+ * ولماذا هنا لا في `instrumentation.ts`؟ لأنّ Next يترجم ذلك الملفّ لبيئة
+ * الحافّة أيضًا، وسائق القاعدة لا يعمل فيها — فيسقط الإقلاع كلُّه بـ«Module
+ * not found: fs». وهنا نحن في Node خالصًا قبل أن يُحمَّل شيءٌ من إطار العمل.
+ *
+ * والترحيل SQL خالصة، فلا يحتاج إلى شيءٍ من كود التطبيق.
+ */
+if (process.env.DATABASE_URL) {
+  const { migrate } = await import('./scripts/db-migrate.mjs')
+  await migrate(process.env.DATABASE_URL)
+}
+
 await app.prepare()
 
 // يجب استدعاؤه بعد prepare — يخدم ترقيات Next (إعادة التحميل الساخن)

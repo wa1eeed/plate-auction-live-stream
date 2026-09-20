@@ -216,7 +216,12 @@ export class MemoryStore implements AuctionStore {
    * و`at` وقت الإنشاء لا وقت الاستدعاء: بيانات مبذورة بتواريخ ماضية تأخذ
    * أرقام سنواتها.
    */
-  nextReference(kind: ReferenceKind, at: number | string = Date.now()): string {
+  /** الواجهة غير متزامنة لأجل القاعدة — والذاكرة تفي بها فورًا */
+  async nextReference(kind: ReferenceKind, at: number | string = Date.now()): Promise<string> {
+    return this.nextReferenceSync(kind, at)
+  }
+
+  private nextReferenceSync(kind: ReferenceKind, at: number | string = Date.now()): string {
     const year = referenceYear(at)
     const key = `${kind}:${year}`
     const next = (this.db.referenceCounters[key] ?? 0) + 1
@@ -269,7 +274,7 @@ export class MemoryStore implements AuctionStore {
     }
     const account: UserAccount = {
       id: newId('usr'),
-      reference: this.nextReference('user'),
+      reference: this.nextReferenceSync('user'),
       email,
       displayName: input.displayName,
       phone: input.phone,
@@ -314,7 +319,7 @@ export class MemoryStore implements AuctionStore {
     const listing: Listing = {
       ...input,
       id: newId('lst'),
-      reference: this.nextReference('listing'),
+      reference: this.nextReferenceSync('listing'),
       createdAt: now,
       updatedAt: now,
     }
@@ -510,7 +515,7 @@ export class MemoryStore implements AuctionStore {
     const order: Order = {
       ...input,
       id: newId('ord'),
-      reference: this.nextReference('order'),
+      reference: this.nextReferenceSync('order'),
       remindersSent: [],
       paidAt: null,
       escrowAmount: 0,
@@ -568,7 +573,7 @@ export class MemoryStore implements AuctionStore {
 
       const order: Order = {
         id: newId('ord'),
-        reference: this.nextReference('order'),
+        reference: this.nextReferenceSync('order'),
         paidAt: null,
         escrowAmount: 0,
         transferDueAt: null,
@@ -646,7 +651,7 @@ export class MemoryStore implements AuctionStore {
       const entry: LedgerEntry = {
         ...built.entry,
         id: newId('led'),
-        reference: this.nextReference('wallet'),
+        reference: this.nextReferenceSync('wallet'),
       }
       this.db.wallets.set(input.userId, built.wallet)
       this.db.ledger.push(entry)
@@ -674,7 +679,7 @@ export class MemoryStore implements AuctionStore {
     const deposit: Deposit = {
       ...input,
       id: newId('dep'),
-      reference: this.nextReference('deposit'),
+      reference: this.nextReferenceSync('deposit'),
       createdAt: new Date().toISOString(),
       resolvedAt: null,
       resolvedByAdminId: null,
@@ -846,7 +851,7 @@ export class MemoryStore implements AuctionStore {
     const payment: Payment = {
       ...input,
       id: newId('pay'),
-      reference: this.nextReference('payment'),
+      reference: this.nextReferenceSync('payment'),
       createdAt: now,
       updatedAt: now,
       settledAt: null,
@@ -1009,7 +1014,7 @@ export class MemoryStore implements AuctionStore {
     const row: Disbursement = {
       ...input,
       id: newId('dsb'),
-      reference: this.nextReference('disbursement'),
+      reference: this.nextReferenceSync('disbursement'),
       status: 'pending',
       createdAt: new Date().toISOString(),
       paidAt: null,
@@ -1037,7 +1042,7 @@ export class MemoryStore implements AuctionStore {
     const row: PlatformEntry = {
       ...entry,
       id: newId('rev'),
-      reference: this.nextReference('revenue'),
+      reference: this.nextReferenceSync('revenue'),
       createdAt: new Date().toISOString(),
       reversedAt: null,
       reversalReason: null,

@@ -129,7 +129,7 @@ export type ListingQuery = {
  * كل الواجهات تتعامل مع هذه الواجهة وحدها.
  */
 export interface AuctionStore {
-  readonly kind: 'memory' | 'supabase'
+  readonly kind: 'memory' | 'postgres'
 
   // ---- المستخدمون
   findUserByHandle(handle: string): Promise<User | null>
@@ -177,8 +177,14 @@ export interface AuctionStore {
   /** تعديل حقول الصفقة — لمراحل الضمان وإثباتها */
   updateOrder(id: string, patch: Partial<Order>): Promise<Order>
 
-  /** الرقم المرجعي التالي لنوع — يُستدعى داخل الإنشاء لا من خارجه */
-  nextReference(kind: ReferenceKind, at?: number | string): string
+  /**
+   * الرقم المرجعي التالي لنوع — يُستدعى داخل الإنشاء لا من خارجه.
+   *
+   * وهي **غير متزامنة** لأنّ العدّاد في تنفيذٍ حقيقيّ يعيش في القاعدة: يُقرأ
+   * بقفلِ صفٍّ ويُزاد في المعاملة نفسها التي تُدرج السجلّ، فلا يأخذ طلبان
+   * الرقم نفسه. ولا سبيل إلى ذلك في دالّةٍ متزامنة.
+   */
+  nextReference(kind: ReferenceKind, at?: number | string): Promise<string>
   /** شراء مباشر ذرّي: يمنع بيع اللوحة مرتين. */
   buyNow(command: BuyNowCommand): Promise<{ listing: Listing; order: Order }>
 

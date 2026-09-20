@@ -780,8 +780,9 @@ test.describe('تصفّح السوق على دفعات', () => {
      */
     const more = page.getByRole('button', { name: 'عرض المزيد' })
     await expect(more).toBeVisible()
-    const first = await page.locator('article').count()
-    await more.click()
+    const first = await stableCount(page.locator('article'))
+    // الزرّ يُستبدَل في الترطيب، فتقع النقرة على عنصرٍ مفصول — كما في أختها
+    await clickWhenHydrated(more, page.locator('article'))
     await expect.poll(() => page.locator('article').count()).toBeGreaterThan(first)
     const grown = await page.locator('article').count()
 
