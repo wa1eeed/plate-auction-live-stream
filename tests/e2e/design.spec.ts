@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { clickWhenHydrated, stableCount } from '../support/ui'
+import { clickUntil, stableCount } from '../support/ui'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 test.describe('الصفحة الرئيسية', () => {
@@ -751,11 +751,8 @@ test.describe('تصفّح السوق على دفعات', () => {
     await expect(page.getByText(/عُرضت \d+ من \d+/)).toBeVisible()
 
     const before = apiCalls
-    /*
-     * الزرّ يُكتب في تصيير الخادم ويستبدله الترطيب، فتقع النقرة على عنصرٍ
-     * يُفصَل من الشجرة في أثنائها — `element was detached from the DOM`.
-     */
-    await clickWhenHydrated(more, page.locator('article'))
+    // يُعاد النقر حتى تنمو الشبكة — الزرّ يُفصَل في الترطيب فتضيع النقرة
+    await clickUntil(more, async () => (await page.locator('article').count()) > first)
     await expect
       .poll(() => page.locator('article').count())
       .toBeGreaterThan(first)
@@ -781,8 +778,7 @@ test.describe('تصفّح السوق على دفعات', () => {
     const more = page.getByRole('button', { name: 'عرض المزيد' })
     await expect(more).toBeVisible()
     const first = await stableCount(page.locator('article'))
-    // الزرّ يُستبدَل في الترطيب، فتقع النقرة على عنصرٍ مفصول — كما في أختها
-    await clickWhenHydrated(more, page.locator('article'))
+    await clickUntil(more, async () => (await page.locator('article').count()) > first)
     await expect.poll(() => page.locator('article').count()).toBeGreaterThan(first)
     const grown = await page.locator('article').count()
 

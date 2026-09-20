@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test'
+import { expect, type Locator } from '@playwright/test'
 
 /**
  * عدد العناصر **بعد استقراره** لا عند أوّل ظهور.
@@ -29,13 +29,30 @@ export async function stableCount(locator: Locator, settleMs = 250): Promise<num
 }
 
 /**
- * ينقر زرًّا قد يُستبدَل في أثناء الترطيب.
+ * ينقر زرًّا قد يُستبدَل في أثناء الترطيب — **ويُعيد حتى يقع أثرُه**.
  *
  * الزرّ يُكتب في تصيير الخادم، فيراه Playwright ظاهرًا مستقرًّا وينقره — وقد
  * استبدله React في تلك اللحظة، فيُفصَل العنصر من الشجرة والنقرة في الطريق.
- * والانتظارُ حتى يستقرّ ما حوله يجعل النقرة تقع على الزرّ الحيّ.
+ *
+ * وانتظارُ استقرار ما حوله لا يكفي: الفصل يقع **بعد** الاستقرار بلحظة، وهي
+ * تتّسع على لينكس تحت حمل المجموعة. فالحارس الوحيد الصادق أن يُقاس **الأثر**
+ * لا النقرة: يُعاد النقر حتى يتحقّق ما يُنتظر منه، أو تنقضي المهلة فيُخفق.
+ *
+ * ونقرةٌ زائدة لا تضرّ هنا: الشرط يُفحص قبل كلّ محاولة، فما إن يتحقّق يتوقّف.
  */
-export async function clickWhenHydrated(button: Locator, near: Locator): Promise<void> {
-  await stableCount(near)
-  await button.click()
+export async function clickUntil(
+  button: Locator,
+  done: () => Promise<boolean>,
+  timeout = 30_000,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        if (await done()) return true
+        await button.click({ timeout: 5_000 }).catch(() => undefined)
+        return done()
+      },
+      { timeout, message: 'لم يقع أثر النقرة قبل انقضاء المهلة' },
+    )
+    .toBe(true)
 }

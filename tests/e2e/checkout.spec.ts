@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { clickWhenHydrated } from '../support/ui'
+import { clickUntil } from '../support/ui'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 async function setCommission(page: Page, buyerPercent: number, vatPercent: number) {
@@ -132,8 +132,7 @@ test.describe('صفحة السداد', () => {
      */
     const proceed = buyerPage.getByRole('link', { name: 'أكمل السداد' }).first()
     await expect(proceed).toBeVisible()
-    await clickWhenHydrated(proceed, buyerPage.locator('[data-row], article'))
-    await buyerPage.waitForURL(/\/checkout\/ord_/)
+    await clickUntil(proceed, async () => /\/checkout\/ord_/.test(buyerPage.url()))
 
     await buyerPage.locator('form button[aria-pressed]').first().click()
     await buyerPage.getByRole('button', { name: /ادفع من رصيدي/ }).click()

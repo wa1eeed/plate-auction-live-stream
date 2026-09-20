@@ -102,9 +102,19 @@ export function ListingView({
        * `min-content`: عمود السعر يمتدّ على الصفّين، ولولا تقييد الصفّ الأول
        * بمحتواه لوزّع المتصفّح ارتفاعه الطويل على الصفّين فتفتح فجوة تحت اللوحة.
        */}
+      {/*
+        * `min-w-0` على كلّ عمود — وإلّا فاض الجوال.
+        *
+        * عنصر الشبكة `min-width: auto` افتراضًا، فلا ينكمش دون **عرض محتواه
+        * الأدنى**. وسطرٌ واحد لا ينكسر في كشف المزايدات يرفع العمود إلى ٣٧٦
+        * بكسل داخل حاوية ٣٤٣ — فيمتدّ المستند ويظهر تمريرٌ أفقيّ.
+        *
+        * ولا يُرى على ماك لأنّ شريط التمرير يطفو، ويُرى على لينكس حيث يأخذ
+        * عرضًا من الصفحة.
+        */}
       <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:grid-rows-[min-content_1fr] lg:items-start">
         {/* ------------------------------------------------ اللوحة */}
-        <div className="order-1 space-y-4 lg:col-start-1 lg:row-start-1">
+        <div className="order-1 min-w-0 space-y-4 lg:col-start-1 lg:row-start-1">
           {/*
             * منصّة عرض لا صندوق.
             *
@@ -131,7 +141,7 @@ export function ListingView({
         </div>
 
         {/* -------------------------------------- بقيّة تفاصيل اللوحة */}
-        <div className="order-3 space-y-4 lg:order-none lg:col-start-1 lg:row-start-2">
+        <div className="order-3 min-w-0 space-y-4 lg:order-none lg:col-start-1 lg:row-start-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={detail.saleType === 'fixed' ? 'success' : 'gold'}>
               {detail.saleType === 'auction' ? (
@@ -211,7 +221,7 @@ export function ListingView({
         </div>
 
         {/* ------------------------------------------------ السعر والتداول */}
-        <div className="order-2 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2">
+        <div className="order-2 min-w-0 space-y-4 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2">
           {/*
             * مزادٌ جارٍ له مسرحه، وما عداه بطاقة نتيجة.
             *
