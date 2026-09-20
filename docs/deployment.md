@@ -34,7 +34,6 @@ NODE_ENV=production node server.mjs   # وهو ما يفعله pnpm start
 SESSION_SECRET=$(openssl rand -base64 48)   # إلزامي
 NEXT_PUBLIC_APP_URL=https://example.com     # النطاق الحقيقي
 DEMO_MODE=false                             # لا بيانات تجريبية
-AUCTION_STORE=memory
 PORT=3000
 HOST=0.0.0.0
 BID_RATE_LIMIT_WINDOW_MS=10000
