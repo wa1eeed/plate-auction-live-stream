@@ -55,6 +55,66 @@ const nextConfig = {
   async rewrites() {
     return [{ source: '/@:handle', destination: '/u/:handle' }]
   },
+
+  /**
+   * ترويسات الأمان الساكنة — ما لا يتغيّر بين طلبٍ وطلب.
+   *
+   * وأمّا `Content-Security-Policy` فليست هنا: تحتاج `nonce` يُولَّد لكلّ
+   * طلب، فموضعُها `middleware.ts`.
+   *
+   * ولماذا هنا لا في الوسيط كلُّها؟ لأنّ ما لا يحتاج حسابًا لا يُحسب في كلّ
+   * طلب — وهذه يضعها Next مرّةً في جدول التوجيه.
+   */
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          /*
+           * سنةٌ كاملة، والنطاقات الفرعية معها.
+           *
+           * وبلا هذه الترويسة يكفي طلبٌ واحد على HTTP ليُعترض قبل أن يصل
+           * التحويل إلى HTTPS — وفيه كوكي الجلسة إن لم يكن `Secure`.
+           *
+           * ولا `preload` بعد: إدراج النطاق في قائمة المتصفّحات المسبقة
+           * **لا يُتراجع عنه بسهولة**، ويشمل كلّ نطاقٍ فرعيّ إلى الأبد. وهي
+           * خطوةٌ تُؤخذ بعد أن يستقرّ النطاق وفروعُه، لا مع أوّل إطلاق.
+           */
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+
+          /* المتصفّح لا يخمّن نوع الملفّ — ومرفوعٌ يُخمَّن سكربتًا يُنفَّذ */
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+
+          /*
+           * لا تُوضع المنصّة في إطار.
+           *
+           * ومعها `frame-ancestors` في الـCSP — وهي الأحدث والأدقّ. وتبقى
+           * هذه للمتصفّحات القديمة التي لا تقرأ تلك.
+           */
+          { key: 'X-Frame-Options', value: 'DENY' },
+
+          /*
+           * المسار الكامل لا يُرسل إلى موقعٍ آخر — وفيه معرّفات إعلانات
+           * ومستخدمين. والأصل وحده يكفي لمن يقيس مصادر زيارته.
+           */
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+
+          /*
+           * صلاحيات الجهاز مغلقةٌ كلُّها: المنصّة لا تطلب كاميرا ولا ميكروفون
+           * ولا موقعًا. وإغلاقُها يمنع كودًا دخيلًا من طلبها باسم النطاق.
+           */
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+          },
+
+          /* عبر النطاقات: لا يُفتح مورد المنصّة من موقعٍ آخر */
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

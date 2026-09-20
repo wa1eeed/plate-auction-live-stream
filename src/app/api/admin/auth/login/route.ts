@@ -2,6 +2,7 @@ import { fail, handleError, ok, readJson } from '@/lib/server/api'
 import { adminLoginSchema } from '@/lib/domain/schemas'
 import { hashPassword, verifyPassword } from '@/lib/server/crypto'
 import { DEMO_ADMIN } from '@/lib/config'
+import { clientIp } from '@/lib/server/client-ip'
 import { rateLimit } from '@/lib/server/rate-limit'
 import { setAdminSession } from '@/lib/server/admin-session'
 import { getStore } from '@/lib/store'
@@ -15,6 +16,10 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   try {
     const body = adminLoginSchema.parse(await readJson(request))
+    /* أضيق من دخول المستخدم — الأدمن واحدٌ لا جمهور */
+    if (!rateLimit(`admin-login-ip:${clientIp(request.headers)}`, 10, 60_000).allowed) {
+      return fail('محاولات كثيرة، حاول بعد قليل', 429, 'RATE_LIMITED')
+    }
     if (!rateLimit(`admin-login:${body.email}`, 5, 60_000).allowed) {
       return fail('محاولات كثيرة، حاول بعد دقيقة', 429, 'RATE_LIMITED')
     }
