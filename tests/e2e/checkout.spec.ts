@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { clickWhenHydrated } from '../support/ui'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 async function setCommission(page: Page, buyerPercent: number, vatPercent: number) {
@@ -122,7 +123,16 @@ test.describe('صفحة السداد', () => {
     }, userId)
 
     await buyerPage.goto('/account/purchases')
-    await buyerPage.getByRole('link', { name: 'أكمل السداد' }).first().click()
+    /*
+     * النقرة بعد استقرار الصفحة لا عند أوّل ظهورٍ للرابط.
+     *
+     * البطاقات تُصيَّر على الخادم ثمّ تُرطَّب، فيستبدل React الرابط والنقرةُ
+     * في الطريق — فتقع على عنصرٍ فُصل من الشجرة ولا يقع تنقّل. وعلى لينكس
+     * تحت حمل المجموعة تتّسع تلك الفجوة فيظهر ما لا يظهر هنا.
+     */
+    const proceed = buyerPage.getByRole('link', { name: 'أكمل السداد' }).first()
+    await expect(proceed).toBeVisible()
+    await clickWhenHydrated(proceed, buyerPage.locator('[data-row], article'))
     await buyerPage.waitForURL(/\/checkout\/ord_/)
 
     await buyerPage.locator('form button[aria-pressed]').first().click()

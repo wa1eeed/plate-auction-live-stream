@@ -200,10 +200,18 @@ test.describe('المحفظة والعربون', () => {
 
     // لا تمرير أفقي، والمحتوى لا يختفي خلف الشريط
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth + 1,
-    )
-    expect(overflow).toBe(false)
+    /*
+     * يُنتظر **استقرار** التخطيط لا لحظةٌ بعينها.
+     *
+     * الشريط الثابت يقيس نفسه بـ`ResizeObserver` ثمّ تحجز الصفحة تحته —
+     * وقياسٌ يقع في تلك الفجوة يقرأ فيضًا لا يبقى. وفيضٌ لا ينقضي يُخفق كما
+     * كان، فلم تضعف الحراسة.
+     */
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1),
+      )
+      .toBe(false)
 
     /*
      * وآخر المحتوى فوق الشريط لا خلفه.
