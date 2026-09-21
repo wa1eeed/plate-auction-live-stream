@@ -35,11 +35,15 @@ export function MobileSettingsForm({
   devices,
   webPushReady,
   nativePushReady,
+  applePushReady,
 }: {
   settings: MobileSettings
   devices: Record<string, number>
   webPushReady: boolean
+  /** أندرويد عبر FCM */
   nativePushReady: boolean
+  /** iOS عبر APNs مباشرةً — قناةٌ مستقلّة لا تمرّ بـFCM */
+  applePushReady: boolean
 }) {
   const router = useRouter()
   const [form, setForm] = useState<Draft>({
@@ -88,7 +92,7 @@ export function MobileSettingsForm({
       <section className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
         <h2 className="mb-3 text-sm font-bold">نظرة عامة</h2>
 
-        {(!webPushReady || !nativePushReady) && (
+        {(!webPushReady || !nativePushReady || !applePushReady) && (
           /*
            * تهيئةٌ ناقصة تُقال صراحةً.
            *
@@ -107,10 +111,18 @@ export function MobileSettingsForm({
               )}
               {!nativePushReady && (
                 <>
-                  <b>دفع التطبيق معطّل</b> — لم يُضبط حساب خدمة{' '}
+                  <b>دفع أندرويد معطّل</b> — لم يُضبط حساب خدمة{' '}
                   <code className="font-mono">FCM_PROJECT_ID</code> و
                   <code className="font-mono">FCM_CLIENT_EMAIL</code> و
                   <code className="font-mono">FCM_PRIVATE_KEY</code>.{' '}
+                </>
+              )}
+              {!applePushReady && (
+                <>
+                  <b>دفع iOS معطّل</b> — لم يُضبط مفتاح APNs:{' '}
+                  <code className="font-mono">APNS_KEY_ID</code> و
+                  <code className="font-mono">APNS_TEAM_ID</code> و
+                  <code className="font-mono">APNS_KEY_P8</code>.{' '}
                 </>
               )}
               وما يُحفظ هنا يبقى محفوظًا ويعمل متى ضُبطت.
