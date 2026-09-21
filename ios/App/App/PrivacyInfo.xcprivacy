@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  بيان خصوصية التطبيق — تشترطه أبل منذ ربيع ٢٠٢٤، وغيابُه يردّ الرفع.
+
+  وهو إقرارٌ بما يُجمع وبما يُستعمل من واجهات النظام الحسّاسة. وكلّ سطرٍ هنا
+  مطابقٌ لما يفعله التطبيق فعلًا — وإقرارٌ يخالف السلوك سببُ ردٍّ في المراجعة،
+  وسببُ عقوبةٍ إن اكتُشف بعد النشر.
+
+  والتطبيق غلافٌ أصيل حول واجهةٍ تُصيَّر على الخادم: لا تحليلات، ولا تتبّع،
+  ولا مُعرّف إعلانيّ، ولا موقع، ولا جهات اتّصال. وما يُجمع يُجمع على الخادم
+  بحساب المستخدم نفسه.
+-->
+<plist version="1.0">
+<dict>
+  <!--
+    لا تتبّع عبر تطبيقات الآخرين ومواقعهم — فلا يُطلب إذن ATT أصلًا.
+  -->
+  <key>NSPrivacyTracking</key>
+  <false/>
+
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array>
+    <!--
+      رمز الإشعارات: يُربط بالحساب ليصل إشعارُ المزايدة إلى صاحبه.
+      مرتبطٌ بالهويّة (Linked) لأنّه يُحفظ مع المستخدم، وليس تتبّعًا.
+    -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeDeviceID</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+
+    <!-- البريد الإلكتروني: هويّة الحساب، ولا حساب بلا بريد -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+
+    <!-- الاسم المعروض: يظهر للطرف الآخر في الصفقة -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeName</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+
+    <!-- رقم الجوال: اختياريّ، ولا يُعرض إلّا لطرفَي الصفقة بعد إتمامها -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypePhoneNumber</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+
+    <!--
+      معلومات الدفع: العرابين والسداد تمرّ ببوّابة الدفع، وتُحفظ عندنا
+      مراجعُها لا أرقام البطاقات — والأرقام لا تبلغ خوادمنا أصلًا.
+    -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypePaymentInfo</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+  </array>
+
+  <!--
+    واجهات النظام التي تشترط أبل بيانَ سببِ استعمالها.
+    `UserDefaults` تستعملها إضافات Capacitor لحفظ حالةٍ تخصّ التطبيق وحده —
+    والسبب CA92.1: الوصول محصورٌ في بيانات التطبيق نفسه.
+  -->
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>
