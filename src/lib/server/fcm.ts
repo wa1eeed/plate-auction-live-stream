@@ -90,6 +90,11 @@ export type FcmMessage = {
    * وأندرويد لا يحتاجه: النظام يضع نقطةً على الأيقونة من الإشعارات القائمة.
    */
   badge: number
+  /**
+   * يخترق وضع التركيز — لثلاثة أنواعٍ وحدها، انظر
+   * `TIME_SENSITIVE_NOTIFICATIONS`.
+   */
+  timeSensitive?: boolean
 }
 
 /** نتيجةٌ تُفرّق بين الفشل العابر والرمز الميّت — والثاني وحده يُحذف صاحبه. */
@@ -129,6 +134,16 @@ export async function sendFcm(token: string, message: FcmMessage): Promise<FcmRe
                 badge: message.badge,
                 /* يُوقظ التطبيق ليُحدّث الشارة من الخادم عند الاستلام */
                 'content-available': 1,
+                /*
+                 * `time-sensitive` تخترق وضع التركيز و«عدم الإزعاج».
+                 *
+                 * والافتراضيّ `active` يُكتم فيهما — فإشعارُ «تجاوزك أحد»
+                 * لا يصل صاحبه إلّا بعد أن ينتهي المزاد.
+                 *
+                 * وتُرسَل لثلاثة أنواعٍ وحدها: توسيعُها يُفقدها معناها،
+                 * فيُطفئها صاحبها كلَّها ويخسر الثلاثة معها.
+                 */
+                ...(message.timeSensitive ? { 'interruption-level': 'time-sensitive' } : {}),
               },
             },
           },

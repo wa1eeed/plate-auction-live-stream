@@ -1,7 +1,12 @@
 import webpush from 'web-push'
 import { fcmConfigured, sendFcm } from './fcm'
 import { appUrl } from '@/lib/config'
-import { URGENT_NOTIFICATIONS, type Notification, type NotificationType } from '@/lib/domain/types'
+import {
+  TIME_SENSITIVE_NOTIFICATIONS,
+  URGENT_NOTIFICATIONS,
+  type Notification,
+  type NotificationType,
+} from '@/lib/domain/types'
 import type { AuctionStore } from '@/lib/store/types'
 
 /**
@@ -77,7 +82,18 @@ function shouldPush(type: NotificationType): boolean {
  * **يُلزم** بعرض إشعارٍ لكلّ دفعة، فبلا نصٍّ يعرض هو «حُدِّث الموقع في
  * الخلفية»، وهي أسوأ من عبارتنا. ولا مبلغ فيهما ولا رقم لوحة.
  */
-type PushBody = { title: string; body: string; href: string | null; tag: string }
+type PushBody = {
+  title: string
+  body: string
+  href: string | null
+  /** الوسم هو نوع الإشعار — يُقرأ للاستبدال **ولاشتقاق الإلحاح** */
+  tag: string
+}
+
+/** أيخترق هذا النوعُ وضعَ التركيز؟ — ثلاثةٌ وحدها. */
+function isTimeSensitive(tag: string): boolean {
+  return (TIME_SENSITIVE_NOTIFICATIONS as readonly string[]).includes(tag)
+}
 
 async function deliver(store: AuctionStore, userId: string, payload: PushBody): Promise<void> {
   const keys = vapid()
@@ -124,6 +140,14 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
         href: payload.href,
         tag: payload.tag,
         badge,
+        /*
+         * الإلحاح يُشتقّ من النوع لا يُمرَّر من المُستدعي.
+         *
+         * ولو مُرِّر لصار قرارًا في كلّ موضعِ إرسال، فاختلفت المواضع بمرور
+         * الوقت: إشعارٌ يخترق التركيز من مسارٍ ولا يخترقه من آخر. والنوع
+         * واحدٌ فحكمُه واحد.
+         */
+        timeSensitive: isTimeSensitive(payload.tag),
       }).catch(() => 'failed' as const)
       // الميّت وحده يُحذف — والفشل العابر يُعاد إليه في الإشعار التالي
       if (result === 'gone') await store.deleteUserDevice(device.pushToken)

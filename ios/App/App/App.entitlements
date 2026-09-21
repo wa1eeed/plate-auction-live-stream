@@ -21,6 +21,16 @@
     ويلزمها `/.well-known/apple-app-site-association` على النطاق — وهو مخدومٌ
     من المنصّة، انظر `src/app/.well-known/`.
   -->
+  <!--
+    إشعاراتٌ تخترق وضع التركيز — لثلاثة أنواعٍ وحدها، انظر
+    `TIME_SENSITIVE_NOTIFICATIONS` في `src/lib/domain/types.ts`.
+
+    وبلا هذا الاستحقاق **تتجاهل أبل `interruption-level` بلا خطأ**: يُرسَل
+    الإشعار ويصل ويُعرض عاديًّا، ولا شيء يقول إنّ الطلب أُسقط.
+  -->
+  <key>com.apple.developer.usernotifications.time-sensitive</key>
+  <true/>
+
   <key>com.apple.developer.associated-domains</key>
   <array>
     <string>applinks:mazad.nx.sa</string>
