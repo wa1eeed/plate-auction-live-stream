@@ -12,7 +12,17 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: false },
-  experimental: { optimizePackageImports: ['lucide-react'] },
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+    /*
+     * خيطُ عاملٍ واحد في البناء — لا واحدٌ لكلّ نواة.
+     *
+     * Next يفتح عاملًا لكلّ نواةٍ افتراضًا، وخادمٌ صغير قد تكثر نواتُه وتقلّ
+     * ذاكرتُه — فتُقتل العملية بلا سطر خطأ. والبناء يبطؤ قليلًا ولا يسقط.
+     */
+    workerThreads: false,
+    cpus: 1,
+  },
 
   /**
    * سائق القاعدة يبقى خارج الحزمة.
