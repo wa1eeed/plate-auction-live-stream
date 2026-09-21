@@ -3,8 +3,9 @@
 # بناءُ iOS يتطلّب macOS وXcode في **مكانٍ ما**، ولا مفرّ من ذلك. وجهاز
 # `macos-15` هنا يحملهما، فيبقى جهازُك نظيفًا.
 #
-# وبلا شهادة توقيع يُبنى التطبيق **بلا توقيع**: يُتحقَّق أنّه يُترجم ويُربط —
-# وهو ما يُراد قبل شراء حسابٍ أو إصدار شهادة — ولا يُنتج `.ipa` صالحًا للتثبيت.
+# والتوقيع بمفتاح App Store Connect وحده — لا شهادة `.p12` ولا ملفّ تعريف
+# يُصنع باليد. وبلا المفتاح يُبنى التطبيق **بلا توقيع**: يُتحقَّق أنّه يُترجم
+# ويُربط، ولا يُنتج `.ipa` صالحًا للتثبيت.
 name: تطبيق iOS
 
 on:
@@ -36,58 +37,61 @@ jobs:
         run: npx cap sync ios
 
       # ----------------------------------------------------------- التوقيع
-      - name: تهيئة الشهادة والتعريف
+      #
+      # **مفتاح App Store Connect وحده** — لا شهادة `.p12` ولا ملفّ تعريف.
+      #
+      # و`-allowProvisioningUpdates` مع مفتاح واجهة أبل يجعل Xcode على الخادم
+      # يُصدر الشهادة ويُنشئ ملفّ التعريف ويُنزّلهما بنفسه. والطريق القديم
+      # يقتضي توليد طلب توقيعٍ في Keychain على ماك، وتصدير `.p12`، وإنشاء
+      # ملفّ تعريفٍ باليد، وتجديدَ ذلك كلَّه كلّ سنة — وصاحبُ هذه المنصّة لا
+      # Xcode عنده أصلًا.
+      #
+      # والمفتاح سرٌّ واحد يُبطَل من اللوحة إن تسرّب، بخلاف شهادةٍ يُعاد بناء
+      # كلّ شيءٍ حولها.
+      - name: تهيئة مفتاح التوقيع
         id: signing
         env:
-          CERT_P12: ${{ secrets.APPLE_CERT_P12_BASE64 }}
-          CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-          PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APPSTORE_KEY_P8_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -z "$CERT_P12" ] || [ -z "$PROFILE" ]; then
+          if [ -z "$KEY_P8" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ] || [ -z "$TEAM_ID" ]; then
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::لا شهادة توقيع — سيُبنى تحقّقًا من الترجمة فقط"
+            echo "::notice::لا مفتاح توقيع — سيُبنى تحقّقًا من الترجمة فقط"
             exit 0
           fi
 
-          # سلسلة مفاتيح مؤقّتة تعيش مع الوظيفة وتموت معها — لا تُلمَس سلسلة
-          # النظام، ولا يبقى مفتاحٌ بعد انتهاء البناء.
-          KEYCHAIN=$RUNNER_TEMP/build.keychain
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 3600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # خارج مساحة العمل: ما في مجلّد المستودع قد يُلتقط في أثرٍ يُرفع
+          KEY_DIR=$RUNNER_TEMP/private_keys
+          mkdir -p "$KEY_DIR"
+          echo "$KEY_P8" | base64 -d > "$KEY_DIR/AuthKey_$KEY_ID.p8"
+          chmod 600 "$KEY_DIR/AuthKey_$KEY_ID.p8"
 
-          echo "$CERT_P12" | base64 -d > "$RUNNER_TEMP/cert.p12"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
-            -T /usr/bin/codesign
-          # بدونه يسأل `codesign` عن كلمة السلسلة في كلّ استدعاء فيتعلّق البناء
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-
-          PROFILES=~/Library/MobileDevice/Provisioning\ Profiles
-          mkdir -p "$PROFILES"
-          echo "$PROFILE" | base64 -d > "$PROFILES/build.mobileprovision"
-
-          rm -f "$RUNNER_TEMP/cert.p12"
+          echo "key_path=$KEY_DIR/AuthKey_$KEY_ID.p8" >> "$GITHUB_OUTPUT"
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: بناء تحقّقٍ بلا توقيع
         if: steps.signing.outputs.signed != 'true'
         working-directory: ios/App
-        # يُثبت أنّ المشروع يُترجم ويُربط — ولا يُنتج ما يُثبَّت على جهاز
+        # يُثبت أنّ المشروع يُترجم ويُربط — ولا يُنتج ما يُثبَّت على جهاز.
+        # والاستحقاقات تُعطَّل: بلا فريقٍ لا ملفّ تعريف يحملها.
         run: |
           xcodebuild build \
             -project App.xcodeproj \
             -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS=
 
       - name: أرشفة وتصدير IPA
         if: steps.signing.outputs.signed == 'true'
         working-directory: ios/App
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          KEY_PATH: ${{ steps.signing.outputs.key_path }}
         run: |
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -96,8 +100,18 @@ jobs:
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>${TEAM_ID}</string>
             <key>uploadSymbols</key><true/>
+            <key>signingStyle</key><string>automatic</string>
           </dict></plist>
           PLIST
+
+          # `-allowProvisioningUpdates` هي التي تأذن لـXcode بإصدار ما ينقص.
+          # وبلا المفاتيح الثلاثة لا يجد بمن يُخاطب أبل فيسقط بسؤالٍ لا مجيب له.
+          AUTH=(
+            -allowProvisioningUpdates
+            -authenticationKeyPath "$KEY_PATH"
+            -authenticationKeyID "$KEY_ID"
+            -authenticationKeyIssuerID "$ISSUER_ID"
+          )
 
           xcodebuild archive \
             -project App.xcodeproj \
@@ -105,12 +119,14 @@ jobs:
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            "${AUTH[@]}" \
             DEVELOPMENT_TEAM="$TEAM_ID"
 
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
-            -exportPath "$RUNNER_TEMP/export"
+            -exportPath "$RUNNER_TEMP/export" \
+            "${AUTH[@]}"
 
       - name: رفع المخرجات
         if: steps.signing.outputs.signed == 'true'
@@ -128,13 +144,9 @@ jobs:
           # مفتاح App Store Connect — أسلم من كلمة مرورٍ لحسابٍ كامل
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-          KEY_P8: ${{ secrets.APPSTORE_KEY_P8_BASE64 }}
         run: |
-          if [ -z "$KEY_P8" ]; then
-            echo "::notice::لا مفتاح App Store Connect — لم يُرفع شيء"
-            exit 0
-          fi
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "$KEY_P8" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          # المفتاح نفسه الذي وقّع — يُنسخ حيث تطلبه `altool`
+          mkdir -p ~/.private_keys
+          cp "${{ steps.signing.outputs.key_path }}" ~/.private_keys/
           xcrun altool --upload-app -f "$RUNNER_TEMP"/export/*.ipa -t ios \
             --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"

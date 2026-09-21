@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  استحقاقات التطبيق — ما يأذن به النظام، ويُخبز في ملفّ التعريف عند التوقيع.
+
+  وبلا هذا الملفّ يُنشئ التوقيع التلقائيّ ملفَّ تعريفٍ **بلا قدرة الإشعارات**،
+  فيسقط `registerForRemoteNotifications` صامتًا ولا يصل إشعارٌ واحد — والبناء
+  ينجح والرفع ينجح ولا شيء يشير إلى السبب.
+-->
+<plist version="1.0">
+<dict>
+  <!--
+    `production` لا `development`: ما يُبنى هنا أرشيفُ إصدارٍ يذهب إلى
+    TestFlight والمتجر، وهما على خوادم APNs الإنتاجية. و`development` في
+    أرشيفٍ يعني رمزًا لا يقبله خادم الإنتاج فلا يصل شيء.
+  -->
+  <key>aps-environment</key>
+  <string>production</string>
+
+  <!--
+    الروابط الكونية: رابطُ إعلانٍ يُرسَل في محادثة يفتح التطبيق لا المتصفّح.
+    ويلزمها `/.well-known/apple-app-site-association` على النطاق — وهو مخدومٌ
+    من المنصّة، انظر `src/app/.well-known/`.
+  -->
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:mazad.nx.sa</string>
+  </array>
+</dict>
+</plist>
