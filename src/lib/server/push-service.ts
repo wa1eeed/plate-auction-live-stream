@@ -1,4 +1,5 @@
 import webpush from 'web-push'
+import { apnsConfigured, sendApns } from './apns'
 import { fcmConfigured, sendFcm } from './fcm'
 import { appUrl } from '@/lib/config'
 import {
@@ -109,11 +110,22 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
     (device) => device.notificationsEnabled,
   )
   const devices = all.filter((device) => device.platform === 'web' && device.webKeys)
+
+  /*
+   * **ثلاث قنواتٍ لا اثنتان** — ولكلّ منصّةٍ ما تفهمه.
+   *
+   * وiOS لا يمرّ بـFCM: إضافة Capacitor تُعيد هناك **رمز APNs خامًا** لا
+   * رمزَ تسجيلٍ من FCM، فإرسالُه إليه يُردّ. وأندرويد يمرّ به لأنّ الإضافة
+   * تستعمله فتُعيد رمزًا صحيحًا.
+   *
+   * وما لا قناةَ له يُترك **ولا يُحذف**: جهازٌ لم تُضبط قناتُه بعدُ ليس ميّتًا.
+   */
+  const appleDevices = apnsConfigured() ? all.filter((device) => device.platform === 'ios') : []
   const nativeDevices = fcmConfigured()
-    ? all.filter((device) => device.platform !== 'web')
+    ? all.filter((device) => device.platform === 'android')
     : []
 
-  if (devices.length === 0 && nativeDevices.length === 0) return
+  if (devices.length === 0 && nativeDevices.length === 0 && appleDevices.length === 0) return
 
   /*
    * الأيقونة تُقرأ من السجلّ لا تُكتب ثابتة — بواجهة المخزن لا بنبشِ داخله.
@@ -128,9 +140,24 @@ async function deliver(store: AuctionStore, userId: string, payload: PushBody): 
    * وهو للشارة على iOS: آبل تعرض ما يُرسَل إليها حرفيًّا ولا تحسبه، والخادم
    * وحده يعرفه. وفشلُ قراءته لا يمنع الإشعار — تُرسَل بلا شارة.
    */
-  const badge = nativeDevices.length
-    ? await store.countUnreadNotifications(userId).catch(() => 0)
-    : 0
+  const badge =
+    nativeDevices.length || appleDevices.length
+      ? await store.countUnreadNotifications(userId).catch(() => 0)
+      : 0
+
+  await Promise.all(
+    appleDevices.map(async (device) => {
+      const result = await sendApns(device.pushToken, {
+        title: payload.title,
+        body: payload.body,
+        href: payload.href,
+        tag: payload.tag,
+        badge,
+        timeSensitive: isTimeSensitive(payload.tag),
+      }).catch(() => 'failed' as const)
+      if (result === 'gone') await store.deleteUserDevice(device.pushToken)
+    }),
+  )
 
   await Promise.all(
     nativeDevices.map(async (device) => {
