@@ -51,6 +51,15 @@ curl -s  https://mazad.nx.sa/.well-known/assetlinks.json | head -5
 - [ ] AAB موقَّعٌ ومرفوع
 - [ ] نموذج «أمان البيانات» في Play يطابق `/privacy` — وخلافُه سببُ ردّ
 
+## ٤.٥ الأصول والنصوص — جاهزة
+
+- [x] نصوص المتجرين بحدودها: [`store-assets/STORE_LISTING.md`](store-assets/STORE_LISTING.md)
+- [x] الرسم الدعائيّ 1024×500 وأيقونة 512 — `node scripts/gen-app-icons.mjs`
+- [x] لقطات 1290×2796 و1080×1920 — `STORE_SHOTS=1 pnpm exec playwright test store-screenshots`
+- [ ] **أعِد اللقطات ببيئةٍ مضبوطة**: الحالية من بيئة الاختبار وتظهر فيها
+      «لا توجد طريقة دفع مفعّلة»
+- [ ] حساب المراجعة (بريدٌ وكلمة) في ملاحظات App Review
+
 ## ٥. المتجرَين
 
 - [ ] الوصف يصف **منتجًا** لا موقعًا: «سوق مزاداتٍ لحظيّ للوحات المركبات»
