@@ -292,3 +292,20 @@ test.describe('الصلاحيات أفقيًّا — مستخدمٌ يطلب م�
     expect(result.status, 'المسح الداخليّ يُفتح بجلسة مستخدم').toBe(403)
   })
 })
+
+test.describe('سياسة الخصوصية — يشترطها المتجران', () => {
+  test('الصفحة تُفتح علنًا بلا تسجيل، وفيها ما يلزم المراجعة', async ({ request }) => {
+    const response = await request.get('/privacy')
+    expect(response.status(), '/privacy لا تُفتح — والمتجران يطلبان رابطًا عامًّا').toBe(200)
+
+    const html = await response.text()
+    for (const needle of ['سياسة الخصوصية', 'ما نجمعه', 'ما لا نجمعه', 'حقوقك']) {
+      expect(html, `السياسة بلا قسم «${needle}»`).toContain(needle)
+    }
+  })
+
+  test('ومربوطةٌ من التذييل — رابطٌ لا يُوجد لا يُقرأ', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('footer a[href="/privacy"]')).toHaveCount(1)
+  })
+})

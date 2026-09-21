@@ -33,10 +33,12 @@ curl -s  https://mazad.nx.sa/.well-known/assetlinks.json | head -5
       (`applinks:mazad.nx.sa`)
 - [ ] مفتاح APNs مرفوعٌ في مشروع Firebase — **بدونه لا يصل iOS شيء ولو نجح
       الإرسال**
-- [ ] أيقونة التطبيق بكلّ مقاساتها، وشاشة إقلاعٍ بالهوية
+- [x] أيقونة التطبيق وشاشة الإقلاع — تُولَّد بـ`node scripts/gen-app-icons.mjs`
+- [x] `PrivacyInfo.xcprivacy` موجودٌ **ومسجَّلٌ في مرحلة الموارد** في `project.pbxproj`
 - [ ] `GoogleService-Info.plist` في `ios/App/App/`
 - [ ] الأذونات المعلنة: الإشعارات وحدها — لا كاميرا ولا موقع ولا ميكروفون
-- [ ] نصّ الخصوصية في App Store Connect يطابق ما يُجمع فعلًا
+- [ ] نصّ الخصوصية في App Store Connect يطابق `PrivacyInfo.xcprivacy` **و**`/privacy`
+- [ ] رابط سياسة الخصوصية: `https://mazad.nx.sa/privacy`
 - [ ] Archive → Validate → Distribute
 
 ## ٤. أندرويد
@@ -47,6 +49,7 @@ curl -s  https://mazad.nx.sa/.well-known/assetlinks.json | head -5
 - [ ] الأذونات: `INTERNET` و`POST_NOTIFICATIONS` وحدهما
 - [ ] رابط التطبيق مُتحقَّقٌ منه في Play Console
 - [ ] AAB موقَّعٌ ومرفوع
+- [ ] نموذج «أمان البيانات» في Play يطابق `/privacy` — وخلافُه سببُ ردّ
 
 ## ٥. المتجرَين
 

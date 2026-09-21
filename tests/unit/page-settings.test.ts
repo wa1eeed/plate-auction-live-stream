@@ -97,3 +97,32 @@ describe('ظهور الأسئلة حسب طريقة البيع', () => {
     expect(all.some((row) => row.id === item.id)).toBe(true)
   })
 })
+
+describe('سياسة الخصوصية', () => {
+  it('منشورةٌ افتراضًا — والمتجران يرفضان تطبيقًا بلا رابطٍ لها', () => {
+    expect(DEFAULT_PAGE_SETTINGS.privacy.published).toBe(true)
+    expect(DEFAULT_PAGE_SETTINGS.privacy.sections.length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('تُصرّح بما لا يُجمع لا بما يُجمع وحده', () => {
+    const text = DEFAULT_PAGE_SETTINGS.privacy.sections.map((s) => s.heading + s.body).join(' ')
+    // ما أقرّ به `PrivacyInfo.xcprivacy` وما نفاه يجب أن يُقال هنا أيضًا
+    for (const promise of ['لا موقعك', 'مُعرّفًا إعلانيًّا', 'لا نبيع']) {
+      expect(text, `السياسة لا تذكر «${promise}»`).toContain(promise)
+    }
+  })
+
+  it('حقلٌ جديد يظهر فوق إعداداتٍ محفوظةٍ لا تعرفه', async () => {
+    /*
+     * وهذا ما يقع على القاعدة الحيّة: صفٌّ محفوظٌ قبل إضافة الحقل. والمدمِج
+     * يضع الافتراضيّ أوّلًا ثمّ المحفوظ فوقه — فلولا هذا الترتيب خرج
+     * `privacy` غيرَ معرَّفٍ وسقطت الصفحة التي تقرؤه.
+     */
+    const saved = { ...DEFAULT_PAGE_SETTINGS } as Record<string, unknown>
+    delete saved.privacy
+
+    const merged = { ...structuredClone(DEFAULT_PAGE_SETTINGS), ...saved }
+    expect(merged.privacy).toBeDefined()
+    expect(merged.privacy.title).toBe('سياسة الخصوصية')
+  })
+})

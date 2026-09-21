@@ -20,6 +20,7 @@ const GROUPS = [
     tabs: [
       { key: 'about', label: 'من نحن', hint: 'من يشغّل المنصّة وما يلتزم به' },
       { key: 'terms', label: 'الشروط والأحكام', hint: 'ما يوافق عليه المستخدم' },
+      { key: 'privacy', label: 'سياسة الخصوصية', hint: 'يشترطها المتجران — ويجب أن تطابق ما يُجمع فعلًا' },
     ],
   },
   {
@@ -46,7 +47,7 @@ export function PagesSettingsForm({ settings }: { settings: PageSettings }) {
   const [form, setForm] = useState<Draft>(settings)
   const [busy, setBusy] = useState(false)
 
-  const setDoc = (key: 'about' | 'terms', value: EditableDoc) =>
+  const setDoc = (key: 'about' | 'terms' | 'privacy', value: EditableDoc) =>
     setForm((current) => ({ ...current, [key]: value }))
 
   async function submit(event: React.FormEvent) {
@@ -90,6 +91,14 @@ export function PagesSettingsForm({ settings }: { settings: PageSettings }) {
               path="/terms"
               doc={form.terms}
               onChange={(value) => setDoc('terms', value)}
+            />
+          ),
+          privacy: (
+            <DocEditor
+              name="سياسة الخصوصية"
+              path="/privacy"
+              doc={form.privacy}
+              onChange={(value) => setDoc('privacy', value)}
             />
           ),
           howItWorks: (
