@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AppSettingsCard } from '@/components/layout/app-settings-card'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { CompactCountdown } from '@/components/market/auction-countdown'
 import { formatAmount } from '@/lib/domain/money'
@@ -446,6 +447,18 @@ export default async function AccountOverviewPage() {
             </ul>
           )}
         </section>
+
+        {/*
+          * الإعدادات آخر الصفحة — وفيها ما كان في الدُرج.
+          *
+          * والدُرج يُخفى في الغلاف الأصيل لأنّ الملاحة السفلية تقوم مقامه،
+          * وكان يحمل **مفتاح إشعارات الجهاز** ومفتاح الصوت ولا يوجدان في
+          * غيره. فإخفاؤه بلا نقلهما يقطع الطريق إلى الإشعارات بالكلّية.
+          *
+          * وموضعُها آخرًا مقصود: من دخل «ملفّي» جاء لعملٍ لا لضبطٍ، والضبط
+          * يُطلب نادرًا فيُوضع حيث يُبحث عنه لا حيث يزاحم.
+          */}
+        <AppSettingsCard />
       </div>
     </div>
   )

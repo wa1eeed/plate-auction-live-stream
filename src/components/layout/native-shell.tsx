@@ -16,6 +16,18 @@ export function NativeShell() {
   const pathname = usePathname()
 
   /* ------------------------------------------------ الإقلاع وشريط الحالة */
+  /*
+   * علامةٌ على الجذر تقول «نحن في غلافٍ أصيل».
+   *
+   * ويُقرأ منها CSS ما يُخفى وما يُظهر — بدل شرطٍ يُحسب في كلّ مكوّن ويُخطئ
+   * في الترطيب. وتُوضع بعد الترطيب لأنّ الخادم لا يعرف أين تُعرض صفحتُه.
+   */
+  useEffect(() => {
+    if (!isNativeShell()) return
+    document.documentElement.setAttribute('data-native', devicePlatform())
+    return () => document.documentElement.removeAttribute('data-native')
+  }, [])
+
   useEffect(() => {
     if (!isNativeShell()) return
     let cancelled = false

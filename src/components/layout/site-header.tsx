@@ -34,7 +34,18 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
       * و`var(--safe-top)` صفرٌ في المتصفّح — فالويب على حاله حرفًا بحرف.
       */
     <header
-      className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950/80 backdrop-blur-xl"
+      /*
+       * **ارتفاعٌ ثابت وخلفيةٌ صلبة تحت شريط الحالة.**
+       *
+       * وكانت الخلفية `bg-ink-950/80` مع `backdrop-blur`، فشريطُ المنطقة
+       * الآمنة — وهو حشوةٌ لا محتوى — يُظهر ما يمرّ تحته في أثناء التمرير.
+       * فيُرى فراغًا يظهر ويختفي مع الحركة، والهيدر يبدو متبدّل الارتفاع.
+       *
+       * والخلفية الصلبة تُغلق ذلك: الشريط لونٌ واحد ثابت، والهيدر بارتفاعٍ
+       * واحد من أوّل الصفحة إلى آخرها. والضباب يبقى على **الشريط الداخليّ**
+       * وحده حيث المحتوى، فلا يُفقد جمالُه حيث يُرى.
+       */
+      className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950"
       style={{ paddingTop: 'var(--safe-top)' }}
     >
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
@@ -53,7 +64,14 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
           * ومن `md` فصاعدًا يعود إلى الصفّ: الدُرج يختفي، والتنقّل يظهر
           * بجانبه، فلا معنى لتوسيطٍ يترك يمين الترويسة خاليًا.
           */}
-        <MobileNav signedIn={Boolean(user)} />
+        {/*
+          * الدُرج للويب وحده — وفي الغلاف تقوم مقامه الملاحة السفلية.
+          * و`data-web-only` تُخفيه بـCSS متى كانت الملاحة السفلية حاضرة،
+          * فلا يُرسم زرّان لغرضٍ واحد.
+          */}
+        <span data-web-only>
+          <MobileNav signedIn={Boolean(user)} />
+        </span>
 
         {/*
           * زرّ الرجوع — للغلاف الأصيل وحده، وبعد الدُرج.

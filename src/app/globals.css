@@ -148,6 +148,17 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /*
+   * ما هو للويب وحده يُخفى في الغلاف الأصيل.
+   *
+   * و`data-native` تُوضع على الجذر من `NativeShell` بعد الترطيب — فالقرار
+   * يقع في CSS لا في شجرة React: لا شرطٌ يُحسب في كلّ مكوّن، ولا اختلافٌ
+   * بين ما رُسم على الخادم وما رُطِّب في المتصفّح.
+   */
+  :root[data-native] [data-web-only] {
+    display: none;
+  }
+
   /* مساحة لمس لا تقلّ عن 44px للأزرار الصغيرة على الأجهزة اللمسية */
   @media (pointer: coarse) {
     button:not([data-compact]),

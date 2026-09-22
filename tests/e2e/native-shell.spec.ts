@@ -177,3 +177,66 @@ test.describe('جرس الإشعارات لا يُغلق نفسه', () => {
     expect(refreshes.length - before, 'أُنعش المسار والقائمة مفتوحة').toBe(0)
   })
 })
+
+test.describe('الملاحة السفلية والهيدر', () => {
+  test('لا ملاحةَ سفلية في المتصفّح — والدُرج باقٍ', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/market')
+    await expect(page.getByRole('navigation', { name: 'التنقّل' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'القائمة' })).toHaveCount(1)
+  })
+
+  test('والهيدر بخلفيةٍ صلبة — لا شفّافةٍ يظهر تحتها فراغ', async ({ page }) => {
+    await page.goto('/market')
+    const header = page.locator('header').first()
+    const style = await header.evaluate((el) => {
+      const computed = getComputedStyle(el)
+      return { bg: computed.backgroundColor, filter: computed.backdropFilter }
+    })
+    /*
+     * شفافيةٌ في شريط المنطقة الآمنة تُظهر ما يمرّ تحته في أثناء التمرير،
+     * فيُرى فراغًا يظهر ويختفي — وهو ما اشتُكي منه على الجهاز.
+     */
+    expect(style.bg, 'خلفية الهيدر شفّافة').not.toMatch(/rgba\([^)]*,\s*0?\.\d+\)/)
+  })
+
+  test('وارتفاعُه ثابتٌ بين أعلى الصفحة وأسفلها', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/market')
+    const header = page.locator('header').first()
+
+    const top = await header.evaluate((el) => el.getBoundingClientRect().height)
+    await page.evaluate(() => window.scrollTo(0, 900))
+    await page.waitForTimeout(400)
+    const scrolled = await header.evaluate((el) => el.getBoundingClientRect().height)
+
+    expect(scrolled, 'ارتفاع الهيدر تبدّل بالتمرير').toBe(top)
+  })
+})
+
+test.describe('إخفاء الدُرج لا يُفقد شيئًا', () => {
+  /*
+   * الدُرج يُخفى في الغلاف لأنّ الملاحة السفلية تقوم مقامه — وكان يحمل
+   * **مفتاح إشعارات الجهاز** ومفتاح الصوت ولا يوجدان في غيره. فإخفاؤه بلا
+   * نقلهما يقطع الطريق إلى الإشعارات بالكلّية، ولا يُدرى أين ذهبت.
+   */
+  test('الإعدادات بلغت صفحة الملفّ', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account')
+
+    await expect(page.getByText('الإعدادات', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('أصوات المنصّة').first()).toBeVisible()
+    /* داخل `#main` — فالتذييل يحمل روابط بالأسماء نفسها */
+    const settings = page.locator('#main')
+    await expect(settings.getByRole('link', { name: 'كيف يعمل السوق' })).toBeVisible()
+    await expect(settings.getByRole('link', { name: 'الأسئلة الشائعة' })).toBeVisible()
+    await expect(settings.getByRole('link', { name: 'محفظتي' }).first()).toBeVisible()
+
+    /*
+     * **ومفتاح الإشعارات لا يُقاس هنا**: بيئة الاختبار بلا مفاتيح VAPID،
+     * فيردّ `/api/push` بـ«غير مفعّل» ويُرجع المكوّن عدمًا — وهو صوابُه على
+     * الويب. وحضورُه في الغلاف يحرسه `push-toggle-native.test.ts` بترتيب
+     * المصدر: الغلاف يُفصل قبل أيّ واجهة ويب، فلا يمرّ بحارس VAPID أصلًا.
+     */
+  })
+})

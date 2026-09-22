@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import { Tajawal } from 'next/font/google'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
+import { getCurrentUser } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
 import { NativeShell } from '@/components/layout/native-shell'
+import { BottomNav } from '@/components/layout/bottom-nav'
 import { NetworkBanner } from '@/components/layout/network-banner'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
 import { StagingBanner } from '@/components/layout/staging-banner'
@@ -122,6 +124,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
    * يبقى مُطفأً، ومن أطفأته الإدارة لا يسمعه أحد.
    */
   const mobile = await getStore().getMobileSettings().catch(() => null)
+  /* الملاحة السفلية تحتاج أن تعرف: غير المسجَّل لا محفظةَ له ولا لوحات */
+  const sessionUser = await getCurrentUser().catch(() => null)
 
   return (
     /*
@@ -168,6 +172,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           */}
         <NetworkBanner />
         {children}
+        {/*
+          * الملاحة السفلية — للغلاف وحده، وبعد المحتوى.
+          *
+          * وموضعُها هنا لا في كلّ صفحة: هي ثابتةٌ خارج السياق، فتُركَّب مرّةً
+          * وتبقى بين التنقّلات بلا إعادة تركيب — وهو ما يجعلها تبدو جزءًا من
+          * التطبيق لا عنصرًا يُرسم مع كلّ شاشة.
+          */}
+        <BottomNav signedIn={Boolean(sessionUser)} />
         <Toaster />
         <ServiceWorkerRegistrar />
         <NativeShell />
