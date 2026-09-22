@@ -14,6 +14,18 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!--
+		التشفير: HTTPS القياسيّ وحده — وهو معفًى.
+
+		وبلا هذا المفتاح تسأل أبل عند **كلّ** رفعة: «هل يستعمل تطبيقك تشفيرًا؟»
+		ويبقى البناء «Missing Compliance» فلا يُثبَّت على جهاز مختبِرٍ واحد حتى
+		يُجاب — سؤالٌ يدويٌّ يتكرّر مع كلّ إصدار.
+
+		والإقرار صحيح: التطبيق لا يشفّر شيئًا بنفسه؛ يستعمل TLS الذي يوفّره
+		النظام. وذلك في إعفاء القسم 740.17(b) من لوائح التصدير الأمريكية.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
