@@ -195,7 +195,7 @@ test.describe('حساب الإيداع', () => {
    */
   test('يردّ آيبانًا مختلّ خانة، ويقبل الصحيح', async ({ page }) => {
     await loginUser(page, USERS.sara)
-    await page.goto('/account/settings')
+    await page.goto('/account/settings/profile')
 
     const iban = page.getByLabel('رقم الآيبان')
     await expect(iban).toBeVisible()

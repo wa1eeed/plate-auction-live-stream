@@ -101,6 +101,19 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
   )
 }
 
+/**
+ * موضعٌ في الشريط — والحركة تقول أين أنت قبل أن يُقرأ اللون.
+ *
+ * وثلاث حركاتٍ لا زخرفة:
+ *
+ *  ١. **هالةٌ تنمو** خلف الأيقونة عند النشاط — تُعرف بطرف العين في أثناء
+ *     التنقّل، فلا يُبحث عن اللون في خمسة عناصر متشابهة.
+ *  ٢. **الأيقونة ترتفع قليلًا** وتغلظ — فرقٌ يُحسّ ولا يُقاس.
+ *  ٣. **ارتدادٌ عند اللمس** (`active:scale`) — تأكيدٌ فوريّ قبل أن تصل
+ *     الصفحة، وهو ما يفرّق بين تطبيقٍ يستجيب وصفحةٍ تنتظر.
+ *
+ * ولا شيء منها يتحرّك بلا سبب: الحركة التي تقع في كلّ حال تُعلَّم أن تُتجاهَل.
+ */
 function Tab({
   href,
   label,
@@ -117,12 +130,28 @@ function Tab({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold transition-colors',
+        'group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold transition-colors duration-200 active:scale-95',
         active ? 'text-gold-400' : 'text-muted',
       )}
     >
-      <Icon className="size-5" strokeWidth={active ? 2.4 : 2} />
-      <span>{label}</span>
+      <span className="relative flex size-7 items-center justify-center">
+        {/* الهالة: تنمو من الوسط فتُقرأ الحركة اتّجاهًا لا وميضًا */}
+        <span
+          aria-hidden
+          className={cn(
+            'absolute inset-0 rounded-full bg-gold-500/15 transition-all duration-300 ease-out',
+            active ? 'scale-100 opacity-100' : 'scale-50 opacity-0',
+          )}
+        />
+        <Icon
+          className={cn(
+            'relative size-5 transition-transform duration-300 ease-out',
+            active ? '-translate-y-px scale-110' : 'scale-100',
+          )}
+          strokeWidth={active ? 2.5 : 2}
+        />
+      </span>
+      <span className="transition-opacity duration-200">{label}</span>
     </Link>
   )
 }

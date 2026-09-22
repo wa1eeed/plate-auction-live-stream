@@ -232,8 +232,10 @@ test.describe('إخفاء الدُرج لا يُفقد شيئًا', () => {
     await loginUser(page, USERS.waleed)
     await page.goto('/account/settings')
 
-    await expect(page.getByText('الإعدادات', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('أصوات المنصّة').first()).toBeVisible()
+    /* داخل `#main` — فشريط الأقسام يحمل رابطًا بالاسم نفسه */
+    const main = page.locator('#main')
+    await expect(main.getByText('الإعدادات', { exact: true }).first()).toBeVisible()
+    await expect(main.getByText('أصوات المنصّة').first()).toBeVisible()
     /* داخل `#main` — فالتذييل يحمل روابط بالأسماء نفسها */
     const settings = page.locator('#main')
     await expect(settings.getByRole('link', { name: 'كيف يعمل السوق' })).toBeVisible()
@@ -306,5 +308,46 @@ test.describe('التذييل وقائمة العضوية للويب', () => {
     for (const label of ['كيف يعمل السوق', 'الأسئلة الشائعة', 'محفظتي']) {
       await expect(main.getByRole('link', { name: label }).first()).toBeVisible()
     }
+  })
+})
+
+test.describe('صفحة الإعدادات', () => {
+  test('بيانات الحساب خلف سطرٍ — لا حقولٌ في الصفحة', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/settings')
+
+    /* لا حقولَ مملوءة تدعو إلى تعديلٍ من لا يريده */
+    await expect(page.locator('#main input')).toHaveCount(0)
+
+    const row = page.getByRole('link', { name: /بيانات حسابي/ })
+    await expect(row).toBeVisible()
+    await row.click()
+    await expect(page.getByRole('heading', { name: 'بيانات حسابي' })).toBeVisible()
+    /* والحقول هناك */
+    await expect(page.locator('#main input').first()).toBeVisible()
+  })
+
+  test('وشريط الأقسام معلَّمٌ للإخفاء فيها', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/settings')
+    /* العلامتان موجودتان، والإخفاء يقع بـ`:has` في CSS */
+    await expect(page.locator('[data-settings-page]')).toHaveCount(1)
+    await expect(page.locator('[data-hide-on-settings]')).toHaveCount(1)
+  })
+
+  test('ومفتاحا الصوت والإشعارات صفّان يُضغطان كاملين', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/settings')
+
+    /* داخل `#main` — والهيدر يحمل أيقونة صوتٍ باسمٍ مشابه */
+    const sound = page.locator('#main').getByRole('button', { name: /أصوات المنصّة/ })
+    await expect(sound).toBeVisible()
+    /*
+     * الصفُّ كلُّه هدف — لا مفتاحٌ بعرض نصف إبهام وحوله فراغٌ لا يستجيب.
+     * فيُقاس عرضُه: أقلُّ من نصف الشاشة يعني أنّه عاد أيقونةً في طرف.
+     */
+    const box = await sound.boundingBox()
+    expect(box!.width, 'صفُّ الصوت ضيّق — عاد أيقونةً لا صفًّا').toBeGreaterThan(200)
+    expect(box!.height, 'صفٌّ قصير يصعب لمسه').toBeGreaterThanOrEqual(44)
   })
 })

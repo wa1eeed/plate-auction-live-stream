@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BellOff, BellRing, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { PushPrimer } from './push-primer'
 import {
@@ -247,22 +248,53 @@ export function PushToggle() {
     )
   }
 
+  /*
+   * صفٌّ كامل يُضغط — لا مفتاحٌ صغير في طرفه.
+   *
+   * وكان المفتاح وحده هو الهدف: عرضُه نصفُ عرض الإبهام، وحوله فراغٌ لا
+   * يستجيب. فيُخطئه صاحبه مرّةً ومرّتين فيظنّه معطوبًا.
+   *
+   * وصار الصفُّ كلُّه هدفًا — بأيقونةٍ ونصٍّ يشرح، ومفتاحٍ يُرى ولا يُضغط
+   * وحده. وهو ترتيبُ صفوف الإعدادات في التطبيقات: نظرةٌ تكفي لمعرفة الحال،
+   * ولمسةٌ في أيّ موضعٍ تكفي لتبديله.
+   */
+  const on = state === 'on'
+  const busy = state === 'busy'
+
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-2">
-      <span className="flex items-center gap-2 text-sm font-semibold text-muted">
-        {state === 'busy' ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : (
-          <BellRing className="size-3.5" />
-        )}
-        إشعارات الجهاز
-      </span>
-      <Switch
-        checked={state === 'on'}
-        disabled={state === 'busy'}
-        aria-label="إشعارات الجهاز"
-        onCheckedChange={(next) => (next ? setPriming(true) : void disable())}
-      />
+    <div className="px-1 py-1">
+      <button
+        type="button"
+        disabled={busy}
+        aria-pressed={on}
+        onClick={() => (on ? void disable() : setPriming(true))}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors hover:bg-ink-700/40 disabled:opacity-60"
+      >
+        <span
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+            on ? 'bg-gold-500/15 text-gold-500' : 'border border-ink-600 bg-ink-900 text-muted',
+          )}
+        >
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <BellRing className="size-4" />}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">إشعارات الجهاز</span>
+          <span className="mt-0.5 block text-[12px] leading-relaxed text-muted">
+            {busy
+              ? 'لحظة…'
+              : on
+                ? 'تصلك تنبيهات المزايدات والمهل'
+                : 'فعّلها لتعرف متى تجاوزك أحد'}
+          </span>
+        </span>
+
+        {/* يُرى ولا يُضغط وحده — الصفُّ كلُّه هو الهدف */}
+        <span className="pointer-events-none shrink-0">
+          <Switch checked={on} disabled={busy} aria-hidden tabIndex={-1} />
+        </span>
+      </button>
 
       <PushPrimer
         open={priming}

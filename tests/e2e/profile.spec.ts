@@ -21,7 +21,8 @@ test.describe('الجوال وحسابات التواصل', () => {
     const adminPage = await adminContext.newPage()
 
     await loginUser(userPage, USERS.sara)
-    await userPage.goto('/account/settings')
+    /* الحقول صارت في صفحةٍ داخلية — انظر `settings/profile` */
+    await userPage.goto('/account/settings/profile')
 
     const handle = `sara.live${Date.now().toString().slice(-5)}`
     // يُقبل الرابط الكامل كما يُقبل الاسم — الناس تلصق ما تنسخه

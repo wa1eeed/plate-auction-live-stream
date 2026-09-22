@@ -74,7 +74,7 @@ test.describe('رقم الإعلان', () => {
 })
 
 test.describe('رقم العضوية', () => {
-  test('يظهر في «حسابي» وفي الإعدادات، ومطابق لما تراه الإدارة', async ({ page }) => {
+  test('يظهر في «حسابي» وفي «بيانات حسابي»، ومطابق لما تراه الإدارة', async ({ page }) => {
     await loginUser(page)
 
     const chip = page.getByRole('button', { name: /رقم العضوية U\d{2}-\d{5}/ })
@@ -82,10 +82,20 @@ test.describe('رقم العضوية', () => {
     const label = (await chip.getAttribute('aria-label'))!
     const reference = label.match(/U\d{2}-\d{5}/)![0]
 
-    // ونفسه في الإعدادات — حيث يبحث عنه من يريد نسخه للدعم
+    /*
+     * ونفسه في **بيانات حسابي** — وهي صفحةٌ داخلية تحت الإعدادات.
+     *
+     * وكانت الحقول ورقمُ العضوية في صفحة الإعدادات نفسها، فنُقلت خلف سطرٍ
+     * يُضغط: حقولٌ مملوءة تدعو إلى تعديلٍ من لا يريده، وتُطيل القائمة على
+     * من جاء لمفتاحٍ واحد.
+     */
     await page.goto('/account/settings')
+    /* الرقم في سطر «بيانات حسابي» تعريفًا بالحساب — والبطاقة الكاملة داخله */
+    await expect(page.getByRole('heading', { name: 'رقم العضوية' })).toHaveCount(0)
+
+    await page.getByRole('link', { name: /بيانات حسابي/ }).click()
     await expect(page.getByRole('heading', { name: 'رقم العضوية' })).toBeVisible()
-    await expect(page.getByText(reference)).toBeVisible()
+    await expect(page.getByText(reference).first()).toBeVisible()
   })
 
   test('لا يغادر الخادم في حمولة الإعلان العامة', async ({ page }) => {

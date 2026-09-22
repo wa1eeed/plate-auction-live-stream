@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ChevronLeft, HelpCircle, Route, Wallet } from 'lucide-react'
 import { PushToggle } from './push-toggle'
-import { SoundToggle } from './sound-toggle'
+import { SoundSettingRow } from './sound-setting-row'
 
 /**
  * إعدادات التطبيق وروابطه — **ما كان في الدُرج**.
@@ -20,14 +20,11 @@ export function AppSettingsCard() {
       <h2 className="border-b border-ink-600/70 px-4 py-3 text-sm font-bold">الإعدادات</h2>
 
       <div className="divide-y divide-ink-600/70">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <span className="text-sm font-semibold">أصوات المنصّة</span>
-          <SoundToggle />
+        <div className="px-1 py-1">
+          <SoundSettingRow />
         </div>
 
-        <div className="px-1 py-1">
-          <PushToggle />
-        </div>
+        <PushToggle />
 
         <NavRow href="/account/wallet" label="محفظتي" icon={Wallet} />
         <NavRow href="/how-it-works" label="كيف يعمل السوق" icon={Route} />

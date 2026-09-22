@@ -29,7 +29,14 @@ export default async function AccountLayout({ children }: { children: React.Reac
       <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {/* `min-w-0` على العمود: بدونه يُقاس بمحتواه فيفيض شريط الأقسام بالصفحة */}
         <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_1fr] lg:items-start">
-          <div className="min-w-0">
+          {/*
+            * شريط الأقسام يُخفى في الإعدادات.
+            *
+            * وهي صفحةُ ضبطٍ لا تصفّح: من دخلها يريد مفتاحًا أو رابطًا، وشريطٌ
+            * يعرض «مشترياتي» و«مبيعاتي» فوقه يدعوه إلى الخروج منها قبل أن
+            * يبلغ ما جاء له. والملاحة السفلية تحمل التنقّل في التطبيق.
+            */}
+          <div className="min-w-0" data-hide-on-settings>
             <AccountNav pendingOffers={pendingOffers} />
           </div>
           <main id="main" className="min-w-0">

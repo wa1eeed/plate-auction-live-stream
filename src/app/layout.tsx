@@ -7,6 +7,7 @@ import { getStore } from '@/lib/store'
 import { NativeShell } from '@/components/layout/native-shell'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { NetworkBanner } from '@/components/layout/network-banner'
+import { PullToRefresh } from '@/components/layout/pull-to-refresh'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
 import { StagingBanner } from '@/components/layout/staging-banner'
 import { assetUrl, brandColorCss, getBrand } from '@/lib/server/brand-service'
@@ -179,6 +180,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           * وتبقى بين التنقّلات بلا إعادة تركيب — وهو ما يجعلها تبدو جزءًا من
           * التطبيق لا عنصرًا يُرسم مع كلّ شاشة.
           */}
+        <PullToRefresh />
         <BottomNav signedIn={Boolean(sessionUser)} />
         <Toaster />
         <ServiceWorkerRegistrar />

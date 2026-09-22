@@ -9,6 +9,8 @@ import {
   LATIN_DIGIT_INK,
   inkOf,
   layoutRow,
+  arabicAdvance,
+  fitFontSize,
 } from './arial-metrics'
 
 export type SaudiLicensePlateProps = {
@@ -71,21 +73,12 @@ const ADVANCE = {
   digits: 0.6,
   /** حروف لاتينية كبيرة بمتوسّط A–Z */
   latin: 0.72,
-  /** حروف عربية معزولة، ومعها فراغ الفصل بينها */
-  arabic: 0.82,
+  /*
+   * ولا متوسّط للعربية بعد اليوم — لكلّ حرفٍ عرضُه في
+   * `ARABIC_LETTER_ADVANCE`. والمتوسّط كان يُفيض «ص» ويُضيّق «ا».
+   */
 } as const
 
-function fitFontSize(
-  count: number,
-  base: number,
-  available: number,
-  advance: number,
-  spacing = 0,
-): number {
-  if (count <= 0) return base
-  const natural = count * base * (advance + spacing)
-  return natural <= available ? base : (available / natural) * base
-}
 
 /*
  * لا توجد هنا «معاملات تعويض» بعد اليوم.
@@ -419,24 +412,26 @@ export function SaudiLicensePlate({
   const lettersRoom = (geo.letters.to - geo.letters.from) * 0.86
 
   const numberWidthLimit = fitFontSize(
-    western.length,
+    western.length * ADVANCE.digits,
     geo.fonts.numbers,
     numbersRoom,
-    ADVANCE.digits,
     0.08,
+    western.length,
   )
+  /* مجموع عروض الحروف بعينها — لا عددٌ مضروبٌ في متوسّط */
   const arabicLetterWidthLimit = fitFontSize(
-    letterCount,
+    arabicAdvance(arabicLetters),
     geo.fonts.letters,
     lettersRoom,
-    ADVANCE.arabic,
+    0.06,
+    letterCount,
   )
   const latinLetterWidthLimit = fitFontSize(
-    letterCount,
+    latinLetters.length * ADVANCE.latin,
     geo.fonts.letters,
     lettersRoom,
-    ADVANCE.latin,
     0.1,
+    latinLetters.length,
   )
 
   // ثم يقيّد الشريط الرأسي كل عنصر بحبره الحقيقي، فيتساوى الارتفاع المرئي
@@ -883,6 +878,8 @@ export function SaudiLicensePlate({
                 fontSize={arabicLetterSize}
                 fontWeight={700}
                 direction="rtl"
+                /* مقبضٌ للفحص: يقيس أنّ الحبر لا يتجاوز إطار اللوحة */
+                data-plate-arabic-letters
                 style={{ fontFamily: 'var(--font-plate-arabic)' }}
               >
                 {isolateArabic(arabicLetters)}

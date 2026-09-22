@@ -39,6 +39,48 @@ export const ARABIC_LETTER_INK: Record<string, InkMetrics> = {
   ي: { asc: 0.4614, desc: 0.1943 },
 }
 
+/**
+ * **عرض الحرف** (advance) — لكلّ حرفٍ لا بمتوسّطٍ واحد.
+ *
+ * وكان العرض يُقدَّر بمتوسّطٍ (0.82) لكلّ الحروف، وهو خطأٌ فاحش: «ص» عرضُها
+ * **1.0625** و«ا» عرضُها **0.2168** — بينهما خمسةُ أضعاف. فثلاثُ «ص» تحتاج
+ * 3.19em ويُحسب لها 2.46em، **فتفيض عن خانتها**؛ وثلاثُ «ا» تُضيَّق بلا سبب.
+ *
+ * ويشتدّ الأثر لأنّ الحبر والعرض لا يتلازمان: «س» حبرُها قصير (asc 0.458)
+ * فيُكبَّر خطُّها لتملأ الشريط، **وهي من أعرض الحروف** — فتُكبَّر ثمّ تفيض.
+ *
+ * وهذه القيم مقيسةٌ بـ`measureText` على Arial Bold — الخطّ نفسه الذي تُرسم
+ * به اللوحة — لا مقدَّرة. والجدول ثابتٌ لا يُقاس وقت التشغيل: القياس يحتاج
+ * canvas ولا وجود له على الخادم، فيختلف التخطيط بين الجهتين ويسقط الترطيب.
+ */
+export const ARABIC_LETTER_ADVANCE: Record<string, number> = {
+  أ: 0.2168,
+  ا: 0.2168,
+  ب: 0.6494,
+  ح: 0.5771,
+  د: 0.3428,
+  ر: 0.4326,
+  س: 0.8994,
+  ص: 1.0625,
+  ط: 0.5234,
+  ع: 0.541,
+  ق: 0.6123,
+  ك: 0.541,
+  ل: 0.4512,
+  م: 0.3604,
+  ن: 0.541,
+  ه: 0.3428,
+  و: 0.4512,
+  ي: 0.6445,
+}
+
+/** مجموع عروض حروف نصٍّ — وما لا يُعرف يأخذ أوسعها فلا يفيض. */
+export function arabicAdvance(text: string): number {
+  let total = 0
+  for (const ch of text) total += ARABIC_LETTER_ADVANCE[ch] ?? 1.0625
+  return total
+}
+
 export const ARABIC_DIGIT_INK: InkMetrics = { asc: 0.7236, desc: -0.1431 }
 export const LATIN_DIGIT_INK: InkMetrics = { asc: 0.7188, desc: 0.0127 }
 export const LATIN_CAP_INK: InkMetrics = { asc: 0.728, desc: 0.0127 }
@@ -108,4 +150,24 @@ export function layoutRow(items: RowItem[], bandTop: number, bandHeight: number)
     return bandTop + (bandHeight - (above + below)) / 2 + above
   })
   return { baselines, sizes }
+}
+
+/**
+ * أكبرُ حجمِ خطٍّ يَسَع فيه النصُّ خانتَه.
+ *
+ * و`totalAdvance` **مجموعُ عروض محارفه** لا عددُها مضروبًا في متوسّط: بين
+ * «ص» (1.0625) و«ا» (0.2168) خمسةُ أضعاف، فالمتوسّط يُفيض الأولى ويُضيّق
+ * الثانية. والمجموع يُصيب كلَّ حالة.
+ */
+export function fitFontSize(
+  totalAdvance: number,
+  base: number,
+  available: number,
+  spacing = 0,
+  count = 0,
+): number {
+  const advance = totalAdvance + spacing * Math.max(count - 1, 0)
+  if (advance <= 0) return base
+  const natural = base * advance
+  return natural <= available ? base : (available / natural) * base
 }
