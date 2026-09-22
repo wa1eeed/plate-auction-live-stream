@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Info, Receipt, Wallet as WalletIcon } from 'lucide-react'
+import { Info, Receipt, Lock, ShieldCheck } from 'lucide-react'
 import { StatementTable } from '@/components/market/statement-table'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { Badge } from '@/components/ui/badge'
@@ -9,11 +9,12 @@ import { DEPOSIT_STATUS_LABELS } from '@/lib/domain/types'
 import { formatAmount } from '@/lib/domain/money'
 import { getWalletView } from '@/lib/server/wallet-service'
 import { getPublicPaymentOptions, getUserPayments } from '@/lib/server/payment-service'
+import { RecentActivity } from '@/components/wallet/recent-activity'
 import { TopUpDialog } from '@/components/market/top-up-dialog'
 import { PendingPayments } from '@/components/market/pending-payments'
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, isClosedPayment } from '@/lib/domain/types'
 import { requireUserId } from '@/lib/server/require-user'
-import { formatTimestamp } from '@/lib/utils'
+import { formatTimestamp, arabicCount } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,80 +48,91 @@ export default async function WalletPage() {
         * فصار المتاح هو العنوان، والكلي والمحجوز سطرًا تحته، وبينهما شريطٌ
         * يُري النسبة — فيُعرف بنظرةٍ كم من المال معلّقٌ في مزادات جارية.
         */}
-      <section className="mb-6 overflow-hidden rounded-3xl border border-gold-600/35 bg-gradient-to-bl from-gold-500/[0.14] via-ink-800 to-ink-800 shadow-lg shadow-black/10">
-        <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-bold text-muted">
-              <WalletIcon className="size-3.5 text-gold-500" />
-              المتاح للمزايدة
-            </p>
-            <p className="mt-1.5 text-4xl font-extrabold leading-none tabular-nums text-paper sm:text-5xl">
+      {/*
+        * بطاقةٌ داكنة تحمل الرصيد — على نمط تطبيقات المال.
+        *
+        * والسوادُ ليس زينة: الرقم الكبير على خلفيةٍ داكنة يُقرأ من بعيد،
+        * والبطاقة تنفصل عمّا تحتها فتُعرف بنظرة. وهي **الشيء الأوّل** في
+        * الصفحة، فيُعطى وزنه.
+        *
+        * وترتيبُها: المتاح عنوانًا، والمحجوز في جيبٍ داخله لا بجانبه —
+        * فالمحجوز جزءٌ من ماله لا رقمٌ مستقلّ، وموضعُه يقول ذلك قبل نصِّه.
+        */}
+      <section className="mb-4 overflow-hidden rounded-3xl bg-[#171C24] p-5 text-white shadow-lg shadow-black/15 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-white/55">المتاح للمزايدة</p>
+            <p className="mt-1.5 text-[2.6rem] font-extrabold leading-none tabular-nums sm:text-5xl">
               {formatAmount(wallet.available)}
-              <span className="ms-2 text-base font-bold text-muted">ريال</span>
+              <span className="ms-2 text-base font-bold text-white/55">ريال</span>
             </p>
           </div>
-          <TopUpDialog options={options} />
+          {/* كشف الحساب في رأس البطاقة — حيث يُبحث عنه */}
+          <Link
+            href="#statement"
+            className="shrink-0 rounded-lg px-2 py-1 text-[12px] font-semibold text-gold-400 transition-colors hover:text-gold-300"
+          >
+            كشف الحساب
+          </Link>
         </div>
 
         {/*
-          * الشريط يُقاس بالكلي لا بمجموع الجزأين.
+          * جيبُ المحجوز — يُعرض دائمًا ولو كان صفرًا.
           *
-          * ورصيدٌ صفرٌ يقسم على صفر، فيُحرس القاسم — والشريط عندئذٍ فارغٌ كما
-          * ينبغي لمحفظةٍ فارغة.
+          * فمن لا محجوز له يقرأ «لا عرابين محجوزة» فيطمئنّ، ومن اختفى عنه
+          * السطر يظنّ أنّ ماله نقص ولا يجد له تفسيرًا. والصفر خبرٌ كالرقم.
           */}
-        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-          <div
-            className="flex h-2 overflow-hidden rounded-full bg-ink-900"
-            role="img"
-            aria-label={`المتاح ${formatAmount(wallet.available)} من أصل ${formatAmount(wallet.balance)} ريال`}
-          >
-            <span
-              className="bg-success/80"
-              style={{
-                width: `${wallet.balance > 0 ? (wallet.available / wallet.balance) * 100 : 0}%`,
-              }}
-            />
-            <span
-              className="bg-gold-500/80"
-              style={{
-                width: `${wallet.balance > 0 ? (wallet.held / wallet.balance) * 100 : 0}%`,
-              }}
-            />
-          </div>
-
-          <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div>
-              {/* «المتاح» لا «المتاح للمزايدة»: العنوان فوقه قالها، وتكرارها في
-                  دليل الشريط حشوٌ يُقرأ مرّتين */}
-              <dt className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
-                <span className="size-2 rounded-full bg-success/80" />
-                المتاح
-              </dt>
-              <dd className="mt-0.5 font-extrabold tabular-nums text-success">
-                {formatAmount(wallet.available)}
-              </dd>
-            </div>
-            <div>
-              <dt className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
-                <span className="size-2 rounded-full bg-gold-500/80" />
-                محجوز كعرابين
-              </dt>
-              <dd className="mt-0.5 font-extrabold tabular-nums text-gold-500">
+        <div className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gold-500/20 text-gold-400">
+            <Lock className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline justify-between gap-3">
+              <span className="text-[13px] font-bold">محجوز مؤقّتًا</span>
+              <span className="text-[15px] font-extrabold tabular-nums text-gold-400">
                 {formatAmount(wallet.held)}
-              </dd>
-              <dd className="text-[10px] leading-relaxed text-muted">
-                ملكك، غير متاح حتى تنتهي مزاداته
-              </dd>
-            </div>
-            <div className="col-span-2 border-t border-ink-600/60 pt-2 sm:col-span-1 sm:border-0 sm:pt-0">
-              <dt className="text-[11px] font-semibold text-muted">الرصيد الكلي</dt>
-              <dd className="mt-0.5 font-extrabold tabular-nums text-paper">
-                {formatAmount(wallet.balance)}
-              </dd>
-            </div>
-          </dl>
+              </span>
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-white/50">
+              {heldDeposits.length > 0
+                ? `${arabicCount(heldDeposits.length, {
+                    one: 'عربونٌ واحد',
+                    two: 'عربونان',
+                    few: 'عرابين',
+                    many: 'عربونًا',
+                  })} · يُفرج عنها عند انتهاء المزاد`
+                : 'لا عرابين محجوزة الآن'}
+            </p>
+          </div>
         </div>
+
+        {/* والكلي سطرٌ خفيف: يُذكر ولا يُزاحم */}
+        <p className="mt-3 flex items-center justify-between gap-3 text-[11px] text-white/45">
+          <span>الرصيد الكلي</span>
+          <span className="font-bold tabular-nums text-white/70">
+            {formatAmount(wallet.balance)} ريال
+          </span>
+        </p>
       </section>
+
+      <div className="mb-4">
+        <TopUpDialog options={options} triggerClassName="w-full" />
+      </div>
+
+      {/*
+        * طمأنةٌ عن المحجوز — تُقال قبل أن تُسأل.
+        *
+        * وأوّلُ ما يخطر لمن رأى رصيده «محجوزًا» أنّه ذهب. وهو أكثر ما يُسأل
+        * عنه في منصّات العرابين. فيُقال هنا، تحت الرقم مباشرةً، لا في صفحة
+        * أسئلةٍ يُبحث عنها بعد القلق.
+        */}
+      <div className="mb-6 flex items-start gap-2.5 rounded-2xl border border-success/30 bg-success/[0.07] p-3.5 text-[12px] leading-relaxed">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
+        <p className="text-muted">
+          <b className="text-paper">المبالغ المحجوزة ملكك</b> — لا تُصرف ولا تُسحب، وتعود إلى
+          رصيدك المتاح تلقائيًّا متى انتهى المزاد ولم ترسُ عليك اللوحة.
+        </p>
+      </div>
 
       {wallet.dueCommission > 0 && (
         <div className="mb-6 flex items-start gap-2.5 rounded-2xl border border-danger/40 bg-danger/[0.06] p-4 text-sm">
@@ -190,7 +202,10 @@ export default async function WalletPage() {
         </section>
       )}
 
-      <section className="mb-6">
+      {/* لمحةٌ أوّلًا، والكشف الكامل تحتها — ولا يُحذف منه شيء */}
+      <RecentActivity lines={wallet.statement.lines} />
+
+      <section id="statement" className="mb-6 scroll-mt-20">
         <h2 className="mb-2 text-sm font-bold">كشف الحساب</h2>
         <StatementTable statement={wallet.statement} />
       </section>

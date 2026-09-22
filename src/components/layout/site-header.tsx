@@ -9,6 +9,7 @@ import { AccountMenu } from './account-menu'
 import { AppBackButton } from './app-back-button'
 import { MobileNav } from './mobile-nav'
 import { NotificationBell } from './notification-bell'
+import { SettingsButton } from './settings-button'
 import { SoundToggle } from './sound-toggle'
 
 /**
@@ -100,11 +101,23 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
               </Button>
               <SoundToggle className="hidden sm:flex" />
               <NotificationBell userId={user.id} />
-              <AccountMenu
-                name={user.displayName}
-                available={wallet?.available ?? null}
-                held={wallet?.held ?? 0}
-              />
+
+              {/*
+                * قائمة العضوية للويب، وأيقونةُ إعداداتٍ للتطبيق.
+                *
+                * والقائمة تحمل الرصيد وروابط الحساب — وهي في التطبيق مكرَّرة:
+                * الرصيد في المحفظة، والحساب في «ملفّي» بالملاحة السفلية.
+                * فيحلّ محلّها ما لا باب له غيرها: **الإعدادات**، وفيها ما كان
+                * في التذييل والدُرج.
+                */}
+              <span data-web-only>
+                <AccountMenu
+                  name={user.displayName}
+                  available={wallet?.available ?? null}
+                  held={wallet?.held ?? 0}
+                />
+              </span>
+              <SettingsButton />
             </>
           ) : (
             <>

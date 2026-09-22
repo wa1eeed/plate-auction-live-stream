@@ -159,6 +159,49 @@
     display: none;
   }
 
+  /*
+   * **في الغلاف الأصيل: المستند لا يُمرَّر — تُمرَّر حاويةٌ داخله.**
+   *
+   * وهذا أصلُ ثلاثة أعطابٍ ظهرت على الجهاز: الهيدر يتزحزح عند التمرير،
+   * والملاحة السفلية ترتفع فيظهر فراغٌ تحتها، وكلاهما «ثابت».
+   *
+   * وسببُها أنّ WKWebView يرتدّ (rubber-band) عند طرفَي المستند، **وفي أثناء
+   * الارتداد تتحرّك العناصر الثابتة مع المستند** — فلا `sticky` تثبت ولا
+   * `fixed` تلزم موضعها. و`overscroll-behavior` لا تمنع ارتداد الجهاز نفسه.
+   *
+   * فإن لم يُمرَّر المستند أصلًا (`overflow: hidden` على الجذر والجسم) لم يكن
+   * ثمّ ارتدادٌ يتبعه شيء: الثابت ثابتٌ حقًّا، والتمرير يقع في حاويةٍ داخلية
+   * ترتدّ وحدها بلا أن تحرّك ما فوقها أو تحتها.
+   *
+   * **ولا يمسّ الويب**: كلُّه تحت `[data-native]`.
+   */
+  :root[data-native],
+  :root[data-native] body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  :root[data-native] [data-app-scroll] {
+    height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /*
+   * ومساحةٌ أسفل المحتوى بقدر الملاحة — فالفاصل لا ينفع هنا: الملاحة خارج
+   * الحاوية، فلا يُضيف إليها ارتفاعًا. والحشوة داخلها هي التي تُبعد آخر سطر.
+   */
+  :root[data-native] [data-app-scroll] {
+    padding-bottom: calc(4rem + var(--safe-bottom));
+  }
+
+  /* وحيث لا ملاحة (صفحة اللوحة) لا حشوة — يضبطها شريط المزايدة بنفسه */
+  :root[data-native] [data-app-scroll][data-no-bottom-nav] {
+    padding-bottom: 0;
+  }
+
   /* مساحة لمس لا تقلّ عن 44px للأزرار الصغيرة على الأجهزة اللمسية */
   @media (pointer: coarse) {
     button:not([data-compact]),

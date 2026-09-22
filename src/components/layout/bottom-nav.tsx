@@ -39,6 +39,17 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
 
   if (!native) return null
 
+  /*
+   * **لا ملاحةَ في صفحة اللوحة.**
+   *
+   * فيها شريط مزايدةٍ ثابتٌ أسفل الشاشة — وهو الفعل المقصود في تلك الصفحة.
+   * وشريطان أحدهما فوق الآخر يزاحمان الإبهام على المبلغ والزرّ في الثواني
+   * الأخيرة من المزاد، وهي أسوأ لحظةٍ لمزاحمة.
+   *
+   * والخروج من الصفحة له زرُّ رجوعٍ في الهيدر وزرُّ الجهاز في أندرويد.
+   */
+  if (/^\/market\/[^/]+$/.test(pathname)) return null
+
   const active = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)
 
@@ -52,44 +63,41 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
         { href: '/faq', label: 'الأسئلة', icon: Wallet, exact: true },
       ]
 
+  /*
+   * ولا فاصلَ هنا: الشريط خارج حاوية التمرير، فلا يُضيف إليها ارتفاعًا.
+   * والمساحة تُضاف حشوةً **داخلها** في `globals.css` — وهو الموضع الذي
+   * يُبعد آخر سطرٍ عن الشريط فعلًا.
+   */
   return (
-    <>
-      {/*
-        * فاصلٌ بارتفاع الشريط — فالشريط ثابتٌ خارج السياق، وبلا هذا يختفي
-        * آخر سطرٍ من كلّ صفحة تحته.
-        */}
-      <div aria-hidden className="h-[calc(4rem+var(--safe-bottom))]" />
+    <nav
+      aria-label="التنقّل"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-600/70 bg-ink-950"
+      style={{ paddingBottom: 'var(--safe-bottom)' }}
+    >
+      <div className="relative mx-auto flex h-16 max-w-lg items-stretch justify-around px-2">
+        {tabs.slice(0, 2).map((tab) => (
+          <Tab key={tab.href} {...tab} active={active(tab.href, tab.exact)} />
+        ))}
 
-      <nav
-        aria-label="التنقّل"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-600/70 bg-ink-950"
-        style={{ paddingBottom: 'var(--safe-bottom)' }}
-      >
-        <div className="relative mx-auto flex h-16 max-w-lg items-stretch justify-around px-2">
-          {tabs.slice(0, 2).map((tab) => (
-            <Tab key={tab.href} {...tab} active={active(tab.href, tab.exact)} />
-          ))}
+        {/*
+          * الزرّ الأوسط مرفوعٌ فوق الشريط — وهو فعلُ المنصّة الأوّل.
+          *
+          * ورفعُه ليس زينة: الإبهام يبلغ وسط الشريط أسهل من طرفيه، والفعل
+          * الذي يُقصد إليه يُوضع حيث لا يُخطَأ.
+          */}
+        <Link
+          href={signedIn ? '/account/listings/new' : '/login'}
+          aria-label="أضف لوحة"
+          className="relative -top-5 mx-1 flex size-14 shrink-0 items-center justify-center self-start rounded-2xl bg-gold-500 text-ink-950 shadow-lg shadow-gold-500/25 transition-transform active:scale-95"
+        >
+          <Plus className="size-7" strokeWidth={2.5} />
+        </Link>
 
-          {/*
-            * الزرّ الأوسط مرفوعٌ فوق الشريط — وهو فعلُ المنصّة الأوّل.
-            *
-            * ورفعُه ليس زينة: الإبهام يبلغ وسط الشريط أسهل من طرفيه، والفعل
-            * الذي يُقصد إليه يُوضع حيث لا يُخطَأ.
-            */}
-          <Link
-            href={signedIn ? '/account/listings/new' : '/login'}
-            aria-label="أضف لوحة"
-            className="relative -top-5 mx-1 flex size-14 shrink-0 items-center justify-center self-start rounded-2xl bg-gold-500 text-ink-950 shadow-lg shadow-gold-500/25 transition-transform active:scale-95"
-          >
-            <Plus className="size-7" strokeWidth={2.5} />
-          </Link>
-
-          {tabs.slice(2).map((tab) => (
-            <Tab key={tab.href} {...tab} active={active(tab.href, tab.exact)} />
-          ))}
-        </div>
-      </nav>
-    </>
+        {tabs.slice(2).map((tab) => (
+          <Tab key={tab.href} {...tab} active={active(tab.href, tab.exact)} />
+        ))}
+      </div>
+    </nav>
   )
 }
 

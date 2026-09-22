@@ -81,8 +81,16 @@ export function ListingView({
       )}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        {/*
+          * رابط الرجوع للويب وحده.
+          *
+          * وفي الغلاف الأصيل زرُّ رجوعٍ في الهيدر وزرُّ جهازٍ في أندرويد —
+          * فثلاثة مخارجَ لفعلٍ واحد تزدحم ولا تُفيد، والأعلى منها (الهيدر)
+          * هو الموضع الذي تعوّده مستخدم التطبيقات.
+          */}
         <Link
           href={backTo.href}
+          data-web-only
           className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-paper"
         >
           <ChevronsLeft className="size-4 rtl:rotate-180" />

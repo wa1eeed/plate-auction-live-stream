@@ -1,4 +1,5 @@
 import { SettingsForm } from './settings-form'
+import { AppSettingsCard } from '@/components/layout/app-settings-card'
 import { LogoutButton } from './logout-button'
 import { requireUserId } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
@@ -32,6 +33,15 @@ export default async function SettingsPage() {
       </section>
 
       <SettingsForm user={user} />
+
+      {/*
+        * إعدادات التطبيق وروابط المنصّة — **موضعُها هنا لا في التذييل**.
+        *
+        * والتذييل يُخفى في الغلاف الأصيل: صفحةٌ تنتهي بعشرة روابطَ صغيرة
+        * فوق شريط الإيماءات ليست ممّا تفعله التطبيقات. فما فيه من روابط
+        * يُجمع في موضعٍ واحد يُقصد إليه، وهذا هو.
+        */}
+      <AppSettingsCard />
 
       <section className="rounded-2xl border border-ink-600 bg-ink-800 p-5">
         <h2 className="font-bold">الجلسة</h2>

@@ -26,7 +26,7 @@ const QUICK_AMOUNTS = [500, 1_000, 5_000, 10_000]
  *
  * لا يُعرض إلا ما هو مفعّل ومهيّأ فعلًا: زرّ دفع يفشل حتمًا أسوأ من غيابه.
  */
-export function TopUpDialog({ options }: { options: PublicPaymentOptions }) {
+export function TopUpDialog({ options, triggerClassName }: { options: PublicPaymentOptions; triggerClassName?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
@@ -75,7 +75,12 @@ export function TopUpDialog({ options }: { options: PublicPaymentOptions }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={noMethods}>
+        {/*
+          * `className` يُمرَّر من الخارج — فالزرّ يظهر في موضعين بوزنين:
+          * ممتدًّا في المحفظة حيث هو الفعل الأوّل، وبقدره في صندوق المزايدة
+          * حيث هو مخرجٌ جانبيّ لمن نقص رصيده.
+          */}
+        <Button disabled={noMethods} className={triggerClassName}>
           <Plus className="size-4" />
           شحن الرصيد
         </Button>

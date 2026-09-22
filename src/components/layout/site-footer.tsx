@@ -47,7 +47,7 @@ const COLUMNS = [
 export async function SiteFooter() {
   const brand = await getBrand()
   return (
-    <footer className="relative mt-auto overflow-hidden border-t border-ink-600/70 bg-ink-900/40">
+    <footer data-web-only className="relative mt-auto overflow-hidden border-t border-ink-600/70 bg-ink-900/40">
       <div
         aria-hidden
         className="dot-grid pointer-events-none absolute inset-0 opacity-25 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]"

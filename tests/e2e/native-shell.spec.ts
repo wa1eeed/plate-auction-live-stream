@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { stableCount } from '../support/ui'
 import { loginUser, USERS } from './support/session'
 
 /**
@@ -92,14 +93,21 @@ test.describe('الانقطاع يُعلَن ولا يُبدّل الشاشة', 
 
   test('والصفحة لا تُمحى من تحت قارئها', async ({ page, context }) => {
     await page.goto('/market')
-    const before = await page.locator('a[href^="/market/"]').count()
+    /*
+     * **عددٌ مستقرّ لا أوّلُ عدد.**
+     *
+     * شبكة السوق تُصيَّر على الخادم ثمّ تنمو بعد الترطيب بدفعةٍ ثانية بلا
+     * طلب. فقياسٌ يقع في تلك الفجوة يقرأ عددًا لا يبقى، ويُقارَن بعده بعددٍ
+     * آخر فيُخفق الفحص بلا عطبٍ في المنصّة — وقد وقع ذلك تحت حمل المجموعة.
+     */
+    const before = await stableCount(page.locator('a[href^="/market/"]'))
     expect(before).toBeGreaterThan(0)
 
     await context.setOffline(true)
     await expect(page.locator('[role="status"]').first()).toBeVisible({ timeout: 8_000 })
 
     /* البطاقات باقية — الانقطاع يُعلَن ولا يُبدّل ما يُقرأ */
-    expect(await page.locator('a[href^="/market/"]').count()).toBe(before)
+    expect(await page.locator('a[href^="/market/"]').count()).toBeGreaterThanOrEqual(before)
     await context.setOffline(false)
   })
 
@@ -220,9 +228,9 @@ test.describe('إخفاء الدُرج لا يُفقد شيئًا', () => {
    * **مفتاح إشعارات الجهاز** ومفتاح الصوت ولا يوجدان في غيره. فإخفاؤه بلا
    * نقلهما يقطع الطريق إلى الإشعارات بالكلّية، ولا يُدرى أين ذهبت.
    */
-  test('الإعدادات بلغت صفحة الملفّ', async ({ page }) => {
+  test('الإعدادات بلغت صفحة الإعدادات', async ({ page }) => {
     await loginUser(page, USERS.waleed)
-    await page.goto('/account')
+    await page.goto('/account/settings')
 
     await expect(page.getByText('الإعدادات', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('أصوات المنصّة').first()).toBeVisible()
@@ -238,5 +246,65 @@ test.describe('إخفاء الدُرج لا يُفقد شيئًا', () => {
      * الويب. وحضورُه في الغلاف يحرسه `push-toggle-native.test.ts` بترتيب
      * المصدر: الغلاف يُفصل قبل أيّ واجهة ويب، فلا يمرّ بحارس VAPID أصلًا.
      */
+  })
+})
+
+test.describe('التمرير في حاوية لا في المستند', () => {
+  /*
+   * أصلُ ثلاثة أعطابٍ ظهرت على الجهاز: الهيدر يتزحزح، والملاحة ترتفع فيظهر
+   * فراغٌ تحتها. وسببُها أنّ WKWebView يرتدّ عند طرفَي المستند، **وفي أثناء
+   * الارتداد تتحرّك العناصر الثابتة معه**. فإن لم يُمرَّر المستند لم يكن ثمّ
+   * ارتدادٌ يتبعه شيء.
+   */
+  test('حاوية التمرير معلَّمة في كلّ صفحة', async ({ page }) => {
+    for (const path of ['/', '/market', '/faq']) {
+      await page.goto(path)
+      await expect(page.locator('[data-app-scroll]').first()).toBeAttached()
+    }
+  })
+
+  test('والمستند يبقى ممرَّرًا في الويب — لا يُحبس', async ({ page }) => {
+    await page.goto('/market')
+    const overflow = await page.evaluate(() => getComputedStyle(document.body).overflow)
+    expect(overflow, 'حُبس تمرير المستند في المتصفّح').not.toBe('hidden')
+  })
+})
+
+test.describe('صفحة اللوحة بلا ملاحةٍ سفلية', () => {
+  test('ورابط الرجوع القديم للويب وحده', async ({ page }) => {
+    await page.goto('/market')
+    const href = await page.locator('a[href^="/market/"]').first().getAttribute('href')
+    await page.goto(href!)
+    await expect(page.locator('#main').first()).toBeVisible()
+
+    /*
+     * الرابط يُرسم في الويب — و`[data-web-only]` تُخفيه في الغلاف بـCSS.
+     * فحضورُ السمة هو ما يُقاس: الإخفاء نفسه لا يقع إلّا مع `data-native`.
+     */
+    const back = page.locator('a[data-web-only][href="/market"]').first()
+    await expect(back).toBeVisible()
+  })
+})
+
+test.describe('التذييل وقائمة العضوية للويب', () => {
+  test('التذييل معلَّمٌ للويب — ويُخفى في الغلاف', async ({ page }) => {
+    await page.goto('/market')
+    /* يُرسم هنا، و`[data-web-only]` تُخفيه مع `data-native` */
+    await expect(page.locator('footer[data-web-only]')).toHaveCount(1)
+  })
+
+  test('ولا زرّ إعداداتٍ في المتصفّح — القائمة على حالها', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/market')
+    await expect(page.getByRole('link', { name: 'الإعدادات' })).toHaveCount(0)
+  })
+
+  test('وروابط التذييل كلُّها محفوظةٌ في صفحة الإعدادات', async ({ page }) => {
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/settings')
+    const main = page.locator('#main')
+    for (const label of ['كيف يعمل السوق', 'الأسئلة الشائعة', 'محفظتي']) {
+      await expect(main.getByRole('link', { name: label }).first()).toBeVisible()
+    }
   })
 })

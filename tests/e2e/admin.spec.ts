@@ -134,7 +134,7 @@ test.describe('المحفظة والعربون', () => {
 
     await expect(page.getByRole('heading', { name: 'محفظتي' })).toBeVisible()
     await expect(page.getByText('الرصيد الكلي')).toBeVisible()
-    await expect(page.getByText('محجوز كعرابين')).toBeVisible()
+    await expect(page.getByText('محجوز مؤقّتًا')).toBeVisible()
     await expect(page.getByText('المتاح للمزايدة')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'كشف الحساب' })).toBeVisible()
   })
@@ -156,7 +156,7 @@ test.describe('المحفظة والعربون', () => {
     await expect(page.getByText(/عربون/).first()).toBeVisible()
 
     await page.goto('/account/wallet')
-    await expect(page.getByText('محجوز كعرابين')).toBeVisible()
+    await expect(page.getByText('محجوز مؤقّتًا')).toBeVisible()
   })
 
   test('الأسئلة الشائعة تظهر أسفل صفحة المزاد', async ({ page }) => {
