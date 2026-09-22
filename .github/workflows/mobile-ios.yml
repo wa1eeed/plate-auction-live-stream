@@ -36,6 +36,31 @@ jobs:
       - name: مزامنة الغلاف
         run: npx cap sync ios
 
+      # ---------------------------------------------------- أرقام النسخة
+      #
+      # **رقم البناء من عدّاد التشغيل، لا من الملفّ.**
+      #
+      # App Store Connect يرفض رقم بناءٍ استُعمل مرّةً — ورقمٌ ثابتٌ في
+      # `project.pbxproj` يعني أنّ كلّ رفعٍ بعد الأوّل يُردّ، فيُعدَّل الملفّ
+      # ويُودَع لكلّ رفعة. وعدّادُ جيت هب يتزايد من تلقائه ولا يتكرّر.
+      #
+      # ورقم النسخة من **الوسم**: `v1.0.1` ⟵ `1.0.1`. فما يُقرأ في المتجر هو
+      # ما وُسم في المستودع، ولا يفترقان. وبلا وسمٍ (تشغيلٌ يدويّ) يبقى ما في
+      # الملفّ — فالبناء تحقّقٌ لا إصدار.
+      - name: اشتقاق النسخة ورقم البناء
+        id: version
+        run: |
+          BUILD="${{ github.run_number }}"
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/v* ]]; then
+            MARKETING="${REF#refs/tags/v}"
+          else
+            MARKETING=""
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "marketing=$MARKETING" >> "$GITHUB_OUTPUT"
+          echo "::notice::رقم البناء $BUILD${MARKETING:+ · النسخة $MARKETING}"
+
       # ----------------------------------------------------------- التوقيع
       #
       # **مفتاح App Store Connect وحده** — لا شهادة `.p12` ولا ملفّ تعريف.
@@ -92,7 +117,15 @@ jobs:
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           KEY_PATH: ${{ steps.signing.outputs.key_path }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build }}
+          MARKETING_VERSION: ${{ steps.version.outputs.marketing }}
         run: |
+          # ما لا يُوسَم يبقى على ما في الملفّ — فلا يُغيّر تحقّقٌ رقمَ إصدار
+          VERSION_ARGS="CURRENT_PROJECT_VERSION=$BUILD_NUMBER"
+          if [ -n "$MARKETING_VERSION" ]; then
+            VERSION_ARGS="$VERSION_ARGS MARKETING_VERSION=$MARKETING_VERSION"
+          fi
+
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -101,6 +134,8 @@ jobs:
             <key>teamID</key><string>${TEAM_ID}</string>
             <key>uploadSymbols</key><true/>
             <key>signingStyle</key><string>automatic</string>
+            <!-- لا يدير Xcode الأرقام: نحن نمرّرها، وإدارتُه تتجاهل ما مرّرناه -->
+            <key>manageAppVersionAndBuildNumber</key><false/>
           </dict></plist>
           PLIST
 
@@ -120,6 +155,7 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
+            ${VERSION_ARGS} \
             DEVELOPMENT_TEAM="$TEAM_ID"
 
           xcodebuild -exportArchive \

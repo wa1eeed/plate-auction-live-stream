@@ -73,7 +73,14 @@ jobs:
           ORG_GRADLE_PROJECT_MAZAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_MAZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_MAZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease --no-daemon
+        run: |
+          # رقم البناء من عدّاد التشغيل، والنسخة من الوسم — انظر build.gradle
+          ARGS="-PmazadVersionCode=${{ github.run_number }}"
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/v* ]]; then
+            ARGS="$ARGS -PmazadVersionName=${REF#refs/tags/v}"
+          fi
+          ./gradlew bundleRelease --no-daemon $ARGS
 
       - name: بناء تحقّقٍ بلا توقيع
         if: steps.signing.outputs.signed != 'true'
