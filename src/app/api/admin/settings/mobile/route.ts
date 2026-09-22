@@ -59,6 +59,9 @@ const schema = z.object({
     .regex(/^\d+\.\d+\.\d+$/)
     .nullish()
     .or(z.literal('').transform(() => null)),
+  /* الصوت والاهتزاز — قرارٌ عامٌّ للمنصّة، ويبقى للمستخدم نظامُه */
+  soundsEnabled: z.boolean(),
+  hapticsEnabled: z.boolean(),
 })
 
 export async function PATCH(request: Request) {
@@ -73,6 +76,8 @@ export async function PATCH(request: Request) {
         pushTypes: input.pushTypes,
         minVersion: input.minVersion ?? null,
         recommendedVersion: input.recommendedVersion ?? null,
+        soundsEnabled: input.soundsEnabled,
+        hapticsEnabled: input.hapticsEnabled,
       },
       adminId,
     )

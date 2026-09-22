@@ -10,7 +10,9 @@ import { quickBidSteps } from '@/lib/domain/auction'
 import { formatAmount, halalasToRiyals } from '@/lib/domain/money'
 import type { ListingDetail } from '@/lib/domain/types'
 import { useSound } from '@/lib/hooks/use-sound'
+import { classifyStatus, classifyThrown, FAILURE_TEXT } from '@/lib/api-error'
 import { haptic } from '@/lib/haptics'
+import { useNetwork } from '@/lib/hooks/use-network'
 import { cn } from '@/lib/utils'
 import { AmountField } from './amount-field'
 
@@ -47,6 +49,7 @@ export function AuctionBidBox({
   const [amount, setAmount] = useState<number>(detail.nextBidAmount)
   const [busy, setBusy] = useState(false)
   const inFlight = useRef(false)
+  const { online } = useNetwork()
   const bar = variant === 'bar'
 
   /*
@@ -94,6 +97,22 @@ export function AuctionBidBox({
 
   async function submit() {
     if (inFlight.current) return
+
+    /*
+     * الانقطاع يُعرف **قبل** الإرسال لا بعد فشله.
+     *
+     * فالفشل يقع بعد المهلة، فينتظر صاحبها عشر ثوانٍ في مزادٍ تبقّت له
+     * ثوانٍ. وحالةُ الجهاز معروفةٌ في هذه اللحظة، فتُقال.
+     *
+     * **ولا طابور**: المزايدة لا تُخزَّن لتُرسل عند العودة — فالسعر يتبدّل
+     * في الثانية، ومزايدةٌ تُرسل بعد دقيقةٍ تُسجَّل على سوقٍ آخر.
+     */
+    if (!online) {
+      haptic('error')
+      toast.error('تعذّر إرسال المزايدة لعدم وجود اتّصال بالإنترنت.')
+      return
+    }
+
     if (belowMinimum) {
       haptic('error')
       toast.error(`أقل مزايدة مقبولة ${formatAmount(detail.nextBidAmount)} ريال`)
@@ -112,10 +131,16 @@ export function AuctionBidBox({
           clientRequestId: randomRequestId(),
         }),
       })
-      const data = await response.json()
+      const data = await response.json().catch(() => null)
       if (!response.ok) {
         haptic('error')
-        toast.error(data?.error?.message ?? 'تعذّر تسجيل المزايدة')
+        /*
+         * رسالة الخادم أولى: هي تعرف السبب بعينه («أقلّ من الحدّ»، «أُغلق
+         * المزاد»). ويُسقط عليها تصنيفُ الحالة حين لا يقول الخادم شيئًا.
+         */
+        toast.error(data?.error?.message ?? FAILURE_TEXT[classifyStatus(response.status)])
+        /* تبدّلُ الحالة عند الخادم يُوجب جلبها: 409 تعني أنّ ما نراه قديم */
+        if (response.status === 409 || response.status === 404) router.refresh()
         return
       }
       play('bid')
@@ -125,9 +150,27 @@ export function AuctionBidBox({
       if (data.extended) toast.info(`مُدّد المزاد ${data.addedSeconds} ثانية`)
       await onDone()
       router.refresh()
-    } catch {
+    } catch (error) {
+      /*
+       * **حالةٌ غير مؤكّدة — لا فشلٌ.**
+       *
+       * الطلب خرج ولم يعد ردُّه. والخادم قد سجّل المزايدة وضاع ردُّه في
+       * الطريق. فقولُ «فشلت» يدفع صاحبها إلى إعادةٍ تُنتج مزايدتين، وقولُ
+       * «نجحت» كذبٌ لا نعلمه.
+       *
+       * فتُصالَح الحالة من الخادم: يُجلب حال المزاد، فيرى بعينه أزايد أم لا.
+       * ولا يُعاد الإرسال تلقائيًّا أبدًا — ولو كان لدينا مفتاح طلبٍ فريد.
+       */
+      const failure = classifyThrown(error, online)
       haptic('error')
-      toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
+      if (failure === 'uncertain') {
+        toast.warning(FAILURE_TEXT.uncertain)
+        /* المصالحة: الخادم يقول ما وقع، لا الذاكرة */
+        await Promise.resolve(onDone()).catch(() => undefined)
+        router.refresh()
+      } else {
+        toast.error(FAILURE_TEXT[failure])
+      }
     } finally {
       inFlight.current = false
       setBusy(false)

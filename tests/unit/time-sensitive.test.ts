@@ -128,3 +128,45 @@ describe('الحمولة المرسَلة إلى أبل', () => {
     expect(JSON.stringify(sent)).not.toMatch(/\d{4,}/)
   })
 })
+
+describe('كابحا الصوت والاهتزاز', () => {
+  it('مفعَّلان افتراضًا — والتأكيد المحسوس نافعٌ في مزاد', async () => {
+    const { DEFAULT_MOBILE_SETTINGS } = await import('@/lib/domain/types')
+    expect(DEFAULT_MOBILE_SETTINGS.soundsEnabled).toBe(true)
+    expect(DEFAULT_MOBILE_SETTINGS.hapticsEnabled).toBe(true)
+  })
+
+  it('والاهتزاز يسكت متى أطفأته الإدارة — لا يُمرَّر خيطًا من التخطيط', async () => {
+    /*
+     * الكابح سمةٌ على الجذر. وفحصُه هنا يُثبت أنّ المفتاح **يعمل** لا أنّه
+     * يُحفظ — ومفتاحٌ يُحفظ ولا يفعل شيئًا أسوأ من لا مفتاح.
+     */
+    const calls: unknown[] = []
+    vi.stubGlobal('document', {
+      documentElement: { dataset: { haptics: 'off' } },
+    })
+    vi.stubGlobal('navigator', { vibrate: (pattern: unknown) => calls.push(pattern) })
+    vi.stubGlobal('window', {})
+
+    vi.resetModules()
+    const { haptic } = await import('@/lib/haptics')
+    haptic('success')
+    expect(calls, 'اهتزّ وقد أطفأته الإدارة').toHaveLength(0)
+
+    vi.unstubAllGlobals()
+  })
+
+  it('ويعمل متى لم تُطفئه', async () => {
+    const calls: unknown[] = []
+    vi.stubGlobal('document', { documentElement: { dataset: {} } })
+    vi.stubGlobal('navigator', { vibrate: (pattern: unknown) => calls.push(pattern) })
+    vi.stubGlobal('window', {})
+
+    vi.resetModules()
+    const { haptic } = await import('@/lib/haptics')
+    haptic('success')
+    expect(calls).toHaveLength(1)
+
+    vi.unstubAllGlobals()
+  })
+})

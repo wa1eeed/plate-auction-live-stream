@@ -149,6 +149,14 @@ export function useSound() {
    */
   useEffect(() => {
     try {
+      /*
+       * كابحُ الإدارة أوّلًا: من أطفأته الإدارة لا يسمعه أحد ولو فتحه لنفسه.
+       * وسمةٌ على الجذر تُقرأ هنا كما تُقرأ السمة اللونية.
+       */
+      if (document.documentElement.dataset.sounds === 'off') {
+        setEnabled(false)
+        return
+      }
       setEnabled(window.localStorage.getItem(STORAGE_KEY) !== 'off')
     } catch {
       // متصفّح يمنع التخزين — يبقى الافتراضيّ صوتًا

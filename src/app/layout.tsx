@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Tajawal } from 'next/font/google'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
+import { getStore } from '@/lib/store'
 import { NativeShell } from '@/components/layout/native-shell'
+import { NetworkBanner } from '@/components/layout/network-banner'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
 import { StagingBanner } from '@/components/layout/staging-banner'
 import { assetUrl, brandColorCss, getBrand } from '@/lib/server/brand-service'
@@ -94,11 +96,32 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   // لا `maximumScale`: منع التكبير يمنع قراءة الآيبان ورقم اللوحة ومبلغ السداد
+  /*
+   * الصفحة تمتدّ تحت الشقّ وشريط الإيماءات — و`env(safe-area-inset-*)` لا
+   * تُعطي قيمةً إلّا معها.
+   *
+   * وبدونها يحجز النظام تلك المناطق بنفسه: تبقى القيم أصفارًا، ويظهر شريطٌ
+   * أسود فوق الصفحة وتحتها — وهي أوّل ما يقول «هذا موقعٌ في نافذة».
+   *
+   * والويب لا يتأثّر: المتصفّح على الحاسوب لا مناطق آمنة عنده، والقيم صفر.
+   */
+  viewportFit: 'cover',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const brand = await getBrand()
   const colors = brandColorCss(brand.primaryColor)
+  /*
+   * قرارُ الإدارة في الصوت والاهتزاز — سمةٌ على الجذر لا خاصيّةٌ تُمرَّر.
+   *
+   * والتمرير يقتضي خيطًا من التخطيط إلى كلّ مكوّنٍ يُصدر تكّةً أو نبضة —
+   * وهي متفرّقةٌ في الجرس وصندوق المزايدة والعدّاد. والسمةُ تُقرأ من أيّ
+   * موضع، وهو المسلك نفسه الذي تُضبط به السمة اللونية.
+   *
+   * وهو **كابحٌ عامّ** لا بديلٌ عن تفضيل المستخدم: من أطفأ الصوت عن نفسه
+   * يبقى مُطفأً، ومن أطفأته الإدارة لا يسمعه أحد.
+   */
+  const mobile = await getStore().getMobileSettings().catch(() => null)
 
   return (
     /*
@@ -113,6 +136,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="ar"
       dir="rtl"
       data-theme="light"
+      {...(mobile?.soundsEnabled === false ? { 'data-sounds': 'off' } : {})}
+      {...(mobile?.hapticsEnabled === false ? { 'data-haptics': 'off' } : {})}
       className={tajawal.variable}
       suppressHydrationWarning
     >
@@ -137,6 +162,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh antialiased">
         {/* فوق كل شيء: تُقرأ قبل أن يظنّ الزائر أنّه في المنصّة الحقيقية */}
         <StagingBanner />
+        {/*
+          * وقبل المحتوى: الانقطاع يُعلَن ولا تُبدَّل الصفحة من تحت قارئها.
+          * ويقع فوق الهيدر اللاصق فلا يزاحمه، ويحمل حشوة الشقّ بنفسه.
+          */}
+        <NetworkBanner />
         {children}
         <Toaster />
         <ServiceWorkerRegistrar />

@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/lib/server/require-user'
 import { getWalletView } from '@/lib/server/wallet-service'
 import { HeaderNav } from './header-nav'
 import { AccountMenu } from './account-menu'
+import { AppBackButton } from './app-back-button'
 import { MobileNav } from './mobile-nav'
 import { NotificationBell } from './notification-bell'
 import { SoundToggle } from './sound-toggle'
@@ -23,7 +24,19 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
   const wallet = user ? await getWalletView(user.id).catch(() => null) : null
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950/80 backdrop-blur-xl">
+    /*
+      * حشوةٌ علوية بمقدار الشقّ — والخلفية تمتدّ تحته.
+      *
+      * فالصفحة تمتدّ تحت شريط الحالة (`viewport-fit: cover`)، فبلا هذه
+      * الحشوة يقع عنوان المنصّة وجرسُها **تحت ساعة النظام** على آيفون ذي
+      * جزيرة. والخلفية الضبابية تمتدّ تحت الشريط فيُقرأ الوقتُ عليها.
+      *
+      * و`var(--safe-top)` صفرٌ في المتصفّح — فالويب على حاله حرفًا بحرف.
+      */
+    <header
+      className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-950/80 backdrop-blur-xl"
+      style={{ paddingTop: 'var(--safe-top)' }}
+    >
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
         {/*
           * على الجوال: القائمة يمينًا، والشعار في الوسط، والحساب والجرس يسارًا.
@@ -41,6 +54,15 @@ export async function SiteHeader({ active }: { active?: 'market' | 'account' }) 
           * بجانبه، فلا معنى لتوسيطٍ يترك يمين الترويسة خاليًا.
           */}
         <MobileNav signedIn={Boolean(user)} />
+
+        {/*
+          * زرّ الرجوع — للغلاف الأصيل وحده، وبعد الدُرج.
+          *
+          * وموضعُه هنا مقصود: أوّلُ العناصر في RTL هو أيمنُها، فيقع تحت
+          * الإبهام حيث تُمسك اليد الجهاز — وهو موضع زرّ الرجوع في تطبيقات
+          * iOS العربية. ويرسم نفسه فارغًا في الويب فلا يزاحم شيئًا.
+          */}
+        <AppBackButton />
 
         <BrandMark
           className="group absolute left-1/2 -translate-x-1/2 transition-opacity hover:opacity-90 md:static md:translate-x-0"

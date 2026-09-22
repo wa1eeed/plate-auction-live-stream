@@ -50,6 +50,8 @@ export function MobileSettingsForm({
     pushTypes: settings.pushTypes,
     minVersion: settings.minVersion,
     recommendedVersion: settings.recommendedVersion,
+    soundsEnabled: settings.soundsEnabled,
+    hapticsEnabled: settings.hapticsEnabled,
   })
   const [busy, setBusy] = useState(false)
 
@@ -235,6 +237,44 @@ export function MobileSettingsForm({
               }
             />
           </div>
+        </div>
+
+        {/*
+          * الصوت والاهتزاز — مفتاحان لا أكثر.
+          *
+          * وهما تأكيدٌ يُحسّ ويُسمع عند المزايدة: الإبهام يغطّي الزرّ، فيقول
+          * الجهاز «وقع» بلا نظر. وبعض البيئات لا يناسبها — مجلسٌ أو اجتماع —
+          * فيُطفآن للمنصّة كلّها. ويبقى للمستخدم نظامُه فوق هذا.
+          */}
+        <div className="mt-6 space-y-3 border-t border-ink-600/70 pt-5">
+          <label className="flex items-center justify-between gap-4">
+            <span>
+              <span className="block text-[13px] font-semibold">تكّة المزايدة</span>
+              <span className="block text-[12px] text-muted">
+                صوتٌ قصير عند تسجيل مزايدةٍ وفي الثواني الأخيرة
+              </span>
+            </span>
+            <Switch
+              checked={form.soundsEnabled}
+              onCheckedChange={(soundsEnabled) =>
+                setForm((current) => ({ ...current, soundsEnabled }))
+              }
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4">
+            <span>
+              <span className="block text-[13px] font-semibold">الاهتزاز</span>
+              <span className="block text-[12px] text-muted">
+                نبضةٌ عند نجاح المزايدة أو ردّها — في التطبيق وحده
+              </span>
+            </span>
+            <Switch
+              checked={form.hapticsEnabled}
+              onCheckedChange={(hapticsEnabled) =>
+                setForm((current) => ({ ...current, hapticsEnabled }))
+              }
+            />
+          </label>
         </div>
       </section>
 

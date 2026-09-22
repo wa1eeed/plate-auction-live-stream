@@ -19,6 +19,7 @@ export function NativeShell() {
   useEffect(() => {
     if (!isNativeShell()) return
     let cancelled = false
+    let themeObserver: MutationObserver | undefined
 
     void (async () => {
       const [{ SplashScreen }, { StatusBar, Style }] = await Promise.all([
@@ -36,16 +37,56 @@ export function NativeShell() {
       await SplashScreen.hide().catch(() => undefined)
 
       /*
-       * المنصّة فاتحة، فأيقونات شريط الحالة داكنة (`Style.Light` في
-       * Capacitor تعني **محتوًى داكنًا على خلفية فاتحة**). والعكس يجعلها
-       * بيضاء على أبيض فتختفي الساعة والشبكة.
+       * **متراكبٌ على أندرويد، وأسلوبُه من السمة لا ثابتًا.**
+       *
+       * التراكب يجعل خلفية الهيدر تمتدّ تحت الشريط فيُقرأ الوقت عليها، وهو
+       * ما تفعله التطبيقات الأصيلة. وبلاه يحجز النظام شريطًا بلونٍ منفصل
+       * فيظهر خطٌّ فاصلٌ أعلى الشاشة يقول «هذه نافذة».
+       *
+       * و`setOverlaysWebView` لا وجود له على iOS — يُتجاهَل هناك بلا خطأ،
+       * وiOS متراكبٌ أصلًا مع `viewport-fit: cover`.
+       *
+       * والأسلوب يُشتقّ من `data-theme` على الجذر: `Style.Light` في
+       * Capacitor تعني **محتوًى داكنًا على خلفية فاتحة** — والعكس يجعل
+       * الأيقونات بيضاء على أبيض فتختفي الساعة والشبكة.
        */
-      await StatusBar.setStyle({ style: Style.Light }).catch(() => undefined)
-      await StatusBar.setBackgroundColor({ color: '#f4f6fa' }).catch(() => undefined)
+      const applyStatusBar = async () => {
+        /*
+         * `light` صراحةً، وما عداها داكن.
+         *
+         * والسمة الأساسية في المنصّة **داكنة**، و`data-theme="light"` هي
+         * التي تُضبط على الجذر. فاختبارُ `=== 'dark'` يُخطئ حين لا تُضبط
+         * السمة أصلًا: يحسبها فاتحةً فتصير الأيقونات داكنةً على داكن.
+         */
+        const light = document.documentElement.dataset.theme === 'light'
+        await StatusBar.setStyle({ style: light ? Style.Light : Style.Dark }).catch(() => undefined)
+        /* اللون يُقرأ من السمة نفسها فلا يتناقض مع خلفية الصفحة */
+        const bg = getComputedStyle(document.documentElement)
+          .getPropertyValue('--status-bar-color')
+          .trim()
+        if (bg) await StatusBar.setBackgroundColor({ color: bg }).catch(() => undefined)
+      }
+
+      /*
+       * والتراكب يُطلب مرّةً: هو حالُ النافذة لا حالُ الصفحة.
+       */
+      await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined)
+      await applyStatusBar()
+
+      /*
+       * ويُعاد عند تبدّل السمة — فمن بدّلها ليلًا لا تختفي عنه ساعتُه.
+       */
+      const observer = new MutationObserver(() => void applyStatusBar())
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+      })
+      themeObserver = observer
     })()
 
     return () => {
       cancelled = true
+      themeObserver?.disconnect()
     }
   }, [])
 

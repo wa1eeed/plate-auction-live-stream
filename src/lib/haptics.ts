@@ -49,7 +49,14 @@ function nativeHaptics(): HapticsBridge | null {
  * مزايدةً لأنّ الهاتف لم يهتزّ عبثٌ محض. ويصمت حيث لا يُدعم — وهو حال سفاري
  * على iOS في الويب، ولذلك يُقدَّم جسرُ الغلاف عليه.
  */
+/** كابحُ الإدارة — سمةٌ على الجذر، تُقرأ ولا تُمرَّر. */
+function suppressed(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.documentElement.dataset.haptics === 'off'
+}
+
 export function haptic(kind: HapticKind): void {
+  if (suppressed()) return
   try {
     if (isNativeShell()) {
       const bridge = nativeHaptics()

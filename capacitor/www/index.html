@@ -16,6 +16,7 @@
       img { width: 4.5rem; height: 4.5rem; }
       h1 { margin: 1rem 0 .5rem; font-size: 1.05rem; }
       p { margin: 0; font-size: .85rem; line-height: 1.85; color: #56637a; }
+      button[disabled] { opacity: .55; }
       button {
         margin-top: 1.5rem; width: 100%; border: 0; border-radius: .875rem;
         padding: .9rem 1rem; background: #d6a84b; color: #080b10;
@@ -32,9 +33,46 @@
     -->
     <div class="card">
       <img src="app-icon.svg" alt="" />
-      <h1>تعذّر الوصول إلى المنصّة</h1>
-      <p>تحقّق من اتصالك بالإنترنت ثمّ أعد المحاولة. المزادات تتغيّر لحظةً بلحظة، فلا نعرض لك أرقامًا محفوظة.</p>
-      <button type="button" onclick="location.reload()">أعد المحاولة</button>
+      <h1 id="title">لا يوجد اتصال بالإنترنت</h1>
+      <p id="body">
+        تحقّق من اتصالك بالشبكة، وسنعيد الاتصال تلقائيًّا عند عودة الإنترنت.
+        والمزادات تتغيّر لحظةً بلحظة، فلا نعرض لك أرقامًا محفوظة.
+      </p>
+      <button id="retry" type="button">أعد المحاولة</button>
     </div>
+
+    <script>
+      /*
+       * إعادةُ اتّصالٍ تلقائية — والزرّ لمن لا يريد الانتظار.
+       *
+       * ومن انقطع عنه الإنترنت لا يُراد به أن يجلس ضاغطًا زرًّا: الحدث
+       * `online` يقع من تلقائه فيُعاد التحميل. ويبقى الزرّ لمن عاد اتّصاله
+       * ولم يُطلق الحدث — وهو يقع على بعض الأجهزة.
+       */
+      var retry = document.getElementById('retry')
+      var title = document.getElementById('title')
+      var body = document.getElementById('body')
+      var tries = 0
+
+      function reconnect() {
+        tries += 1
+        title.textContent = 'نعيد الاتصال…'
+        body.textContent = 'لحظة من فضلك.'
+        retry.disabled = true
+        location.reload()
+      }
+
+      retry.addEventListener('click', reconnect)
+      window.addEventListener('online', reconnect)
+
+      /*
+       * وفحصٌ دوريّ كذلك: `online` لا يُطلق في كلّ بيئة، وقد يعود الاتّصال
+       * بلا حدث. والفاصل يتّسع مع كلّ محاولة فلا يُستنزف بطاريةُ من نام
+       * جهازُه على هذه الشاشة.
+       */
+      setInterval(function () {
+        if (navigator.onLine && tries < 20) reconnect()
+      }, 5000)
+    </script>
   </body>
 </html>

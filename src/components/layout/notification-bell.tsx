@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useRealtime } from '@/lib/hooks/use-realtime'
 import { useSound } from '@/lib/hooks/use-sound'
+import { isNativeShell } from '@/lib/device'
 import { haptic } from '@/lib/haptics'
 import { URGENT_NOTIFICATIONS as URGENT } from '@/lib/domain/types'
 import { cn, formatTimestamp } from '@/lib/utils'
@@ -122,16 +123,40 @@ export function NotificationBell({ userId }: { userId: string }) {
    * تُعلَّم صاحبَها ألّا يصدّقها.
    */
   useEffect(() => {
-    const badge = navigator as Navigator & {
-      setAppBadge?: (count?: number) => Promise<void>
-      clearAppBadge?: () => Promise<void>
-    }
-    try {
-      if (unread > 0) void badge.setAppBadge?.(unread)?.catch(() => undefined)
-      else void badge.clearAppBadge?.()?.catch(() => undefined)
-    } catch {
-      // شارةٌ لم تُرسم — والعدد ظاهرٌ على الجرس نفسه
-    }
+    /*
+     * قناتان: واجهة الويب، **وجسر الغلاف** — و`navigator.setAppBadge` لا
+     * وجود لها في غلاف iOS.
+     *
+     * فالخادم يُرسل الرقم مع الإشعار (`aps.badge`) فيظهر، ثمّ يقرأ صاحبه
+     * إشعاراته **داخل التطبيق** فلا يُمحى: الويب يمسحها بواجهته وiOS لا
+     * يسمعها — فيبقى «٣» على أيقونةٍ لا وراءها شيء.
+     *
+     * وإضافة الإشعارات تحمل `removeAllDeliveredNotifications` التي تمسح
+     * مركز الإشعارات، ولا تمسح الشارة. والشارة تُصفَّر بإشعارٍ صامتٍ من
+     * الخادم أو بجسرٍ أصيل — وهذا أوّلُهما وأقربُهما.
+     */
+    void (async () => {
+      try {
+        const badge = navigator as Navigator & {
+          setAppBadge?: (count?: number) => Promise<void>
+          clearAppBadge?: () => Promise<void>
+        }
+        if (unread > 0) await badge.setAppBadge?.(unread)?.catch(() => undefined)
+        else await badge.clearAppBadge?.()?.catch(() => undefined)
+
+        if (!isNativeShell()) return
+        const { PushNotifications } = await import('@capacitor/push-notifications')
+        /*
+         * وعند الصفر يُمسح مركز الإشعارات كذلك: إشعاراتٌ مقروءةٌ في التطبيق
+         * تبقى في المركز فيُظنّ أنّها لم تُقرأ.
+         */
+        if (unread === 0) {
+          await PushNotifications.removeAllDeliveredNotifications().catch(() => undefined)
+        }
+      } catch {
+        // شارةٌ لم تُرسم — والعدد ظاهرٌ على الجرس نفسه
+      }
+    })()
   }, [unread])
 
   async function markAllRead() {

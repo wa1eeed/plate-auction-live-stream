@@ -1342,6 +1342,18 @@ export type MobileSettings = {
    */
   minVersion: string | null
   recommendedVersion: string | null
+  /**
+   * الصوت والاهتزاز — **مفتاحان لا أكثر**.
+   *
+   * وهما تأكيدٌ يُحسّ ويُسمع عند المزايدة، وبعض البيئات لا يناسبها: مجلسٌ
+   * أو اجتماعٌ أو مكانٌ يُطلب فيه الصمت. فيُطفآن من اللوحة لكلّ المنصّة —
+   * والمستخدم يُطفئهما من نظامه أيضًا، وهذا لمن أراد قرارًا عامًّا.
+   *
+   * ولا يُزاد عليهما: مفاتيحُ لا تُستعمل تكلفةُ صيانةٍ وسطحُ خطأ، والطلب
+   * كان «لا تبالغ بإضافة إعدادات غير ضرورية».
+   */
+  soundsEnabled: boolean
+  hapticsEnabled: boolean
   updatedAt: string
   updatedByAdminId: string | null
 }
@@ -1465,6 +1477,9 @@ export const DEFAULT_MOBILE_SETTINGS: Omit<MobileSettings, 'updatedAt' | 'update
   pushTypes: DEFAULT_PUSH_TEMPLATES,
   minVersion: null,
   recommendedVersion: null,
+  /* مفعَّلان افتراضًا: التأكيد المحسوس نافعٌ في مزادٍ تُضغط أزراره بإبهام */
+  soundsEnabled: true,
+  hapticsEnabled: true,
 }
 
 export const DEFAULT_AUCTION_SETTINGS: Omit<AuctionSettings, 'updatedAt' | 'updatedByAdminId'> = {

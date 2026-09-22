@@ -65,6 +65,33 @@ jobs:
       - name: مزامنة الغلاف
         run: npx cap sync ios
 
+      # ---------------------------------------------- الإضافات كلُّها حاضرة
+      #
+      # `Package.swift` يولّده `cap sync`، وهو **مُودَعٌ في المستودع** فيَبلى:
+      # إضافةٌ تُثبَّت في `package.json` ولا تُزامن محليًّا تبقى غائبةً عنه.
+      #
+      # ومزامنةٌ تسقط صامتةً تُبقي الملفّ القديم، فيُبنى تطبيقٌ بلا الإضافة —
+      # وكودُنا يتعامل مع غيابها بلطفٍ (يسقط إلى أحداث الويب) فلا يظهر عطب.
+      # أي أنّ الميزة تغيب ولا أحد يعلم. فيُطابَق المعلَن بالمُولَّد.
+      - name: التحقّق من تسجيل الإضافات
+        run: |
+          MISSING=""
+          for PLUGIN in $(node -e "
+            const d = require('./package.json');
+            console.log(Object.keys(d.dependencies).filter(k => k.startsWith('@capacitor/') && k !== '@capacitor/core').join(' '))
+          "); do
+            # `@capacitor/splash-screen` ⟵ `CapacitorSplashScreen`
+            EXPECTED=$(echo "${PLUGIN#@capacitor/}" | awk -F- '{for(i=1;i<=NF;i++) printf "%s%s", toupper(substr($i,1,1)), substr($i,2)}')
+            if ! grep -q "Capacitor${EXPECTED}" ios/App/CapApp-SPM/Package.swift; then
+              MISSING="$MISSING $PLUGIN"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::إضافاتٌ معلَنةٌ ولم تُسجَّل في Package.swift:$MISSING"
+            exit 1
+          fi
+          echo "✓ كلّ إضافات Capacitor مسجَّلة"
+
       # ---------------------------------------------------- أرقام النسخة
       #
       # **رقم البناء من عدّاد التشغيل، لا من الملفّ.**
