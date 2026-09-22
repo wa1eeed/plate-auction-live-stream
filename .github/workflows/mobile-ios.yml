@@ -1,7 +1,9 @@
 # بناء تطبيق iOS في السحابة — بلا Xcode على جهازك.
 #
 # بناءُ iOS يتطلّب macOS وXcode في **مكانٍ ما**، ولا مفرّ من ذلك. وجهاز
-# `macos-15` هنا يحملهما، فيبقى جهازُك نظيفًا.
+# `macos-26` هنا يحملهما، فيبقى جهازُك نظيفًا. والإصدار مقصود: أبل ترفض
+# رفعًا بـSDK أقدم من 26، وصورةُ `macos-15` تحمل 18.5 — فيُبنى ويُوقَّع
+# ثمّ يُردّ في آخر خطوة.
 #
 # والتوقيع بمفتاح App Store Connect وحده — لا شهادة `.p12` ولا ملفّ تعريف
 # يُصنع باليد. وبلا المفتاح يُبنى التطبيق **بلا توقيع**: يُتحقَّق أنّه يُترجم
@@ -15,11 +17,38 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # صورةٌ تحمل Xcode 26 — وأبل لا تقبل رفعًا بـSDK أقدم من 26.
+    # و`macos-15` تحمل Xcode 16 بـSDK 18.5، فيُبنى ويُوقَّع ثمّ يُردّ عند الرفع.
+    runs-on: macos-26
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
+
+      # ---------------------------------------------------- أحدثُ Xcode
+      #
+      # **ويُفحص الحدّ قبل البناء لا بعده.**
+      #
+      # أبل تشترط SDK 26 أو أحدث، وردُّها يقع في **آخر** خطوة — بعد أربع دقائق
+      # من ترجمةٍ وأرشفةٍ وتوقيع. فيُقرأ رقم SDK أوّلًا ويُوقف البناء بسببٍ
+      # مقروء، بدل أن يسقط في نهايته بخطأ 409 من خادمٍ بعيد.
+      - name: اختيار Xcode والتحقّق من حدّ أبل
+        run: |
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NEWEST" ]; then
+            echo "::error::لا Xcode على هذه الصورة"
+            exit 1
+          fi
+          sudo xcode-select -s "$NEWEST/Contents/Developer"
+          echo "Xcode: $(xcodebuild -version | head -1)  ($NEWEST)"
+
+          SDK=$(xcodebuild -showsdks 2>/dev/null | grep -oE 'iphoneos[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "iOS SDK: $SDK"
+          MAJOR=${SDK%%.*}
+          if [ "${MAJOR:-0}" -lt 26 ]; then
+            echo "::error::SDK $SDK أقدم من 26 — وأبل ترفض الرفع. الصورة تحتاج Xcode 26 أو أحدث."
+            exit 1
+          fi
 
       # بلا `version`: يتبع `packageManager` في `package.json` — وتحديدُه هنا
       # يتعارض معه فيسقط قبل أن يبدأ شيء
