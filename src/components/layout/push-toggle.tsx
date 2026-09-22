@@ -56,54 +56,94 @@ export function PushToggle() {
     let alive = true
 
     void (async () => {
-      if (!supported) {
-        if (alive) setState('unavailable')
-        return
+      try {
+        if (!supported) {
+          if (alive) setState('unavailable')
+          return
+        }
+
+        /*
+         * **الغلاف الأصيل يُفصل أوّلًا — قبل أيّ واجهة ويب.**
+         *
+         * وكان المسار واحدًا فيمرّ الغلاف بثلاثةٍ لا وجود لها فيه:
+         *
+         *  ١. `config.publicKey` مفتاح VAPID — للويب وحده. والغلاف يدفع بقناته
+         *     (APNs/FCM)، فبلا VAPID كان يُقال «غير متاح» ويُخفى المفتاح.
+         *  ٢. `Notification.permission` — و**`Notification` غير معرَّفة في
+         *     WKWebView**، فيرمي `ReferenceError`.
+         *  ٣. `navigator.serviceWorker.ready` — قد لا يستقرّ، و`pushManager`
+         *     لا وجود له.
+         *
+         * والثانية هي القاتلة: الـeffect كان بلا `try`، فيُرمى الاستثناء
+         * وتبقى الحالة `loading` — و`loading` تعني `return null`. **فلا يُرسم
+         * مفتاحٌ إطلاقًا، ولا يُمنح إذن، ولا يُسجَّل جهاز، ولا يصل إشعار** —
+         * وكلُّه بلا رسالةِ خطأ واحدة.
+         */
+        if (isNativeShell()) {
+          const { PushNotifications } = await import('@capacitor/push-notifications')
+          const status = await PushNotifications.checkPermissions().catch(() => null)
+          if (!alive) return
+          if (status?.receive === 'granted') {
+            /* ممنوحٌ سلفًا: يُسجَّل في `NativeShell` عند كلّ إقلاع */
+            setState('on')
+          } else if (status?.receive === 'denied') {
+            setState('blocked')
+          } else {
+            setState('off')
+          }
+          return
+        }
+
+        const config = await fetch('/api/push', { cache: 'no-store' })
+          .then((response) => (response.ok ? response.json() : null))
+          .catch(() => null)
+
+        if (!alive) return
+        if (!config?.enabled || !config.publicKey) {
+          setState('unavailable')
+          return
+        }
+        setPublicKey(config.publicKey)
+
+        if (Notification.permission === 'denied') {
+          setState('blocked')
+          return
+        }
+
+        const registration = await navigator.serviceWorker.ready.catch(() => null)
+        const existing = await registration?.pushManager.getSubscription().catch(() => null)
+        if (!alive) return
+
+        if (!existing) {
+          setState('off')
+          return
+        }
+
+        /*
+         * إعادةُ إرسالٍ في كلّ فتح — شفاءٌ ذاتيّ.
+         *
+         * الاشتراك يعيش في ذاكرة الخادم كما يعيش صاحبه، فيضيع مع كلّ نشرة.
+         * والجهاز يعرف اشتراكه دائمًا، فإعادتُه في كلّ فتح تُرمّم ما ضاع بلا أن
+         * يُسأل صاحبه مرّة أخرى — وهو ما يُغني عن حفظه على القرص.
+         */
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            ...existing.toJSON(),
+            platform: devicePlatform(),
+            appVersion: appVersion(),
+          }),
+        }).catch(() => undefined)
+
+        if (alive) setState('on')
+      } catch {
+        /*
+         * أيّ واجهةٍ ناقصة تُخفي المفتاح صامتةً — فيُعرض «مطفأ» بدل العدم.
+         * ومفتاحٌ يُضغط فيُخبر بالعطب خيرٌ من مفتاحٍ لا يُرى.
+         */
+        if (alive) setState('off')
       }
-
-      const config = await fetch('/api/push', { cache: 'no-store' })
-        .then((response) => (response.ok ? response.json() : null))
-        .catch(() => null)
-
-      if (!alive) return
-      if (!config?.enabled || !config.publicKey) {
-        setState('unavailable')
-        return
-      }
-      setPublicKey(config.publicKey)
-
-      if (Notification.permission === 'denied') {
-        setState('blocked')
-        return
-      }
-
-      const registration = await navigator.serviceWorker.ready.catch(() => null)
-      const existing = await registration?.pushManager.getSubscription().catch(() => null)
-      if (!alive) return
-
-      if (!existing) {
-        setState('off')
-        return
-      }
-
-      /*
-       * إعادةُ إرسالٍ في كلّ فتح — شفاءٌ ذاتيّ.
-       *
-       * الاشتراك يعيش في ذاكرة الخادم كما يعيش صاحبه، فيضيع مع كلّ نشرة.
-       * والجهاز يعرف اشتراكه دائمًا، فإعادتُه في كلّ فتح تُرمّم ما ضاع بلا أن
-       * يُسأل صاحبه مرّة أخرى — وهو ما يُغني عن حفظه على القرص.
-       */
-      await fetch('/api/push', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...existing.toJSON(),
-          platform: devicePlatform(),
-          appVersion: appVersion(),
-        }),
-      }).catch(() => undefined)
-
-      if (alive) setState('on')
     })()
 
     return () => {
