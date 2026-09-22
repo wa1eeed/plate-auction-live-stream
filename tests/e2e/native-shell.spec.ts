@@ -124,3 +124,56 @@ test.describe('الانقطاع يُعلَن ولا يُبدّل الشاشة', 
  * في `tests/unit/api-error.test.ts`، وفيه أنّ «غير المؤكّد» لا يقول «فشل»
  * وأنّ ما قد يكون وقع لا يُعاد إرساله.
  */
+
+test.describe('جرس الإشعارات لا يُغلق نفسه', () => {
+  test('ينفتح بإشعاراتٍ غير مقروءة، ولا يُنعَش المسار وهو مفتوح', async ({ page, browser }) => {
+    test.setTimeout(120_000)
+
+    /* سارة أعلى مزايدٍ على أوّل إعلانٍ في البذرة — فتجاوزُها يُنتج لها `outbid` */
+    await loginUser(page, USERS.sara)
+    await page.goto('/market')
+    const href = await page.locator('a[href^="/market/"]').first().getAttribute('href')
+    const id = href!.split('/').pop()!
+
+    const other = await browser.newPage()
+    await loginUser(other, USERS.majed)
+    await other.goto(`/market/${id}`)
+    await other.evaluate(async (listingId) => {
+      const detail = await fetch(`/api/listings/${listingId}`).then((r) => r.json())
+      const next = detail?.listing?.nextBidAmount ?? detail?.nextBidAmount
+      await fetch(`/api/listings/${listingId}/bids`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          amount: Math.round((next ?? 20_000_000) / 100),
+          isCustomAmount: false,
+          clientRequestId: `bell_${Date.now()}`,
+        }),
+      })
+    }, id)
+    await other.close()
+
+    await page.goto('/market')
+    const bell = page.locator('[aria-label*="غير مقروء"]')
+    await expect(bell).toBeVisible({ timeout: 20_000 })
+
+    /*
+     * ويُقاس **أنّ المسار لا يُنعَش والقائمة مفتوحة**: إنعاشٌ يُعيد تصيير
+     * الشجرة من تحت القائمة، وعلى جهازٍ أبطأ يُغلقها في وجه صاحبها — وهو ما
+     * وقع في التطبيق.
+     */
+    const refreshes: string[] = []
+    page.on('request', (r) => {
+      if (r.headers()['next-action'] || r.url().includes('_rsc=')) refreshes.push(r.url())
+    })
+
+    await bell.click()
+    await expect(page.getByText('الإشعارات', { exact: true }).first()).toBeVisible()
+
+    const before = refreshes.length
+    await page.waitForTimeout(2_500)
+    /* والقائمة ما زالت مفتوحة */
+    await expect(page.getByText('الإشعارات', { exact: true }).first()).toBeVisible()
+    expect(refreshes.length - before, 'أُنعش المسار والقائمة مفتوحة').toBe(0)
+  })
+})

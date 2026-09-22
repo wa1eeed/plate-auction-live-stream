@@ -47,11 +47,19 @@ export function NetworkBanner() {
     <div
       role="status"
       aria-live="polite"
+      /*
+       * **في سياق الصفحة لا لاصقًا ولا ثابتًا.**
+       *
+       * وأوّلُ صياغةٍ كانت `sticky top-0 z-50` — فزاحمت شيئين: الهيدر
+       * (`sticky top-0 z-40`) فيقع أحدهما فوق الآخر، والقائمة المنسدلة
+       * (`z-50`) فقد يحجب الشريطُ قائمةَ الإشعارات نفسها.
+       *
+       * والانقطاع حالٌ عارضة، والتنبيه الفوريّ يقوله الـtoast في لحظة الفعل.
+       * فيكفي أن يُعلَن أعلى الصفحة بلا أن يُزاحم ما يُضغط.
+       */
       className={cn(
-        'sticky top-0 z-50 flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-semibold',
-        online
-          ? 'bg-success/15 text-success'
-          : 'bg-danger/15 text-danger',
+        'flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-semibold',
+        online ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger',
       )}
       style={{ paddingTop: 'calc(var(--safe-top) + 0.5rem)' }}
     >
