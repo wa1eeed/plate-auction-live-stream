@@ -11,6 +11,8 @@ import {
   layoutRow,
   arabicAdvance,
   fitFontSize,
+  ARABIC_SEPARATOR,
+  ARABIC_SEPARATOR_ADVANCE,
 } from './arial-metrics'
 
 export type SaudiLicensePlateProps = {
@@ -52,9 +54,14 @@ function stableUid(parts: string[]): string {
   return `plt${hash.toString(36)}`
 }
 
-/** يفصل الحروف العربية بفاصل عدم اتصال حتى تظهر بأشكالها المنفصلة كما على اللوحة. */
+/**
+ * يفصل الحروف العربية حتى تظهر بأشكالها المنفصلة كما على اللوحة.
+ *
+ * والفاصل من `arial-metrics` لا مكتوبًا هنا: من يصل به هو من يقيس به، وقد
+ * افترقا مرّةً — وُصلت الحروف بمسافةٍ عرضُها `0.2778em` وقيست على `0.06em`.
+ */
 function isolateArabic(letters: string): string {
-  return Array.from(letters).join('\u200c ')
+  return Array.from(letters).join(ARABIC_SEPARATOR)
 }
 
 /**
@@ -418,12 +425,18 @@ export function SaudiLicensePlate({
     0.08,
     western.length,
   )
-  /* مجموع عروض الحروف بعينها — لا عددٌ مضروبٌ في متوسّط */
+  /*
+   * مجموع عروض الحروف بعينها — لا عددٌ مضروبٌ في متوسّط — **ومعها فواصلها**.
+   *
+   * والفاصل يُحسب بعرضه المقيس لا بتقديرٍ: `isolateArabic` يصل الحروف بمسافةٍ
+   * عرضُها `0.2778em`، وكان يُقال للحاسب `0.06em`. فثلاثة حروفٍ تخرج أعرض
+   * بنحو الرُّبع ممّا قُدِّر لها — وهو ما أخرج «سعد» عن خانتها في الاعتيادية.
+   */
   const arabicLetterWidthLimit = fitFontSize(
     arabicAdvance(arabicLetters),
     geo.fonts.letters,
     lettersRoom,
-    0.06,
+    ARABIC_SEPARATOR_ADVANCE,
     letterCount,
   )
   const latinLetterWidthLimit = fitFontSize(
@@ -880,6 +893,11 @@ export function SaudiLicensePlate({
                 direction="rtl"
                 /* مقبضٌ للفحص: يقيس أنّ الحبر لا يتجاوز إطار اللوحة */
                 data-plate-arabic-letters
+                /*
+                 * وحدّا الخانة معه — وإلّا قاس الفحصُ حدودًا منسوخةً في ملفّه
+                 * تبقى على قِدمها حين تتغيّر الهندسة، فيمرّ وهو لا يقيس شيئًا.
+                 */
+                data-cell={`${geo.letters.from},${geo.letters.to}`}
                 style={{ fontFamily: 'var(--font-plate-arabic)' }}
               >
                 {isolateArabic(arabicLetters)}

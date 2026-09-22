@@ -161,3 +161,44 @@ test.describe('نوع إصدار اللوحة', () => {
     }
   })
 })
+
+/**
+ * الحرف لا يخرج عن خانته.
+ *
+ * وهذا فحصٌ على **المرسوم** لا على الحساب: الحساب كان صحيحًا في نفسه وخاطئًا
+ * في مدخله — يصل الراسم الحروف بمسافةٍ عرضُها `0.2778em` ويقول للحاسب إنّ
+ * بينها `0.06em`. فمرّت فحوص الوحدة كلُّها (تقيس الحساب بمدخله) وفاضت «سعد»
+ * في الاعتيادية عن خانتها بأربع وحداتٍ ونصف من كلّ جهة على الشاشة.
+ *
+ * وحدّا الخانة يأتيان من الهندسة نفسها عبر `data-cell` — لا منسوخَين هنا،
+ * فينسى نسخُهما حين تتغيّر الهندسة ويمرّ الفحص وهو لا يقيس شيئًا.
+ */
+test('الحرف العربيّ لا يتجاوز حدَّي خانته', async ({ page }) => {
+  await page.goto('/market')
+  await expect(page.locator('[data-plate-arabic-letters]').first()).toBeVisible()
+
+  const plates = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-plate-arabic-letters]')].map((node) => {
+      const [from, to] = (node.getAttribute('data-cell') ?? '0,0').split(',').map(Number)
+      const box = (node as SVGGraphicsElement).getBBox()
+      const svg = node.closest('svg[data-plate-type]')
+      return {
+        letters: (node.textContent ?? '').replace(/[‌ ]/g, ''),
+        format: svg?.getAttribute('viewBox') ?? '',
+        over: Math.max(from - box.x, box.x + box.width - to),
+        room: to - from,
+      }
+    }),
+  )
+
+  expect(plates.length, 'لا حروف عربية في البذرة').toBeGreaterThan(3)
+  // والاعتيادية خاصّةً: خانتها أضيق الخانات، وفيها وقع الفيضان
+  expect(plates.some((p) => p.format === '0 0 460 230')).toBe(true)
+
+  for (const plate of plates) {
+    expect(
+      plate.over,
+      `«${plate.letters}» تتجاوز خانتها بـ${plate.over.toFixed(1)} من ${plate.room}`,
+    ).toBeLessThanOrEqual(0)
+  }
+})

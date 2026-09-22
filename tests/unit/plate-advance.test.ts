@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   ARABIC_LETTER_ADVANCE,
+  ARABIC_SEPARATOR,
+  ARABIC_SEPARATOR_ADVANCE,
+  SPACE_ADVANCE,
   arabicAdvance,
   fitFontSize,
 } from '@/components/plate/arial-metrics'
@@ -85,5 +88,54 @@ describe('الحجم المحسوب يَسَع الخانة', () => {
   it('و«ااا» لا تُضيَّق: تأخذ الحجم الكامل لأنّها تَسَعه', () => {
     const size = fitFontSize(arabicAdvance('ااا'), BASE, ROOM, 0.06, 3)
     expect(size, '«ااا» ضُيّقت بلا سبب').toBe(BASE)
+  })
+})
+
+describe('الفاصل بين الحروف يُقاس بعرضه لا بتقدير', () => {
+  it('هو مانعُ وصلٍ ثمّ مسافة — بهذا الترتيب', () => {
+    expect(Array.from(ARABIC_SEPARATOR)).toEqual(['\u200c', ' '])
+  })
+
+  it('وعرضُه عرضُ المسافة وحدها — فمانعُ الوصل بلا عرض', () => {
+    expect(ARABIC_SEPARATOR_ADVANCE).toBe(SPACE_ADVANCE)
+    /* مقيسٌ بـ`measureText` على Arial Bold — لا مقدَّر */
+    expect(SPACE_ADVANCE).toBeCloseTo(0.2778, 4)
+  })
+
+  it('والتقدير القديم (0.06) كان يُنقصه إلى الخُمس', () => {
+    expect(ARABIC_SEPARATOR_ADVANCE / 0.06).toBeGreaterThan(4)
+  })
+})
+
+/**
+ * خانة الحروف في اللوحة الاعتيادية — أضيقُ خاناتها، وفيها وقع الفيضان.
+ *
+ * `letters: { from: 232, to: 386 }` و`fonts.letters: 170`، والحرف يُترك له
+ * ١٤٪ من خانته فراغًا (`× 0.86`) كما في الراسم.
+ */
+describe('حروفُ الاعتيادية تَسَع خانتها بعد حساب الفاصل', () => {
+  const CELL = 386 - 232
+  const ROOM = CELL * 0.86
+  const BASE = 170
+
+  /** العرضُ **كما يُرسم**: الحروف وفواصلها بعد أن يُقيَّد الحجم. */
+  function renderedWidth(letters: string, gap = ARABIC_SEPARATOR_ADVANCE): number {
+    const count = Array.from(letters).length
+    const size = fitFontSize(arabicAdvance(letters), BASE, ROOM, gap, count)
+    /* والرسم يصل بالفاصل الحقيقي مهما قيل للحاسب — وهنا كان الفرق */
+    return size * (arabicAdvance(letters) + ARABIC_SEPARATOR_ADVANCE * (count - 1))
+  }
+
+  for (const letters of ['صصص', 'سسس', 'سعد', 'ااا', 'صسص', 'ربن', 'كلم', 'صص', 'ص']) {
+    it(`«${letters}» لا تتجاوز ${CELL}`, () => {
+      expect(renderedWidth(letters)).toBeLessThanOrEqual(CELL)
+    })
+  }
+
+  it('وبالتقدير القديم كانت «سعد» تفيض عن خانتها — فهذا ما يُحرَس', () => {
+    const old = renderedWidth('سعد', 0.06)
+    expect(old, 'التقدير القديم لم يكن يُفيض؟ راجع القياس').toBeGreaterThan(CELL)
+    /* فاضت على الشاشة بـ٤٫٤ وحدة من كلّ جهة — أي ٨٫٨ عرضًا */
+    expect(old - CELL).toBeGreaterThan(8)
   })
 })

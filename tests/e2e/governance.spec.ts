@@ -33,7 +33,7 @@ test.describe('حوكمة موحّدة للمزادات', () => {
     }
 
     // السعر الافتتاحي يقبل صفرًا، والاحتياطي معه شرحه
-    await page.getByLabel('السعر الافتتاحي (ريال)').fill('0')
+    await page.getByLabel('السعر الافتتاحي').fill('0')
     await expect(page.getByText('ما السعر الاحتياطي؟')).toBeVisible()
   })
 

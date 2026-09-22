@@ -1,7 +1,7 @@
 'use client'
 
 import { Volume2, VolumeX } from 'lucide-react'
-import { Switch } from '@/components/ui/switch'
+import { SwitchFace } from '@/components/ui/switch'
 import { useSound } from '@/lib/hooks/use-sound'
 import { cn } from '@/lib/utils'
 
@@ -38,10 +38,8 @@ export function SoundSettingRow() {
         </span>
       </span>
 
-      {/* يُرى ولا يُضغط وحده — الصفُّ كلُّه هو الهدف */}
-      <span className="pointer-events-none shrink-0">
-        <Switch checked={enabled} aria-hidden tabIndex={-1} />
-      </span>
+      {/* وجهٌ يُرى ولا يُضغط — الصفُّ كلُّه هو الهدف، وزرٌّ لا يَسَع زرًّا */}
+      <SwitchFace checked={enabled} />
     </button>
   )
 }

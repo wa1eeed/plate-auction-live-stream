@@ -72,6 +72,22 @@ export function MarketGrid({
   const visible = useMemo(() => filterAndSortListings(listings, filters), [listings, filters])
 
   /*
+   * عددُ كلّ طريقة بيع — **بعد بقيّة الفلاتر لا قبلها**.
+   *
+   * الشريحة تقول «مزاد ٧» قبل الضغط، فلو عُدّت بلا نظرٍ إلى البحث ونوع اللوحة
+   * لوعدت بسبعٍ وأخرجت صفرًا — وهو أسوأ من ألّا تقول شيئًا.
+   */
+  const counts = useMemo(
+    () => ({
+      all: filterAndSortListings(listings, { ...filters, saleType: 'all' }).length,
+      auction: filterAndSortListings(listings, { ...filters, saleType: 'auction' }).length,
+      fixed: filterAndSortListings(listings, { ...filters, saleType: 'fixed' }).length,
+      offers: filterAndSortListings(listings, { ...filters, saleType: 'offers' }).length,
+    }),
+    [listings, filters],
+  )
+
+  /*
    * تصيير تدريجي — لا طلب لكل صفحة.
    *
    * الشبكة تُصيَّر كاملة فيرسم المتصفّح مئة بطاقة ليرى الزائر أربعًا، ولوحةٌ
@@ -109,12 +125,7 @@ export function MarketGrid({
   return (
     <>
       <div className="mb-6">
-        <MarketFilters
-          value={filters}
-          onChange={changeFilters}
-          resultCount={visible.length}
-          totalCount={listings.length}
-        />
+        <MarketFilters value={filters} onChange={changeFilters} counts={counts} />
       </div>
 
       {visible.length === 0 ? (

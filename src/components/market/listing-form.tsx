@@ -274,9 +274,19 @@ export function ListingForm({
         * كانت المعاينة تقع أسفل النموذج بين الحقول، فمن يبدّل نوع الإصدار أو
         * يختار حرفًا لا يرى أثر اختياره إلّا أن ينزل إليها ثمّ يعود. وهي
         * الشيء الوحيد الذي يُصنع هنا، فمكانها الرأس. و`sticky` تحت الترويسة
-        * (ارتفاعها 16) تُبقيها معك إلى آخر حقل.
+        * تُبقيها معك إلى آخر حقل.
+        *
+        * **والمقدار `4rem + safe-top` لا `4rem`.** الترويسة ارتفاعها `h-16`
+        * وفوقها حشوةُ الشقّ في الغلاف الأصيل، فـ`top-16` وحدها تُلصق اللوحة
+        * عند ٦٤ بكسلًا — وهو **داخل** الترويسة على الجهاز، فيختفي أعلى
+        * البطاقة تحتها في أثناء النزول. وقد اختفى.
+        *
+        * و`--safe-top` صفرٌ في المتصفّح، فالحاسوب على حاله حرفًا بحرف.
         */}
-      <section className="sticky top-16 z-20 rounded-2xl border border-ink-600 bg-ink-800/95 p-4 shadow-lg shadow-black/25 backdrop-blur">
+      <section
+        className="sticky z-20 rounded-2xl border border-ink-600 bg-ink-800/95 p-4 shadow-lg shadow-black/25 backdrop-blur"
+        style={{ top: 'calc(4rem + var(--safe-top))' }}
+      >
         {/*
           * ارتفاعٌ واحد لكلّ الإصدارات، وعرضٌ يتّسع لأعرضها.
           *
@@ -540,19 +550,19 @@ export function ListingForm({
             <div className="grid gap-4 sm:grid-cols-3">
               <NumberField
                 id="startingPrice"
-                label="السعر الافتتاحي (ريال)"
+                label="السعر الافتتاحي"
                 hint="اتركه صفرًا لمزاد مفتوح يبدأ من أول مزايدة"
                 form={form}
               />
               <NumberField
                 id="minimumIncrement"
-                label="الحد الأدنى للزيادة (ريال)"
+                label="الحد الأدنى للزيادة"
                 hint="أقل فرق بين مزايدة وأخرى"
                 form={form}
               />
               <NumberField
                 id="reservePrice"
-                label="السعر الاحتياطي (سرّي)"
+                label="السعر الاحتياطي — قيمة الحدّ الأدنى المخفيّ"
                 hint="اتركه صفرًا للبيع بأي مبلغ"
                 form={form}
                 highlight
@@ -720,7 +730,8 @@ function NumberField({
         label={label}
         size="md"
         placeholder="0"
-        className={highlight ? '[&>input]:border-gold-600/60' : undefined}
+        /* الحدّ صار على الحاوية لا على الحقل — فالتمييز عليها */
+        className={highlight ? 'border-gold-600/60' : undefined}
         value={Number.isFinite(riyals) && Number(riyals) > 0 ? riyalsToHalalas(Number(riyals)) : null}
         onChange={(halalas) =>
           form.setValue(id, halalas === null ? 0 : halalasToRiyals(halalas), {

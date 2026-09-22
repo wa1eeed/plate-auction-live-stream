@@ -190,7 +190,7 @@ test.describe('الملاحة السفلية والهيدر', () => {
   test('لا ملاحةَ سفلية في المتصفّح — والدُرج باقٍ', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/market')
-    await expect(page.getByRole('navigation', { name: 'التنقّل' })).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: 'التنقّل', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'القائمة' })).toHaveCount(1)
   })
 
@@ -332,7 +332,7 @@ test.describe('صفحة الإعدادات', () => {
     await page.goto('/account/settings')
     /* العلامتان موجودتان، والإخفاء يقع بـ`:has` في CSS */
     await expect(page.locator('[data-settings-page]')).toHaveCount(1)
-    await expect(page.locator('[data-hide-on-settings]')).toHaveCount(1)
+    await expect(page.locator('[data-section-rail]')).toHaveCount(1)
   })
 
   test('ومفتاحا الصوت والإشعارات صفّان يُضغطان كاملين', async ({ page }) => {
@@ -349,5 +349,124 @@ test.describe('صفحة الإعدادات', () => {
     const box = await sound.boundingBox()
     expect(box!.width, 'صفُّ الصوت ضيّق — عاد أيقونةً لا صفًّا').toBeGreaterThan(200)
     expect(box!.height, 'صفٌّ قصير يصعب لمسه').toBeGreaterThanOrEqual(44)
+  })
+})
+
+/**
+ * السحب للتحديث يبقى بعد التنقّل.
+ *
+ * وكان يموت بعده: المستمعات تُركَّب على `[data-app-scroll]` المُلتقَط مرّةً
+ * عند التركيب، وموجِّه Next يستبدل شجرة الصفحة عند كلّ تنقّل — فتبقى
+ * المستمعات على عقدةٍ مفصولةٍ لا يصلها لمس. فيعمل السحب مرّةً أو مرّتين ثمّ
+ * لا يعمل، وهو ما شُكي منه.
+ *
+ * والغلاف يُصطنع هنا: `Capacitor` لا وجود له في متصفّحٍ عاديّ، وما يُقاس هو
+ * الربطُ لا الجسر.
+ */
+test.describe('السحب للتحديث', () => {
+  /** يسحب أربعين بكسلًا من أعلى الشاشة ويُرجع إزاحةَ المؤشّر بعدها. */
+  const DRAG = `(async () => {
+    const at = (y) => {
+      const t = new Touch({ identifier: 1, target: document.body, clientX: 40, clientY: y })
+      return { touches: [t], targetTouches: [t], changedTouches: [t], bubbles: true, cancelable: true }
+    }
+    document.dispatchEvent(new TouchEvent('touchstart', at(10)))
+    for (const y of [40, 90, 140, 190]) {
+      document.dispatchEvent(new TouchEvent('touchmove', at(y)))
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    const dot = document.querySelector('[role="status"] span')
+    const shift = dot ? new DOMMatrix(getComputedStyle(dot).transform).m42 : -1
+    document.dispatchEvent(new TouchEvent('touchend', at(190)))
+    return shift
+  })()`
+
+  test('يعمل في الرئيسية، ويبقى عاملًا في السوق بعد التنقّل', async ({ page }) => {
+    await page.addInitScript(() => {
+      ;(window as unknown as { Capacitor: unknown }).Capacitor = {
+        isNativePlatform: () => true,
+        getPlatform: () => 'ios',
+      }
+    })
+    await page.goto('/')
+    /* الملاحة السفلية دليلُ أنّ الغلاف صُدِّق فعلًا */
+    await expect(page.getByRole('navigation', { name: 'التنقّل', exact: true })).toBeVisible()
+
+    const first = await page.evaluate(DRAG)
+    expect(first, 'المؤشّر لم ينزل مع الإصبع في الرئيسية').toBeGreaterThan(10)
+
+    /* تنقّلٌ من جهة العميل — وهو ما كان يقطع الربط */
+    await page.getByRole('navigation', { name: 'التنقّل', exact: true }).getByRole('link', { name: 'السوق' }).click()
+    await page.waitForURL('**/market')
+    await expect(page.locator('a[href^="/market/"]').first()).toBeVisible()
+
+    const second = await page.evaluate(DRAG)
+    expect(second, 'مات السحب بعد التنقّل — المستمع على عقدةٍ مفصولة').toBeGreaterThan(10)
+  })
+})
+
+/**
+ * مفتاح الإعدادات **داخل صفّه**.
+ *
+ * وكان خارجه: الصفُّ `button` والمفتاح `SwitchPrimitives.Root` وهو `button`
+ * آخر — وزرٌّ لا يَسَع زرًّا. فيُغلق المحلّلُ الصفَّ عند أوّل `<button>` داخله
+ * ويرفع المفتاح إلى ما بعده: يسقط سطرًا وحده تحت النصّ، وهو `pointer-events-none`
+ * فلا يستجيب للمس. فيُرى مفتاحًا مكسورًا لا يُضغط — وقد رُئي.
+ *
+ * **والقياس على المرسوم لا على وجود سمة.** وأوّلُ صياغةٍ كانت تعدّ عنصرًا
+ * بسمةٍ وضعناها نحن، فمرّت على النسخة المعطوبة حين جُرّبت: السمة كانت على
+ * الغلاف والمرفوعُ ما بداخله. فصار القياس على شيئين لا يكذبان: **لا ضابط
+ * داخل الصفّ** (`role="switch"` وهو زرٌّ في زرّ)، و**الوجه داخل صندوق صفّه**.
+ */
+test.describe('مفاتيح الإعدادات', () => {
+  test('الوجه داخل صفّه، والصفُّ كلُّه يُبدّل الحال', async ({ page }) => {
+    await loginUser(page)
+    await page.goto('/account/settings')
+
+    /*
+     * مرساةُ البداية مقصودة: في الهيدر زرُّ صوتٍ اسمُه «إيقاف أصوات المنصّة»
+     * يظهر على الواسع، فبلا المرساة يُصيب المحدِّدُ اثنين.
+     */
+    const row = page.getByRole('button', { name: /^أصوات المنصّة/ })
+    await expect(row).toBeVisible()
+
+    /*
+     * لا ضابطَ داخل صفحة الإعدادات.
+     *
+     * صفوفُها كلُّها أزرار تحمل حالَها في `aria-pressed`، فـ`role="switch"`
+     * فيها يعني زرًّا داخل زرّ — وهو ما يرفعه المحلّل.
+     */
+    await expect(page.locator('[data-settings-page] [role="switch"]')).toHaveCount(0)
+
+    /* والوجه داخل صندوق صفّه — لا سطرًا وحده تحته */
+    const boxes = await page.evaluate(() => {
+      const button = [...document.querySelectorAll('[data-settings-page] button')].find((el) =>
+        (el.getAttribute('aria-label') ?? el.textContent ?? '').trimStart().startsWith('أصوات'),
+      )!
+      const face = document.querySelector('[data-settings-page] [data-switch-face]')!
+      const r = button.getBoundingClientRect()
+      const f = face.getBoundingClientRect()
+      return {
+        rowTop: r.top, rowBottom: r.bottom,
+        faceMidY: f.top + f.height / 2,
+        faceWidth: f.width,
+      }
+    })
+    expect(boxes.faceWidth).toBeGreaterThan(40)
+    expect(boxes.faceMidY).toBeGreaterThan(boxes.rowTop)
+    expect(boxes.faceMidY).toBeLessThan(boxes.rowBottom)
+
+    /* والصفُّ كلُّه هو الهدف: ضغطةٌ على نصّه تُبدّل الحال */
+    const face = row.locator('[data-switch-face]')
+    const before = await face.getAttribute('data-state')
+    await row.getByText('أصوات المنصّة').click()
+    await expect(face).not.toHaveAttribute('data-state', before ?? '')
+
+    /* والإبهام ينتقل فعلًا — لا يتبدّل الاسم وحده */
+    const thumbStart = () =>
+      face.locator('span').first().evaluate((el) => getComputedStyle(el).insetInlineStart)
+    const moved = await thumbStart()
+    await row.getByText('أصوات المنصّة').click()
+    await expect.poll(thumbStart).not.toBe(moved)
   })
 })

@@ -18,13 +18,14 @@ test.describe('رقم الإعلان', () => {
     expect(refs.length).toBeGreaterThan(0)
 
     // البحث بالرقم يُبقي لوحة واحدة
-    const count = page.getByText(/عرض \d+ من \d+ لوحة/)
+    /* الحصيلة في شريحة «الكل» — وسطرُ «عرض ١٤ من ٣٣» رُفع بطلب صاحب المنصّة */
+    const count = page.getByRole('tab', { name: 'الكل' }).locator('[data-tab-count]')
     await page.getByLabel('بحث في السوق').fill(refs[0]!)
-    await expect(count).toContainText('عرض 1 من')
+    await expect(count).toHaveText('1')
 
     // والصيغة المختصرة بلا شرطة وبحروف صغيرة تعمل كذلك
     await page.getByLabel('بحث في السوق').fill(refs[0]!.replace('-', '').toLowerCase())
-    await expect(count).toContainText('عرض 1 من')
+    await expect(count).toHaveText('1')
 
     /*
      * وأرقام اللوحة تبقى بحثًا في اللوحة لا في رقم الإعلان.

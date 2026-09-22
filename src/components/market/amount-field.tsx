@@ -103,7 +103,32 @@ export function AmountField({
   }, [text])
 
   return (
-    <div className={cn('relative min-w-0', className)}>
+    /*
+     * الإطارُ حاويةٌ، و«ريال» **داخل الصفّ لا فوقه**.
+     *
+     * وكان الحقلُ هو الإطار و«ريال» مطليّةً عليه بموضعٍ مطلق. والحقل `dir="ltr"`
+     * لأنّ الأرقام تُقرأ يسارًا، والحاوية `rtl` كالصفحة — فـ`pe` في الحقل
+     * تحجز يمينه و`end` في اللاحقة تضعها **يساره**. فيبدأ الرقم من اليسار
+     * حيث الكلمة، **فيغطّيها**. وقد غطّاها في السعر الافتتاحي وأخويه.
+     *
+     * والصفُّ لا يُغطّي: ما فيه يقتسم العرض ولا يركب بعضُه بعضًا مهما طال
+     * الرقم أو تبدّل الاتّجاه.
+     */
+    <div
+      className={cn(
+        'flex min-w-0 items-center gap-2 rounded-xl border bg-ink-900 px-3 transition-colors',
+        'focus-within:border-gold-600',
+        size === 'lg' ? 'h-14' : 'h-12',
+        invalid ? 'border-danger' : 'border-ink-600',
+        disabled && 'opacity-60',
+        className,
+      )}
+    >
+      {/*
+        * فارغٌ بعرض اللاحقة — ليبقى الرقم في وسط الإطار لا في وسط ما بقي منه.
+        * وللمقاس الكبير وحده: هو الذي يُوسَّط.
+        */}
+      {size === 'lg' && suffix && <span aria-hidden className="w-8 shrink-0" />}
       <input
         ref={inputRef}
         id={id}
@@ -134,16 +159,14 @@ export function AmountField({
         }}
         className={cn(
           // النائب يُميَّز عن القيمة بخفوته ووزنه، وإلّا قُرئ مبلغًا مكتوبًا
-          'w-full rounded-xl border bg-ink-900 ps-3 font-extrabold tabular-nums leading-none outline-none transition-colors placeholder:font-bold placeholder:text-muted/45 focus:border-gold-600 disabled:opacity-60',
-          size === 'lg' ? 'h-14 text-center text-2xl sm:text-3xl' : 'h-12 text-start text-xl',
-          suffix ? 'pe-12' : 'pe-3',
-          invalid ? 'border-danger text-danger' : 'border-ink-600',
+          'min-w-0 flex-1 border-0 bg-transparent p-0 font-extrabold tabular-nums leading-none outline-none placeholder:font-bold placeholder:text-muted/45 disabled:opacity-100',
+          /* اليمين هو مبتدأ القراءة في صفحةٍ عربية، والحقل بذاته يساريّ */
+          size === 'lg' ? 'text-center text-2xl sm:text-3xl' : 'text-right text-xl',
+          invalid && 'text-danger',
         )}
       />
       {suffix && (
-        <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-[11px] font-bold text-muted">
-          {suffix}
-        </span>
+        <span className="w-8 shrink-0 text-[11px] font-bold text-muted">{suffix}</span>
       )}
     </div>
   )

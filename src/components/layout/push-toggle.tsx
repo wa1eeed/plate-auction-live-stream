@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BellOff, BellRing, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { Switch } from '@/components/ui/switch'
+import { SwitchFace } from '@/components/ui/switch'
 import { PushPrimer } from './push-primer'
 import {
   appVersion,
@@ -290,10 +290,8 @@ export function PushToggle() {
           </span>
         </span>
 
-        {/* يُرى ولا يُضغط وحده — الصفُّ كلُّه هو الهدف */}
-        <span className="pointer-events-none shrink-0">
-          <Switch checked={on} disabled={busy} aria-hidden tabIndex={-1} />
-        </span>
+        {/* وجهٌ يُرى ولا يُضغط — الصفُّ كلُّه هو الهدف، وزرٌّ لا يَسَع زرًّا */}
+        <SwitchFace checked={on} className={busy ? 'opacity-60' : undefined} />
       </button>
 
       <PushPrimer

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 import { isNativeShell } from '@/lib/device'
@@ -41,35 +41,69 @@ export function PullToRefresh() {
     }, MIN_SPIN_MS)
   }, [router])
 
+  /*
+   * الانشغال في مِعلاقٍ لا في تابعٍ للأثر.
+   *
+   * المستمعات تُركَّب مرّةً وتبقى، فلو قرأت `busy` من إغلاقها لقرأت قيمته
+   * يوم التركيب أبدًا. والمِعلاق يُقرأ لحظةَ اللمس.
+   */
+  const busyRef = useRef(false)
+  busyRef.current = busy
+
   useEffect(() => {
     if (!native) return
-    const scroller = document.querySelector<HTMLElement>('[data-app-scroll]')
-    if (!scroller) return
 
     let startY = 0
+    let startX = 0
     let dragging = false
     let distance = 0
 
+    /*
+     * الحاوية تُطلب **عند اللمس** لا عند التركيب.
+     *
+     * وكانت تُطلب مرّةً في التركيب وتُركَّب عليها المستمعات. والتنقّل في
+     * موجِّه Next يستبدل شجرة الصفحة — ومعها `[data-app-scroll]` — فتبقى
+     * المستمعات على عقدةٍ مفصولةٍ من المستند لا يصلها لمس. فيعمل السحب
+     * مرّةً أو مرّتين ثمّ لا يعمل، وهو ما وقع.
+     *
+     * والمستمعات الآن على المستند نفسه — لا يُستبدل — وتلتقط في طور الالتقاط
+     * فلا يحجبها عنصرٌ يوقف الانتشار.
+     */
+    const scrollerOf = () => document.querySelector<HTMLElement>('[data-app-scroll]')
+
     const onStart = (event: TouchEvent) => {
+      const scroller = scrollerOf()
       /* لا يبدأ إلّا من أعلى الحاوية تمامًا — وإلّا اعترض تمريرًا عاديًّا */
-      if (scroller.scrollTop > 0 || busy) return
+      if (!scroller || scroller.scrollTop > 0 || busyRef.current) return
       startY = event.touches[0]?.clientY ?? 0
+      startX = event.touches[0]?.clientX ?? 0
       dragging = true
       distance = 0
     }
 
+    const stop = () => {
+      dragging = false
+      distance = 0
+      setPull(0)
+    }
+
     const onMove = (event: TouchEvent) => {
       if (!dragging) return
-      const current = event.touches[0]?.clientY ?? 0
-      const raw = current - startY
+      const touch = event.touches[0]
+      if (!touch) return
+      const raw = touch.clientY - startY
 
       /* سحبٌ لأعلى يُنهي الالتقاط: صاحبُه يريد التمرير لا التحديث */
-      if (raw <= 0) {
-        dragging = false
-        distance = 0
-        setPull(0)
-        return
-      }
+      if (raw <= 0) return stop()
+
+      /*
+       * والسحبُ العَرضيّ يُنهيه أيضًا.
+       *
+       * في الرئيسية كاروسيلُ أقسامٍ يُسحب أفقيًّا وهو في أعلى الصفحة، وإصبعٌ
+       * يميل قليلًا إلى أسفل وهو يسحبه كان يُقرأ سحبًا للتحديث — فيُمنع
+       * الكاروسيل من الحركة ويظهر مؤشّرٌ لم يُطلب.
+       */
+      if (Math.abs(touch.clientX - startX) > Math.abs(raw)) return stop()
 
       /*
        * مقاومةٌ تتزايد: أوّلُ المسافة يتبع الإصبع، وآخرُها يشتدّ.
@@ -91,18 +125,19 @@ export function PullToRefresh() {
     }
 
     /* `passive: false` شرطٌ لـ`preventDefault` في `touchmove` */
-    scroller.addEventListener('touchstart', onStart, { passive: true })
-    scroller.addEventListener('touchmove', onMove, { passive: false })
-    scroller.addEventListener('touchend', onEnd, { passive: true })
-    scroller.addEventListener('touchcancel', onEnd, { passive: true })
+    const opts = { capture: true } as const
+    document.addEventListener('touchstart', onStart, { ...opts, passive: true })
+    document.addEventListener('touchmove', onMove, { ...opts, passive: false })
+    document.addEventListener('touchend', onEnd, { ...opts, passive: true })
+    document.addEventListener('touchcancel', onEnd, { ...opts, passive: true })
 
     return () => {
-      scroller.removeEventListener('touchstart', onStart)
-      scroller.removeEventListener('touchmove', onMove)
-      scroller.removeEventListener('touchend', onEnd)
-      scroller.removeEventListener('touchcancel', onEnd)
+      document.removeEventListener('touchstart', onStart, opts)
+      document.removeEventListener('touchmove', onMove, opts)
+      document.removeEventListener('touchend', onEnd, opts)
+      document.removeEventListener('touchcancel', onEnd, opts)
     }
-  }, [native, busy, refresh])
+  }, [native, refresh])
 
   if (!native) return null
 

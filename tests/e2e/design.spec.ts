@@ -53,54 +53,70 @@ test.describe('الصفحة الرئيسية', () => {
   })
 })
 
+/**
+ * حصيلةُ التصفية — **في الشريحة لا في سطرٍ تحتها**.
+ *
+ * كان سطرٌ يقول «عرض ١٤ من ٣٣ لوحة»، ورُفع بطلب صاحب المنصّة. وما كان يقوله
+ * صار في شريحة «الكل»: عدّادٌ يُقرأ قبل الضغط لا بعده.
+ */
+function allCount(page: import('@playwright/test').Page) {
+  return page.getByRole('tab', { name: 'الكل' }).locator('[data-tab-count]')
+}
+
 test.describe('فلاتر السوق', () => {
   test('تابات طريقة البيع تصفّي النتائج', async ({ page }) => {
     await page.goto('/market')
-    const count = page.getByText(/عرض \d+ من \d+ لوحة/)
-    await expect(count).toBeVisible()
-    const before = await count.innerText()
+    const grid = page.locator('article')
+    await expect(grid.first()).toBeVisible()
+    const before = await grid.count()
 
     await page.getByRole('tab', { name: 'مزاد' }).click()
     await expect(page.getByRole('tab', { name: 'مزاد' })).toHaveAttribute('aria-selected', 'true')
-    await expect(count).not.toHaveText(before)
+    /* وعدّادُ الشريحة يطابق ما رُسم — فالوعد يُوفى */
+    await expect.poll(() => grid.count()).toBeLessThan(before)
+    await expect(page.getByRole('tab', { name: 'مزاد' }).locator('[data-tab-count]')).toHaveText(
+      String(await grid.count()),
+    )
   })
 
-  test('التاب المفتوح ظاهر للعين لا لقارئ الشاشة وحده', async ({ page }) => {
+  test('الشريحة المفتوحة تُرى — مرسومةً فوق التاب لا خلف الصفحة', async ({ page }) => {
     await page.goto('/market')
     const selected = page.locator('[role="tab"][aria-selected="true"]')
     await expect(selected).toHaveText(/الكل/)
 
     /*
-     * الخطّ السفلي كان `-z-10` فيُرسم خلف الصفحة لا خلف النص، فلا يظهر شيء
-     * ولا يعرف الزائر أي قسم يتصفّح. نتحقّق أنه مرئيّ فعلًا لا موجودًا فحسب.
+     * كان المؤشّر خطًّا سفليًّا بـ`-z-10` فيُرسم خلف الصفحة لا خلف النصّ، فلا
+     * يظهر شيءٌ ولا يعرف الزائر أيّ قسمٍ يتصفّح. وصار شريحةً تملأ التاب،
+     * فيُقاس أنّها مرسومةٌ فعلًا وبمقاس التاب لا موجودةً فحسب.
+     *
+     * والقياس بعد الترطيب: `layoutId` في Framer يُركّب المستطيل بعده، فالقياس
+     * فور التحميل يقع على عنصرٍ بلا مقاس — سباقٌ في الفحص لا عيبٌ في الصفحة.
      */
-    /*
-     * المؤشّر يُركَّب بعد الترطيب (`layoutId` في Framer)، فالقياس فور التحميل
-     * قد يقع على عنصر بلا مقاس — وهو سباقٌ في الاختبار لا عيبٌ في الصفحة.
-     */
-    const bar = selected.locator('span').last()
-    await expect
-      .poll(() => bar.evaluate((el) => el.getBoundingClientRect().height))
+    const thumb = selected.locator('[data-tab-thumb]')
+    await expect.poll(() => thumb.evaluate((el) => el.getBoundingClientRect().height))
       .toBeGreaterThan(0)
 
-    const indicator = await bar.evaluate((el) => {
-      const style = getComputedStyle(el)
-      const box = el.getBoundingClientRect()
-      return { zIndex: style.zIndex, height: Math.round(box.height), width: Math.round(box.width) }
-    })
-    expect(indicator.zIndex).not.toMatch(/^-/)
-    expect(indicator.height).toBeGreaterThan(0)
-    expect(indicator.width).toBeGreaterThan(20)
-
-    // والمفتوح يتميّز عن غيره لونًا ووزنًا لا بالخطّ وحده
-    const [openWeight, otherWeight] = await Promise.all([
-      selected.evaluate((el) => getComputedStyle(el).fontWeight),
-      page
-        .locator('[role="tab"][aria-selected="false"]')
-        .first()
-        .evaluate((el) => getComputedStyle(el).fontWeight),
+    const [box, tab] = await Promise.all([
+      thumb.evaluate((el) => {
+        const rect = el.getBoundingClientRect()
+        return { zIndex: getComputedStyle(el).zIndex, width: rect.width, height: rect.height }
+      }),
+      selected.evaluate((el) => {
+        const rect = el.getBoundingClientRect()
+        return { width: rect.width, height: rect.height, color: getComputedStyle(el).color }
+      }),
     ])
-    expect(Number(openWeight)).toBeGreaterThan(Number(otherWeight))
+    expect(box.zIndex).not.toMatch(/^-/)
+    // تملأ التاب لا نقطةً فيه
+    expect(box.width).toBeGreaterThan(tab.width * 0.9)
+    expect(box.height).toBeGreaterThan(tab.height * 0.9)
+
+    // والمفتوح يتميّز عن غيره لونًا — لا بالشريحة وحدها
+    const other = await page
+      .locator('[role="tab"][aria-selected="false"]')
+      .first()
+      .evaluate((el) => getComputedStyle(el).color)
+    expect(tab.color).not.toBe(other)
   })
 
   test('التاب المفتوح يُكتب في الرابط فيصمد أمام التحديث والمشاركة', async ({ page }) => {
@@ -175,9 +191,11 @@ test.describe('فلترة عدد الحروف والأرقام', () => {
   }
 
   test('«ثلاثي الحروف» يقلّص النتائج ويترك رقاقة قابلة للإزالة', async ({ page }) => {
-    const count = page.getByText(/عرض \d+ من \d+ لوحة/)
-    await openDrawer(page)
+    await page.goto('/market')
+    const count = allCount(page)
+    /* تُقرأ قبل فتح الدُرج: الدُرج يغطّي الشرائح فلا تُقرأ وهو مفتوح */
     const before = await count.innerText()
+    await openDrawer(page)
 
     await page.getByRole('button', { name: 'ثلاثي الحروف' }).click()
     await page.getByRole('button', { name: 'عرض النتائج' }).click()
@@ -191,9 +209,11 @@ test.describe('فلترة عدد الحروف والأرقام', () => {
   })
 
   test('عدد الأرقام يصفّي مستقلًّا عن عدد الحروف', async ({ page }) => {
-    const count = page.getByText(/عرض \d+ من \d+ لوحة/)
-    await openDrawer(page)
+    await page.goto('/market')
+    const count = allCount(page)
+    /* تُقرأ قبل فتح الدُرج: الدُرج يغطّي الشرائح فلا تُقرأ وهو مفتوح */
     const before = await count.innerText()
+    await openDrawer(page)
 
     await page.getByRole('button', { name: 'أربعة أرقام' }).click()
     await page.getByRole('button', { name: 'عرض النتائج' }).click()
