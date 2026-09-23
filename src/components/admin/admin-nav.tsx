@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   FileType,
+  GalleryHorizontal,
   HandCoins,
   HelpCircle,
   Landmark,
@@ -89,6 +90,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   {
     title: 'النظام',
     links: [
+      { href: '/admin/home', label: 'واجهة الرئيسية', icon: GalleryHorizontal },
       { href: '/admin/pages', label: 'صفحات المنصّة', icon: FileType },
       { href: '/admin/mobile', label: 'التطبيق', icon: Smartphone },
       { href: '/admin/faq', label: 'الأسئلة الشائعة', icon: HelpCircle },

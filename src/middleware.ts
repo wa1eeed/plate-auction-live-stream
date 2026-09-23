@@ -44,12 +44,28 @@ export function middleware(request: NextRequest) {
    * يكتب أنماطًا في كلّ إطارٍ من الحركة. و`nonce` لا يُطبَّق على سمة نمط.
    * والخطر منها أقلّ بكثير: نمطٌ لا يُنفِّذ كودًا.
    */
+  /*
+   * مضيفُ الوسائط — يُضاف **إن ضُبط، وبأصله وحده**.
+   *
+   * البنرات والستوريز تسكن R2 وتُقدَّم من `cdn.…`، وسياسةٌ لا تعرفه تحجبها
+   * كلَّها بلا رسالةٍ في الصفحة. ولا يُفتح البابُ على مصراعيه (`https:`):
+   * ما يُسمح به هو الأصل المضبوط لا غير، فإن لم يُضبط بقيت السياسة على
+   * ضيقها الأوّل حرفًا بحرف.
+   *
+   * و`media-src` تُذكر صراحةً — ولم تكن مذكورة: الفدّيو كان يقع على
+   * `default-src 'self'` فلا يُشغَّل ولو من نطاقنا المسموح للصور.
+   */
+  const mediaHost = process.env.R2_PUBLIC_BASE_URL?.trim().replace(/\/+$/, '') ?? ''
+  const media = /^https:\/\/[^\s'";]+$/.test(mediaHost) ? ` ${new URL(mediaHost).origin}` : ''
+
   const directives = [
     `default-src 'self'`,
     `script-src ${script}`,
     `style-src 'self' 'unsafe-inline'`,
     /* الشعارات تُخزَّن `data:` في الإعدادات، والمعاينات `blob:` قبل الرفع */
-    `img-src 'self' data: blob:`,
+    `img-src 'self' data: blob:${media}`,
+    /* الستوري فدّيو — وبلا هذه يقع على `default-src` فلا يُشغَّل */
+    `media-src 'self' blob:${media}`,
     /* الخطّ يستضيفه Next في `_next/static` — لا طلب إلى جوجل */
     `font-src 'self'`,
     /* المزايدة اللحظية على `/ws` — نفس الأصل، والصريح أوضح من الاتّكال على `'self'` */

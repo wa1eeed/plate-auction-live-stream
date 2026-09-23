@@ -2,6 +2,8 @@ import type { ReferenceKind } from '@/lib/domain/reference'
 import type {
   AdminAccount,
   AuctionSettings,
+  Banner,
+  Story,
   CommissionSettings,
   AuditLog,
   Bid,
@@ -59,6 +61,8 @@ export type NewOrder = Omit<
 >
 export type NewDeposit = Omit<Deposit, 'id' | 'reference' | 'createdAt' | 'resolvedAt' | 'resolvedByAdminId'>
 export type NewFaqItem = Omit<FaqItem, 'id' | 'createdAt' | 'updatedAt'>
+export type NewBanner = Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>
+export type NewStory = Omit<Story, 'id' | 'createdAt' | 'updatedAt'>
 export type NewPlatformEntry = Omit<
   PlatformEntry,
   'id' | 'reference' | 'createdAt' | 'reversedAt' | 'reversalReason'
@@ -271,6 +275,25 @@ export interface AuctionStore {
 
   getPaymentSettings(): Promise<PaymentSettings>
   updatePaymentSettings(patch: Partial<PaymentSettings>): Promise<PaymentSettings>
+
+  // ---- واجهة الرئيسية: ستوريز وبنرات
+  /**
+   * `liveAt` يُرشّح بنافذة الظهور عند لحظةٍ بعينها — تُمرَّر من الخادم.
+   *
+   * ولا يُقرأ الوقتُ داخل المخزَن: الفحص يحتاج أن يضع اللحظة بيده ليقيس
+   * بنرًا انتهى وآخر لم يبدأ، وساعةُ النظام لا تُؤتمر.
+   */
+  listBanners(query?: { liveAt?: number }): Promise<Banner[]>
+  getBanner(id: string): Promise<Banner | null>
+  createBanner(input: NewBanner): Promise<Banner>
+  updateBanner(id: string, patch: Partial<Banner>): Promise<Banner>
+  deleteBanner(id: string): Promise<void>
+
+  listStories(query?: { liveAt?: number }): Promise<Story[]>
+  getStory(id: string): Promise<Story | null>
+  createStory(input: NewStory): Promise<Story>
+  updateStory(id: string, patch: Partial<Story>): Promise<Story>
+  deleteStory(id: string): Promise<void>
 
   // ---- الأسئلة الشائعة
   listFaq(query?: { publishedOnly?: boolean; saleType?: SaleType }): Promise<FaqItem[]>

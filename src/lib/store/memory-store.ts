@@ -17,7 +17,9 @@ import type {
   TaxSettings,
   BrandSettings,
   PageSettings,
+  Banner,
   FaqItem,
+  Story,
   SaleType,
   LedgerEntry,
   Listing,
@@ -44,6 +46,7 @@ import {
   DEFAULT_BRAND_SETTINGS,
   DEFAULT_PAGE_SETTINGS,
   EMPTY_PAYOUT_ACCOUNT,
+  isLive,
 } from '@/lib/domain/types'
 import { buildEntry, emptyWallet, type NewLedgerEntry } from '@/lib/domain/wallet'
 import { EMPTY_SOCIAL, type SocialHandles } from '@/lib/domain/types'
@@ -56,7 +59,9 @@ import type {
   BuyNowCommand,
   ListingQuery,
   NewDeposit,
+  NewBanner,
   NewFaqItem,
+  NewStory,
   NewListing,
   NewNotification,
   NewUserDevice,
@@ -94,6 +99,8 @@ export type MemoryDatabase = {
   brandSettings: BrandSettings
   pageSettings: PageSettings
   faq: FaqItem[]
+  banners: Banner[]
+  stories: Story[]
   listings: Listing[]
   bids: Bid[]
   offers: Offer[]
@@ -171,6 +178,8 @@ export function emptyDatabase(): MemoryDatabase {
       updatedByAdminId: null,
     },
     faq: [],
+    banners: [],
+    stories: [],
     listings: [],
     bids: [],
     offers: [],
@@ -1083,6 +1092,91 @@ export class MemoryStore implements AuctionStore {
     }
     this.persist(this.db)
     return clone(this.db.paymentSettings)
+  }
+
+  // ------------------------------------------ واجهة الرئيسية: ستوريز وبنرات
+
+  /*
+   * ترتيبٌ واحد للاثنين: `sortOrder` ثمّ الأحدث ثمّ المعرّف.
+   *
+   * **والمعرّف آخرُ المكسِّرات وهو الذي يضمن الحسم.** الإدارة تُدخل عشرةً
+   * بترتيبٍ صفر ثمّ ترتّبها لاحقًا، و`createdAt` بدقّة الملّي يتساوى فيها
+   * ما أُدخل في الطلب نفسه — فيسقط الحسم إلى استقرار الفرز في الذاكرة وإلى
+   * خطّة التنفيذ في بوستجرس، فيختلف الترتيبان. والمعرّف فريدٌ دائمًا.
+   */
+  private live<T extends { id: string; published: boolean; startsAt: string | null; endsAt: string | null; sortOrder: number; createdAt: string }>(
+    rows: T[],
+    liveAt?: number,
+  ): T[] {
+    const filtered = liveAt === undefined ? rows : rows.filter((row) => isLive(row, liveAt))
+    return clone(
+      filtered
+        .slice()
+        .sort(
+          (a, b) =>
+            a.sortOrder - b.sortOrder ||
+            b.createdAt.localeCompare(a.createdAt) ||
+            a.id.localeCompare(b.id),
+        ),
+    )
+  }
+
+  async listBanners(query: { liveAt?: number } = {}): Promise<Banner[]> {
+    return this.live(this.db.banners, query.liveAt)
+  }
+
+  async getBanner(id: string): Promise<Banner | null> {
+    return clone(this.db.banners.find((b) => b.id === id) ?? null)
+  }
+
+  async createBanner(input: NewBanner): Promise<Banner> {
+    const now = new Date().toISOString()
+    const row: Banner = { ...input, id: newId('bnr'), createdAt: now, updatedAt: now }
+    this.db.banners.push(row)
+    this.persist(this.db)
+    return clone(row)
+  }
+
+  async updateBanner(id: string, patch: Partial<Banner>): Promise<Banner> {
+    const row = this.db.banners.find((b) => b.id === id)
+    if (!row) throw new Error('البنر غير موجود')
+    Object.assign(row, patch, { updatedAt: new Date().toISOString() })
+    this.persist(this.db)
+    return clone(row)
+  }
+
+  async deleteBanner(id: string): Promise<void> {
+    this.db.banners = this.db.banners.filter((b) => b.id !== id)
+    this.persist(this.db)
+  }
+
+  async listStories(query: { liveAt?: number } = {}): Promise<Story[]> {
+    return this.live(this.db.stories, query.liveAt)
+  }
+
+  async getStory(id: string): Promise<Story | null> {
+    return clone(this.db.stories.find((s) => s.id === id) ?? null)
+  }
+
+  async createStory(input: NewStory): Promise<Story> {
+    const now = new Date().toISOString()
+    const row: Story = { ...input, id: newId('sty'), createdAt: now, updatedAt: now }
+    this.db.stories.push(row)
+    this.persist(this.db)
+    return clone(row)
+  }
+
+  async updateStory(id: string, patch: Partial<Story>): Promise<Story> {
+    const row = this.db.stories.find((s) => s.id === id)
+    if (!row) throw new Error('الستوري غير موجود')
+    Object.assign(row, patch, { updatedAt: new Date().toISOString() })
+    this.persist(this.db)
+    return clone(row)
+  }
+
+  async deleteStory(id: string): Promise<void> {
+    this.db.stories = this.db.stories.filter((s) => s.id !== id)
+    this.persist(this.db)
   }
 
   // ------------------------------------------------------------- الأسئلة الشائعة

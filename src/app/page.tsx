@@ -4,6 +4,8 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PageShell } from '@/components/layout/page-shell'
 import { HomeHero } from '@/components/market/home-hero'
+import { StoryRail } from '@/components/home/story-rail'
+import { BannerSlider } from '@/components/home/banner-slider'
 import { PlateCarousel } from '@/components/market/plate-carousel'
 import { Card, CardContent } from '@/components/ui/card'
 import { config, DEMO_PRIMARY_USER } from '@/lib/config'
@@ -11,6 +13,7 @@ import { getMarketListings } from '@/lib/server/market-service'
 import { getBrand } from '@/lib/server/brand-service'
 import { getStore } from '@/lib/store'
 import { getCurrentUser } from '@/lib/server/require-user'
+import { liveBanners, liveStories } from '@/lib/server/home-media-service'
 import type { ListingCard } from '@/lib/domain/types'
 
 export const dynamic = 'force-dynamic'
@@ -25,12 +28,21 @@ const FEATURE_ICONS = [Lock, Wallet, Timer, Gavel, ShieldCheck, ShieldCheck]
 
 export default async function HomePage() {
   const viewer = await getCurrentUser()
-  const [listings, brand, pages] = await Promise.all([
+  const nowMs = Date.now()
+  const [listings, brand, pages, stories, banners] = await Promise.all([
     getMarketListings(undefined, viewer?.id ?? null),
     getBrand(),
     getStore().getPageSettings(),
+    /*
+     * تُرشَّح بلحظة الطلب في الخادم — فلا يغادره إعلانٌ انتهت مدّته.
+     *
+     * والإخفاء في المتصفّح لا يكفي: صفحةٌ بقيت مفتوحةً ساعةً تعرض ما انتهى،
+     * ورابطُ إعلانٍ مدفوعٍ انقضى يبقى في مصدر الصفحة لمن قرأه.
+     */
+    liveStories(nowMs),
+    liveBanners(nowMs),
   ])
-  const serverTime = new Date().toISOString()
+  const serverTime = new Date(nowMs).toISOString()
 
   const open = listings.filter((card) => card.status === 'active')
   const by = (saleType: ListingCard['saleType']) =>
@@ -45,6 +57,18 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main id="main" className="flex-1">
+        {/*
+          * الستوريز والبنرات — **للتطبيق وويب الجوال وحدهما**.
+          *
+          * و`lg:hidden` مقصودة: الحاسوب يفتح بواجهةٍ تعريفية عريضة، وشريطُ
+          * حلقاتٍ فوقها يقرأه زائرُ الحاسوب زينةً لا مدخلًا. وهي صفحةٌ
+          * تُقاس على الجوال حيث يقع أكثر التصفّح.
+          */}
+        <div className="space-y-4 pt-3 lg:hidden">
+          <StoryRail stories={stories} />
+          <BannerSlider banners={banners} />
+        </div>
+
         <HomeHero
           brand={brand}
           plates={open.slice(0, 3).map((card) => card.plate)}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, inArray, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, gt, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import {
   assertBidIsValid,
   assertCanBuyNow,
@@ -10,6 +10,8 @@ import { buildReference, referenceYear, type ReferenceKind } from '@/lib/domain/
 import { newId } from '@/lib/server/crypto'
 import type {
   AdminAccount,
+  Banner,
+  Story,
   AuctionSettings,
   AuditLog,
   Bid,
@@ -46,7 +48,9 @@ import type {
   ListingQuery,
   NewDeposit,
   NewDisbursement,
+  NewBanner,
   NewFaqItem,
+  NewStory,
   NewListing,
   NewNotification,
   NewOffer,
@@ -202,6 +206,99 @@ export class PostgresStore implements AuctionStore {
     patch: Partial<Omit<MobileSettings, 'updatedAt' | 'updatedByAdminId'>>,
     adminId: string | null,
   ) => this.writeSettings<MobileSettings>('mobileSettings', patch, adminId)
+
+  /* ------------------------------ واجهة الرئيسية: ستوريز وبنرات */
+
+  /*
+   * الترشيح بنافذة الظهور **في الاستعلام** لا بعده.
+   *
+   * وهو ما يمنع بنرًا منتهيًا أن يغادر الخادم أصلًا: حمولةُ الصفحة لا تحمل
+   * إلّا ما يُعرض، فلا يقع على المتصفّح إخفاءٌ يُنسى ولا يبقى رابطُ إعلانٍ
+   * مدفوعٍ انتهى في مصدر الصفحة لمن قرأه.
+   */
+  private liveWhere(table: typeof t.banners | typeof t.stories, liveAt: number | undefined) {
+    if (liveAt === undefined) return undefined
+    const at = new Date(liveAt).toISOString()
+    return and(
+      eq(table.published, true),
+      or(isNull(table.startsAt), lte(table.startsAt, at)),
+      or(isNull(table.endsAt), gt(table.endsAt, at)),
+    )
+  }
+
+  async listBanners(query: { liveAt?: number } = {}): Promise<Banner[]> {
+    const rows = await this.db
+      .select()
+      .from(t.banners)
+      .where(this.liveWhere(t.banners, query.liveAt))
+      .orderBy(asc(t.banners.sortOrder), desc(t.banners.createdAt), asc(t.banners.id))
+    return rows.map(bannerFromRow)
+  }
+
+  async getBanner(id: string): Promise<Banner | null> {
+    const [row] = await this.db.select().from(t.banners).where(eq(t.banners.id, id)).limit(1)
+    return row ? bannerFromRow(row) : null
+  }
+
+  async createBanner(input: NewBanner): Promise<Banner> {
+    const now = new Date().toISOString()
+    const [row] = await this.db
+      .insert(t.banners)
+      .values({ ...input, id: newId('bnr'), createdAt: now, updatedAt: now })
+      .returning()
+    return bannerFromRow(row)
+  }
+
+  async updateBanner(id: string, patch: Partial<Banner>): Promise<Banner> {
+    const [row] = await this.db
+      .update(t.banners)
+      .set({ ...patch, id: undefined, updatedAt: new Date().toISOString() })
+      .where(eq(t.banners.id, id))
+      .returning()
+    if (!row) throw new Error('البنر غير موجود')
+    return bannerFromRow(row)
+  }
+
+  async deleteBanner(id: string): Promise<void> {
+    await this.db.delete(t.banners).where(eq(t.banners.id, id))
+  }
+
+  async listStories(query: { liveAt?: number } = {}): Promise<Story[]> {
+    const rows = await this.db
+      .select()
+      .from(t.stories)
+      .where(this.liveWhere(t.stories, query.liveAt))
+      .orderBy(asc(t.stories.sortOrder), desc(t.stories.createdAt), asc(t.stories.id))
+    return rows.map(storyFromRow)
+  }
+
+  async getStory(id: string): Promise<Story | null> {
+    const [row] = await this.db.select().from(t.stories).where(eq(t.stories.id, id)).limit(1)
+    return row ? storyFromRow(row) : null
+  }
+
+  async createStory(input: NewStory): Promise<Story> {
+    const now = new Date().toISOString()
+    const [row] = await this.db
+      .insert(t.stories)
+      .values({ ...input, id: newId('sty'), createdAt: now, updatedAt: now })
+      .returning()
+    return storyFromRow(row)
+  }
+
+  async updateStory(id: string, patch: Partial<Story>): Promise<Story> {
+    const [row] = await this.db
+      .update(t.stories)
+      .set({ ...patch, id: undefined, updatedAt: new Date().toISOString() })
+      .where(eq(t.stories.id, id))
+      .returning()
+    if (!row) throw new Error('الستوري غير موجود')
+    return storyFromRow(row)
+  }
+
+  async deleteStory(id: string): Promise<void> {
+    await this.db.delete(t.stories).where(eq(t.stories.id, id))
+  }
 
   /* -------------------------------------------------- الأسئلة الشائعة */
 
@@ -1402,6 +1499,45 @@ export class PostgresStore implements AuctionStore {
 type UserRow = typeof t.users.$inferSelect
 type AdminRow = typeof t.admins.$inferSelect
 type FaqRow = typeof t.faq.$inferSelect
+type BannerRow = typeof t.banners.$inferSelect
+type StoryRow = typeof t.stories.$inferSelect
+
+function bannerFromRow(row: BannerRow): Banner {
+  return {
+    id: row.id,
+    title: row.title,
+    imageKey: row.imageKey,
+    width: row.width,
+    height: row.height,
+    alt: row.alt,
+    linkUrl: row.linkUrl,
+    sortOrder: row.sortOrder,
+    published: row.published,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
+
+function storyFromRow(row: StoryRow): Story {
+  return {
+    id: row.id,
+    title: row.title,
+    mediaKey: row.mediaKey,
+    mediaKind: row.mediaKind as Story['mediaKind'],
+    posterKey: row.posterKey,
+    alt: row.alt,
+    linkUrl: row.linkUrl,
+    durationSeconds: row.durationSeconds,
+    sortOrder: row.sortOrder,
+    published: row.published,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
 
 function userFromRow(row: UserRow): User {
   return {

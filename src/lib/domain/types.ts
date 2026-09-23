@@ -918,6 +918,99 @@ export type FaqItem = {
   updatedAt: string
 }
 
+// ================================================ واجهة الرئيسية: ستوريز وبنرات
+
+/**
+ * **نافذةُ ظهورٍ مشتركة** بين الستوري والبنر.
+ *
+ * `published` قرارُ الإدارة، و`startsAt`/`endsAt` قرارُ الوقت. والفصل مقصود:
+ * إعلانٌ مدفوعٌ انتهت مدّته يُطفأ بنفسه بلا أن يُنتظر أحد، وإعلانٌ يُراد
+ * إيقافه قبل مدّته يُطفَأ باليد ومدّتُه محفوظة.
+ *
+ * و**الحساب يقع في الخادم لا في المتصفّح**: صفحةٌ رُسمت قبل دقيقة وبقيت
+ * مفتوحة ساعةً تعرض بنرًا انتهى — فلا يُعتمد على ساعة الجهاز في الإخفاء،
+ * بل تُرشَّح القائمة عند كلّ طلب.
+ */
+export type LiveWindow = {
+  published: boolean
+  /** `null` يعني «من الآن» */
+  startsAt: string | null
+  /** `null` يعني «بلا نهاية» — وهو ما يُستعمل للترويج الدائم */
+  endsAt: string | null
+}
+
+export function isLive(item: LiveWindow, nowMs: number): boolean {
+  if (!item.published) return false
+  if (item.startsAt && Date.parse(item.startsAt) > nowMs) return false
+  if (item.endsAt && Date.parse(item.endsAt) <= nowMs) return false
+  return true
+}
+
+/**
+ * بنرٌ مستطيل في أعلى الرئيسية — إعلانٌ مدفوع، أو ترويجٌ لقسم، أو إبرازُ
+ * لوحةٍ بعينها.
+ *
+ * والمقاس 2:1 مفروضٌ عند الرفع لا عند العرض — انظر `BANNER_RATIO`.
+ */
+export type Banner = {
+  id: string
+  /** عنوانٌ للإدارة وحدها — لا يُرسم على البنر ولا يبلغ الزائر */
+  title: string
+  /** مفتاحُ الصورة في التخزين — لا رابطُها: الرابط يُشتقّ بحسب المحرّك */
+  imageKey: string
+  width: number
+  height: number
+  /** نصٌّ بديلٌ لقارئ الشاشة — البنر صورةٌ، ومن لا يراها يحتاج ما فيها */
+  alt: string
+  /** يُفتح عند الضغط، و`null` يعني بنرًا يُرى ولا يُضغط */
+  linkUrl: string | null
+  sortOrder: number
+} & LiveWindow & { createdAt: string; updatedAt: string }
+
+export type StoryMediaKind = 'image' | 'video'
+
+/**
+ * ستوري — حلقةٌ في أعلى الرئيسية تُفتح ملءَ الشاشة.
+ *
+ * والفدّيو يلزمه غلاف: بلاه تبقى الحلقة سوداء حتى ينزل أوّلُ إطار، وشريطُ
+ * الستوريز أوّلُ ما يُرى في الصفحة.
+ */
+export type Story = {
+  id: string
+  /** يظهر تحت الحلقة — كلمتان أو ثلاث */
+  title: string
+  mediaKey: string
+  mediaKind: StoryMediaKind
+  /** غلافُ الفدّيو، و`null` للصورة (هي غلافُ نفسها) */
+  posterKey: string | null
+  alt: string
+  linkUrl: string | null
+  sortOrder: number
+  /** مدّةُ عرض الصورة بالثواني — الفدّيو يأخذ مدّته هو */
+  durationSeconds: number
+} & LiveWindow & { createdAt: string; updatedAt: string }
+
+/** حدُّ مدّة الصورة في العارض — أقصرُ يُربك، وأطولُ يُملّ. */
+export const STORY_DURATION = { min: 3, max: 15, default: 6 } as const
+
+/**
+ * ما يبلغ المتصفّح — **روابطُ لا مفاتيح**.
+ *
+ * المفتاح تفصيلُ تخزينٍ داخليّ، والرابط يُشتقّ منه في الخادم بحسب المحرّك
+ * العامل. فلو بُدِّل R2 يومًا لم تتبدّل حمولةُ الصفحة ولا مكوّناتُها.
+ */
+export type BannerView = Pick<Banner, 'id' | 'alt' | 'linkUrl' | 'width' | 'height'> & {
+  imageUrl: string
+}
+
+export type StoryView = Pick<
+  Story,
+  'id' | 'title' | 'alt' | 'linkUrl' | 'mediaKind' | 'durationSeconds'
+> & {
+  mediaUrl: string
+  posterUrl: string | null
+}
+
 // ================================================================ الإدارة
 
 /**

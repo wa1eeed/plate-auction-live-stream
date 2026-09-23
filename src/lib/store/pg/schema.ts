@@ -496,6 +496,60 @@ export const faq = pgTable('faq', {
 })
 
 /**
+ * واجهةُ الرئيسية — ستوريز وبنرات.
+ *
+ * **جدولان لا جدولٌ واحد بعمود «نوع».** يشتركان في نافذة الظهور والترتيب،
+ * ويفترقان في كلّ ما عداها: البنر مستطيلٌ بنسبةٍ مفروضة يُرسم في مكانه،
+ * والستوري ملءُ الشاشة يحتمل فدّيو بغلافه ومدّةَ عرض. وجدولٌ واحد يعني
+ * أعمدةً فارغةً في نصف الأسطر، وتحقّقًا يقول «هذا الحقل لهذا النوع وحده»
+ * — وهو نوعٌ يُحرَس باليد بدل أن تحرسه القاعدة.
+ *
+ * والصورةُ **مفتاحٌ لا بايتات**: شعارُ المنصّة يسكن `settings` بـ`base64`
+ * لأنّه كيلوباياتٌ تُقرأ مع كلّ صفحة، وستوري فدّيو عشرةُ ميغابايت — وقاعدةٌ
+ * تحمل الفدّيو تُنسخ احتياطيًّا معه كلَّ ليلة.
+ */
+const liveWindow = {
+  published: boolean('published').notNull().default(false),
+  startsAt: stamp('starts_at'),
+  endsAt: stamp('ends_at'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: stamp('created_at').notNull(),
+  updatedAt: stamp('updated_at').notNull(),
+}
+
+export const banners = pgTable(
+  'banners',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    imageKey: text('image_key').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    alt: text('alt').notNull().default(''),
+    linkUrl: text('link_url'),
+    ...liveWindow,
+  },
+  /* الرئيسية تقرؤها مرتَّبةً مرشَّحةً في كلّ طلب — فالفهرس على ما يُرشَّح به */
+  (table) => [index('banners_live_idx').on(table.published, table.sortOrder)],
+)
+
+export const stories = pgTable(
+  'stories',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    mediaKey: text('media_key').notNull(),
+    mediaKind: text('media_kind').notNull(),
+    posterKey: text('poster_key'),
+    alt: text('alt').notNull().default(''),
+    linkUrl: text('link_url'),
+    durationSeconds: integer('duration_seconds').notNull().default(6),
+    ...liveWindow,
+  },
+  (table) => [index('stories_live_idx').on(table.published, table.sortOrder)],
+)
+
+/**
  * الإعدادات مستنداتٌ لا جداول.
  *
  * كلُّ شريحةٍ منها تُقرأ وتُكتب **جملةً**، ولا يُبحث في حقولها ولا يُجمع

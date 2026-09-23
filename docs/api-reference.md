@@ -397,6 +397,7 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `GET /ws` | ترقية WebSocket — [البروتوكول](realtime-protocol.md) |
 | `GET /brand/{logo\|icon\|og}` | أصول الهويّة من السجلّ، بتخزينٍ طويل يُبطله `?v=` |
 | `GET /@{handle}` · `GET /u/{id}` | [المعرض العلنيّ](showcase-and-handles.md) |
+| `GET /api/media/{key}` | ملفّ من التخزين. ما تحت `platform/` عامّ بتخزينٍ دائم، وما تحت `users-files/` **لصاحبه والإدارة وحدهما** — وغيرُهما **404 لا 403** فلا يُثبَت وجودُ ملفّ لمن يجسّ المفاتيح |
 | `GET /about` · `GET /terms` · `GET /how-it-works` | [صفحات محرَّرة](brand-and-pages.md) — غير المنشورة تردّ 404 |
 
 ---
@@ -429,6 +430,33 @@ Secure في الإنتاج، صلاحية 14 يومًا). لا رؤوس `Authori
 | `PATCH /api/admin/payments/{id}` | تأكيد حوالة أو رفضها |
 | `DELETE /api/admin/listings/{id}` | إيقاف إعلان — لا حذف |
 | `GET POST /api/admin/faq` · `PATCH DELETE /api/admin/faq/{id}` | إدارة الأسئلة |
+| `GET POST /api/admin/banners` · `PATCH DELETE /api/admin/banners/{id}` | بنرات الرئيسية — الحذف يحذف صورتها من التخزين |
+| `GET POST /api/admin/stories` · `PATCH DELETE /api/admin/stories/{id}` | ستوريز الرئيسية — والحذف يحذف محتواها وغلافها |
+| `POST /api/admin/media` | رفع ملفّ — `multipart/form-data` — انظر أدناه |
+
+### `POST /api/admin/media`
+
+| الحقل | القيمة |
+| --- | --- |
+| `file` | الملفّ — والنوع يُقرأ من `File.type` **ثمّ يُطابَق بالبايتات** |
+| `purpose` | `banner` · `story` · `poster` · `user-file` |
+| `ownerId` | لـ`user-file` وحده — يحدّد البادئة الخاصّة |
+
+```json
+{ "key": "platform/images/57f21ad6238044bd923b.png", "width": 1200, "height": 600 }
+```
+
+| الرمز | متى |
+| --- | --- |
+| `401` | بلا جلسة إدارة — والمستخدم العاديّ كذلك |
+| `415 MEDIA_TYPE` | نوعٌ خارج قائمة السماح (PNG · JPEG · WebP · MP4 · PDF) |
+| `413 MEDIA_TOO_LARGE` | فوق الحدّ — يُقاس على البايتات المقروءة لا على الترويسة |
+| `422 MEDIA_MISMATCH` | البايتات لا تطابق النوع المعلن — ملفٌّ اسمه `.png` وفيه HTML |
+| `422 MEDIA_RATIO` | نسبة البنر خارج `1.7–2.3` — والرسالة تقول المطلوب |
+
+> واسمُ الملفّ **لا يُقرأ إطلاقًا**: لا يدخل المفتاح ولا يُبنى منه امتداد.
+
+التفصيل في [تخزين الوسائط](media-storage.md).
 
 ### رموز قرارات العربون
 

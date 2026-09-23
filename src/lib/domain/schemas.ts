@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { HANDLE_PATTERN, PLATE_FORMATS, RESERVED_HANDLES, type PlateFormat } from './types'
+import { HANDLE_PATTERN, PLATE_FORMATS, RESERVED_HANDLES, STORY_DURATION, type PlateFormat } from './types'
 import { normalizeArabicLetters, normalizePlateNumbers } from '@/lib/saudi-plate-mapping'
 import {
   FAQ_CATEGORIES,
@@ -304,6 +304,106 @@ export const faqInputSchema = z.object({
 })
 
 export type FaqInput = z.infer<typeof faqInputSchema>
+
+// ----------------------------------------------- واجهة الرئيسية: ستوريز وبنرات
+
+/**
+ * الرابط: داخليٌّ يبدأ بـ`/`، أو خارجيٌّ `https` — **ولا ثالث**.
+ *
+ * و`javascript:` هي المقصودة بالمنع: بنرٌ يُضغط فينفّذ سكربتًا في جلسة من
+ * ضغطه. و`http` يُمنع كذلك — صفحةٌ آمنة تفتح رابطًا غير آمن تُنذر المتصفّح.
+ */
+const linkSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value.startsWith('/') || /^https:\/\//i.test(value),
+    'الرابط يبدأ بـ / للداخليّ أو https:// للخارجيّ',
+  )
+  .refine((value) => !value.includes('\n') && value.length <= 500, 'رابط غير صالح')
+
+const liveWindowShape = {
+  published: z.boolean().default(false),
+  startsAt: z.string().datetime().nullable().default(null),
+  endsAt: z.string().datetime().nullable().default(null),
+  sortOrder: z.number().int().min(0).max(999).default(0),
+}
+
+/** المفتاح يأتي من ردّ الرفع — ويُتحقّق من بادئته فلا يُشار إلى ملفّ مستخدم. */
+const publicKeySchema = z
+  .string()
+  .trim()
+  .regex(/^platform\/(images|videos|files)\/[A-Za-z0-9_-]+\.[a-z0-9]+$/, 'مفتاح ملفّ غير صالح')
+
+/**
+ * الترتيب الزمنيّ يُفحص هنا لا في القاعدة.
+ *
+ * ونهايةٌ قبل بدايةٍ تعني بنرًا لا يظهر أبدًا — يُحفظ فيظنّ صاحبُه أنّه نشر،
+ * ولا رسالةَ خطأ تُقال. والرفض عند الحفظ خيرٌ من إعلانٍ مدفوعٍ لا يُرى.
+ */
+const orderedWindow = <T extends { startsAt: string | null; endsAt: string | null }>(value: T, ctx: z.RefinementCtx) => {
+  if (value.startsAt && value.endsAt && Date.parse(value.endsAt) <= Date.parse(value.startsAt)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endsAt'],
+      message: 'تاريخ الانتهاء قبل البداية — فلا يظهر أبدًا',
+    })
+  }
+}
+
+export const bannerInputSchema = z
+  .object({
+    title: z.string().trim().min(2, 'العنوان قصير جدًا').max(80),
+    imageKey: publicKeySchema,
+    width: z.number().int().min(1).max(10_000),
+    height: z.number().int().min(1).max(10_000),
+    alt: z.string().trim().min(2, 'اكتب وصفًا لمن لا يرى الصورة').max(160),
+    linkUrl: linkSchema.nullable().default(null),
+    ...liveWindowShape,
+  })
+  .superRefine(orderedWindow)
+
+export const storyInputSchema = z
+  .object({
+    title: z.string().trim().min(2, 'العنوان قصير جدًا').max(40),
+    mediaKey: publicKeySchema,
+    mediaKind: z.enum(['image', 'video']),
+    posterKey: publicKeySchema.nullable().default(null),
+    alt: z.string().trim().min(2, 'اكتب وصفًا لمن لا يرى المحتوى').max(160),
+    linkUrl: linkSchema.nullable().default(null),
+    durationSeconds: z
+      .number()
+      .int()
+      .min(STORY_DURATION.min, `أقلّ مدّة ${STORY_DURATION.min} ثوانٍ`)
+      .max(STORY_DURATION.max, `أقصى مدّة ${STORY_DURATION.max} ثانية`)
+      .default(STORY_DURATION.default),
+    ...liveWindowShape,
+  })
+  .superRefine((value, ctx) => {
+    orderedWindow(value, ctx)
+    /*
+     * الفدّيو يلزمه غلاف.
+     *
+     * وبلاه تبقى الحلقة سوداء حتى ينزل أوّلُ إطار — وشريطُ الستوريز أوّلُ
+     * ما يُرى في الصفحة، فحلقةٌ سوداء تُقرأ عطبًا لا تحميلًا.
+     */
+    if (value.mediaKind === 'video' && !value.posterKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['posterKey'],
+        message: 'الفدّيو يحتاج صورة غلاف',
+      })
+    }
+    if (value.mediaKind === 'image' && !value.mediaKey.startsWith('platform/images/')) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mediaKey'], message: 'المحتوى ليس صورة' })
+    }
+    if (value.mediaKind === 'video' && !value.mediaKey.startsWith('platform/videos/')) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mediaKey'], message: 'المحتوى ليس فدّيو' })
+    }
+  })
+
+export type BannerInput = z.infer<typeof bannerInputSchema>
+export type StoryInput = z.infer<typeof storyInputSchema>
 
 // ------------------------------------------------------------------ المدفوعات
 
