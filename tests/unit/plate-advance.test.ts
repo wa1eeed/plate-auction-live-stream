@@ -6,6 +6,7 @@ import {
   SPACE_ADVANCE,
   arabicAdvance,
   fitFontSize,
+  FIT_SAFETY,
 } from '@/components/plate/arial-metrics'
 
 /**
@@ -132,10 +133,65 @@ describe('حروفُ الاعتيادية تَسَع خانتها بعد حسا�
     })
   }
 
-  it('وبالتقدير القديم كانت «سعد» تفيض عن خانتها — فهذا ما يُحرَس', () => {
+  /*
+   * **ويُقاس بما تهدف إليه المطابقة لا بالخانة.**
+   *
+   * هامشُ الأمان (`FIT_SAFETY`) يُبقي الحبر داخل الخانة ولو أخطأ التقدير —
+   * وهو المقصود منه. فلو قيس هذا الحارس بالخانة لَمرّ بعد إضافته وهو يحرس
+   * عطبًا ما زال قائمًا في الحساب. والهدف هو `ROOM × FIT_SAFETY`.
+   */
+  const TARGET = ROOM * FIT_SAFETY
+
+  it('وبالتقدير القديم كانت «سعد» تتجاوز ما تهدف إليه المطابقة', () => {
     const old = renderedWidth('سعد', 0.06)
-    expect(old, 'التقدير القديم لم يكن يُفيض؟ راجع القياس').toBeGreaterThan(CELL)
-    /* فاضت على الشاشة بـ٤٫٤ وحدة من كلّ جهة — أي ٨٫٨ عرضًا */
-    expect(old - CELL).toBeGreaterThan(8)
+    expect(old, 'التقدير القديم لم يكن يُفيض؟ راجع القياس').toBeGreaterThan(TARGET)
+    expect(renderedWidth('سعد')).toBeLessThanOrEqual(TARGET + 0.001)
+  })
+
+  /*
+   * **الهامش لا يمسّ ما كان يَسَع خانته.**
+   *
+   * المطابقة بالعرض لا تعمل إلّا حين يتجاوز المجموعُ الخانة. والحروف
+   * الضيّقة تقع بعيدًا عن حدّها فتأخذ حجمها كاملًا قبل الهامش وبعده.
+   */
+  it('الحروفُ الضيّقة تأخذ الحجم الكامل — قبل الهامش وبعده', () => {
+    for (const letters of ['ا', 'اا', 'ر']) {
+      const count = Array.from(letters).length
+      expect(
+        fitFontSize(arabicAdvance(letters), BASE, ROOM, ARABIC_SEPARATOR_ADVANCE, count),
+        `«${letters}» ضُيّقت بلا حاجة`,
+      ).toBe(BASE)
+    }
+  })
+
+  /*
+   * **وما كان يُضيَّق يُضيَّق أكثر بقدر الهامش — وهذه كلفتُه.**
+   *
+   * وهي كلفةٌ في **حدّ العرض** لا في المرسوم بالضرورة: الحجم النهائيّ
+   * `min(حدّ العرض، حدّ الشريط)`، والشريط هو القيد في أكثر اللوحات. وقِيس
+   * على المتصفّح بعد الهامش: «ا» و«رر» و«كطع» و«حد» **لم تتغيّر**، وتغيّرت
+   * «سعد» (‎−١٠٫٨‎ ← ‎−١٦٫١‎) و«وسم» (‎−١٤‎ ← ‎−٢٠٫٩‎) — وهما أضيقُ ما في
+   * الصفحة، وهما بعينهما ما كان مهدَّدًا بالفيض.
+   */
+  it('وما كان مُضيَّقًا يُضيَّق بقدر الهامش لا أكثر', () => {
+    for (const letters of ['ص', 'صص', 'صصص', 'سعد']) {
+      const count = Array.from(letters).length
+      const withSafety = fitFontSize(arabicAdvance(letters), BASE, ROOM, ARABIC_SEPARATOR_ADVANCE, count)
+      const advance = arabicAdvance(letters) + ARABIC_SEPARATOR_ADVANCE * (count - 1)
+      const withoutSafety = (ROOM / (BASE * advance)) * BASE
+      expect(withSafety / withoutSafety, `«${letters}»`).toBeCloseTo(FIT_SAFETY, 5)
+    }
+  })
+
+  /*
+   * **ولماذا الهامش أصلًا؟** الخطّ يُطلب من النظام، وArial غائبٌ في لينكس
+   * وأندرويد — فيسقط الرسم إلى بديلٍ أوسع. وقِيس في بوّابة لينكس: «نور»
+   * تجاوزت خانتها بـ٥٫٥ من ١٥٤، أي نحو ٣٫٦٪.
+   */
+  it('والهامش يتّسع لبديلٍ أوسع من Arial بنحو ثمانية في المئة', () => {
+    for (const letters of ['صصص', 'سسس', 'سعد', 'نور', 'صسص']) {
+      const wider = renderedWidth(letters) * 1.08
+      expect(wider, `«${letters}» تفيض ببديلٍ أوسع ٨٪`).toBeLessThanOrEqual(CELL)
+    }
   })
 })

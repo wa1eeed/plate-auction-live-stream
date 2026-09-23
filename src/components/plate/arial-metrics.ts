@@ -181,6 +181,28 @@ export function layoutRow(items: RowItem[], bandTop: number, bandHeight: number)
  * «ص» (1.0625) و«ا» (0.2168) خمسةُ أضعاف، فالمتوسّط يُفيض الأولى ويُضيّق
  * الثانية. والمجموع يُصيب كلَّ حالة.
  */
+/**
+ * هامشُ أمانٍ في المطابقة — **لأنّ الخطّ ليس مضمونًا**.
+ *
+ * المقاييس في هذا الملفّ مأخوذةٌ من Arial Bold، والخطّ يُطلب من النظام:
+ * `Arial, 'Arial Unicode MS', 'Helvetica Neue', sans-serif`. وهو حاضرٌ في
+ * macOS وويندوز، **وغائبٌ في لينكس وأندرويد** — فيسقط الرسم إلى بديلٍ
+ * مقاييسُه أوسع، فيفيض الحبر عن خانته.
+ *
+ * وقِيس: «سعد» تقع ١٠٫٨ وحدةً داخل خانتها بـArial، و٢٫١ ببديلٍ عامّ — وفي
+ * بوّابة لينكس تجاوزت «نور» خانتها بـ٥٫٥ من ١٥٤.
+ *
+ * **وكلفتُه تقع حيث يلزم وحده.** الحجم النهائيّ `min(حدّ العرض، حدّ الشريط)`،
+ * والشريط هو القيد في أكثر اللوحات — فالهامش لا يُغيّر شيئًا فيها. وقِيس على
+ * المتصفّح بعد إضافته: «ا» و«رر» و«كطع» و«حد» لم تتغيّر، وتغيّرت «سعد»
+ * (‎−١٠٫٨‎ ← ‎−١٦٫١‎) و«وسم» (‎−١٤‎ ← ‎−٢٠٫٩‎) — وهما أضيقُ ما في الصفحة،
+ * وهما بعينهما ما كان مهدَّدًا بالفيض.
+ *
+ * وهذا علاجُ العَرَض. وعلاجُ السبب أن يُشحن خطٌّ مع التطبيق فتُضمن مقاييسه
+ * في كلّ منصّة — وهو قرارُ ترخيصٍ وشكلٍ لا يُتّخذ في تصحيحِ عطب.
+ */
+export const FIT_SAFETY = 0.92
+
 export function fitFontSize(
   totalAdvance: number,
   base: number,
@@ -191,5 +213,6 @@ export function fitFontSize(
   const advance = totalAdvance + spacing * Math.max(count - 1, 0)
   if (advance <= 0) return base
   const natural = base * advance
-  return natural <= available ? base : (available / natural) * base
+  const room = available * FIT_SAFETY
+  return natural <= room ? base : (room / natural) * base
 }
