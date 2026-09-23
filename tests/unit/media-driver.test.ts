@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { diskDriver } from '@/lib/server/media/disk'
+import { getMedia, mediaConfigured, resetMediaForTests } from '@/lib/server/media'
 import { platformKey, userFileKey } from '@/lib/server/media/keys'
 
 describe('محرّك القرص', () => {
@@ -73,5 +74,61 @@ describe('محرّك القرص', () => {
     }
     // ولم يُكتب شيءٌ خارج المجلَّد
     expect(existsSync(join(root, '..', 'escaped.png'))).toBe(false)
+  })
+})
+
+describe('اختيار المحرّك ومجلَّده', () => {
+  const saved = { ...process.env }
+  afterEach(() => {
+    process.env = { ...saved }
+    resetMediaForTests()
+  })
+
+  it('بلا مفاتيح R2 يعمل على القرص — فالمنصّة تنشر بلا حاوية', () => {
+    for (const key of ['R2_ACCOUNT_ID', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY']) {
+      delete process.env[key]
+    }
+    resetMediaForTests()
+    expect(mediaConfigured()).toBe(false)
+    expect(getMedia().kind).toBe('disk')
+  })
+
+  it('وبالمفاتيح الأربعة يعمل على R2 — بلا رايةٍ خامسة تُنسى', () => {
+    Object.assign(process.env, {
+      R2_ACCOUNT_ID: 'acc',
+      R2_BUCKET: 'bucket',
+      R2_ACCESS_KEY_ID: 'key',
+      R2_SECRET_ACCESS_KEY: 'secret',
+    })
+    resetMediaForTests()
+    expect(mediaConfigured()).toBe(true)
+    expect(getMedia().kind).toBe('r2')
+  })
+
+  /*
+   * **الفخُّ الذي لا يظهر إلّا بعد النشر.**
+   *
+   * `.data/media` نسبيٌّ داخل الحاوية، والحاوية تُستبدل مع كلّ نشرة. وصفُّ
+   * البنر في القاعدة يبقى — فيشير إلى ملفٍّ لم يعد موجودًا، وتُعرض صورةٌ
+   * مكسورة بلا رسالةِ خطأ واحدة.
+   */
+  it('ومجلَّد القرص يتبع الحجم الدائم حيث وُجد', async () => {
+    const { diskRootForTests } = await import('@/lib/server/media/index')
+    delete process.env.MEDIA_DIR
+    process.env.PLATFORM_DATA_DIR = '/app/data'
+    expect(diskRootForTests()).toBe('/app/data/media')
+
+    /* وشرطةٌ زائدة في آخره لا تُنتج مسارًا بشرطتين */
+    process.env.PLATFORM_DATA_DIR = '/app/data/'
+    expect(diskRootForTests()).toBe('/app/data/media')
+
+    /* وما ضُبط صراحةً يسبق كلَّ شيء */
+    process.env.MEDIA_DIR = '/mnt/media'
+    expect(diskRootForTests()).toBe('/mnt/media')
+
+    /* وبلا حجمٍ دائم يبقى الافتراض المحلّيّ */
+    delete process.env.MEDIA_DIR
+    delete process.env.PLATFORM_DATA_DIR
+    expect(diskRootForTests()).toBe('.data/media')
   })
 })
