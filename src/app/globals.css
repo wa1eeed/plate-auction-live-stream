@@ -807,3 +807,42 @@ body:has([data-theme='light']) {
     animation-delay: 240ms;
   }
 }
+
+/*
+ * شريطُ الانتقال — يتقدّم ولا يبلغ الطرف.
+ *
+ * ولا يُقاس بتقدّمٍ حقيقيّ لأنّه لا يُعرف: الطلب إلى الخادم لا يقول كم بقي.
+ * فيُسرع أوّلًا ثمّ يُبطئ فيقف عند التسعين — وهو ما يقوله كلُّ شريطٍ من هذا
+ * النوع: «جارٍ» لا «بقي كذا». ووصولُ الصفحة يرفعه من الشجرة فيختفي.
+ */
+@keyframes route-progress {
+  0% {
+    transform: scaleX(0.02);
+  }
+  35% {
+    transform: scaleX(0.55);
+  }
+  70% {
+    transform: scaleX(0.8);
+  }
+  100% {
+    transform: scaleX(0.9);
+  }
+}
+
+.route-progress-bar {
+  transform-origin: var(--route-progress-origin, right);
+  animation: route-progress 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* والمنشأ يتبع اتّجاه الصفحة: يمينًا في العربية */
+:root:dir(ltr) .route-progress-bar {
+  --route-progress-origin: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-progress-bar {
+    animation: none;
+    transform: scaleX(0.6);
+  }
+}

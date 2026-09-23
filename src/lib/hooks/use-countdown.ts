@@ -51,10 +51,58 @@ export function useSignedCountdown(
       return
     }
     const target = new Date(endsAt).getTime()
-    const tick = () => setRemaining(target - (Date.now() - offsetRef.current))
-    tick()
-    const id = setInterval(tick, 100)
-    return () => clearInterval(id)
+    const read = () => target - (Date.now() - offsetRef.current)
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    /*
+     * **نبضةٌ في الثانية، مُحاذاةً لحافّتها — لا عشرٌ في الثانية.**
+     *
+     * كانت `setInterval(tick, 100)`: عشرُ إعاداتِ تصييرٍ في الثانية **لكلّ
+     * بطاقة**. واثنتا عشرة بطاقةً في السوق تعني مئةً وعشرين إعادةً في
+     * الثانية، تجري ما دامت الصفحة مفتوحة. والمعروض ثوانٍ لا أعشارها، فتسعٌ
+     * من كلّ عشرٍ كانت تُنتج النصَّ نفسه.
+     *
+     * والمحاذاة تُصلح ما هو أدقّ: النبضة تقع عند حافّة الثانية لا بعدها
+     * بكسرٍ عشوائيّ، فيتبدّل الرقم في لحظته لا متأخّرًا عنها بما يصل إلى
+     * تسعين ملّي.
+     */
+    const schedule = () => {
+      const remaining = read()
+      setRemaining(remaining)
+      if (remaining <= 0) return
+
+      /* ما يفصلنا عن حافّة الثانية التالية — وبحدٍّ أدنى يمنع دورةً محمومة */
+      const toEdge = ((remaining % 1000) + 1000) % 1000
+      timer = setTimeout(schedule, Math.max(toEdge || 1000, 50))
+    }
+
+    /*
+     * **ولا نبض وهي مخفيّة.**
+     *
+     * عدّادٌ لا يراه أحد لا يُحسب: التطبيق في الخلفية كان يُعيد التصيير
+     * بلا انقطاع حتى يُعلّق النظام العمليّة — استنزافُ بطّاريةٍ لا يُقابله
+     * شيءٌ يُرى. وعند العودة يُقرأ الوقت فورًا، فما يظهر صحيحٌ لا قديم.
+     */
+    const stop = () => {
+      if (timer) clearTimeout(timer)
+      timer = null
+    }
+
+    const onVisibility = () => {
+      stop()
+      if (document.visibilityState === 'visible') schedule()
+      else setRemaining(read())
+    }
+
+    if (document.visibilityState === 'visible') schedule()
+    else setRemaining(read())
+
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [endsAt, frozenMs])
 
   return remaining

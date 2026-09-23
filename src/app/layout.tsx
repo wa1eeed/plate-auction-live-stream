@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next'
 import { Tajawal } from 'next/font/google'
+import { Suspense } from 'react'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 import { getCurrentUser } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
 import { NativeShell } from '@/components/layout/native-shell'
+import { RouteProgress } from '@/components/layout/route-progress'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { NetworkBanner } from '@/components/layout/network-banner'
 import { PullToRefresh } from '@/components/layout/pull-to-refresh'
@@ -165,6 +167,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-dvh antialiased">
+        {/*
+          * جوابُ الضغطة قبل أيّ شيء — والصمتُ هو ما يُقرأ «الزرّ لا يعمل».
+          *
+          * و`Suspense` شرطٌ لا زينة: المكوّن يقرأ `useSearchParams`، وبلا حدٍّ
+          * حولَه يُخرج التصييرَ الساكن للصفحات كلّها إلى التصيير عند الطلب.
+          */}
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         {/* فوق كل شيء: تُقرأ قبل أن يظنّ الزائر أنّه في المنصّة الحقيقية */}
         <StagingBanner />
         {/*
