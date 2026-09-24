@@ -50,7 +50,8 @@ VAPID_SUBJECT=mailto:you@example.com        # https: أو mailto: — وإلّا
 
 # تخزين الوسائط — البنرات والستوريز وملفّات المستخدمين
 R2_ACCOUNT_ID=                              # بلا الأربعة يعمل على القرص
-R2_BUCKET=mazad-media
+R2_BUCKET=mazad-media                       # العامّة — يُربط بها النطاق
+R2_PRIVATE_BUCKET=mazad-files               # الخاصّة — **بلا نطاق مخصّص**
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_PUBLIC_BASE_URL=https://cdn.example.com  # **اضبطه**: بدونه يمرّ الفدّيو بالخادم

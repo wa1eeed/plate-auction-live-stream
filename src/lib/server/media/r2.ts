@@ -1,14 +1,43 @@
 import { contentTypeOf, type MediaDriver } from './driver'
-import { isSafeKey } from './keys'
+import { isPublicKey, isSafeKey } from './keys'
 import { presignUrl, sha256Hex, signRequest, UNSIGNED_PAYLOAD, type SigningCredentials } from './sigv4'
 
 export type R2Config = {
   accountId: string
+  /** حاويةُ ما تحت `platform/` — هي التي يُربط بها النطاق العامّ */
   bucket: string
+  /**
+   * حاويةُ ما تحت `users-files/` — **ولا نطاقَ يُربط بها**.
+   *
+   * وفصلُها حاويةً مستقلّة ليس ترتيبًا: **ربطُ نطاقٍ مخصّص بحاوية R2 يجعلها
+   * كلَّها مقروءةً علنًا عبره** — لا البادئة التي تختارها. فلو سكنت وثائقُ
+   * المستخدمين حاويةَ البنرات لصار `cdn.…/users-files/usr_1/proof.pdf`
+   * مفتوحًا لمن بلغه، بلا جلسةٍ ولا أثر — ويسقط الفصلُ كلُّه.
+   *
+   * و`null` تعني أنّها لم تُضبط، فتُستعمل حاويةُ البنرات — وهو مقبولٌ ما لم
+   * يُربط نطاقٌ عامّ، ويُمنع إن رُبط. انظر `assertPrivateIsolation`.
+   */
+  privateBucket: string | null
   accessKeyId: string
   secretAccessKey: string
   /** نطاقُ التقديم العامّ — `https://cdn.mazad.nx.sa` بلا شرطةٍ في آخره */
   publicBaseUrl: string | null
+}
+
+/**
+ * يرفض الضبطَ الذي يكشف وثائق المستخدمين.
+ *
+ * نطاقٌ عامٌّ مربوطٌ بحاويةٍ تسكنها `users-files/` = كشفٌ صامت. ويُرمى هنا
+ * لا يُسجَّل تحذيرًا: تحذيرٌ في سجلٍّ لا يقرؤه أحد لا يمنع تسريبًا.
+ */
+export function assertPrivateIsolation(config: Pick<R2Config, 'bucket' | 'privateBucket' | 'publicBaseUrl'>): void {
+  if (!config.publicBaseUrl) return
+  if (config.privateBucket && config.privateBucket !== config.bucket) return
+  throw new Error(
+    'R2_PUBLIC_BASE_URL مضبوطٌ بلا R2_PRIVATE_BUCKET مستقلّة — ' +
+      'والنطاق المخصّص يجعل الحاوية كلَّها علنيّة، فتنكشف ملفّات المستخدمين. ' +
+      'أنشئ حاويةً ثانيةً بلا نطاق واضبط R2_PRIVATE_BUCKET عليها.',
+  )
 }
 
 /**
@@ -25,9 +54,15 @@ export function r2Driver(config: R2Config): MediaDriver {
     service: 's3',
   }
 
+  assertPrivateIsolation(config)
+
+  /** الحاوية تُختار **بالبادئة**: العامّ في حاويته، والخاصّ في حاويته. */
+  const bucketOf = (key: string): string =>
+    isPublicKey(key) ? config.bucket : (config.privateBucket ?? config.bucket)
+
   const endpoint = (key: string): URL => {
     if (!isSafeKey(key)) throw new Error('مفتاح غير صالح')
-    return new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${config.bucket}/${key}`)
+    return new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${bucketOf(key)}/${key}`)
   }
 
   return {

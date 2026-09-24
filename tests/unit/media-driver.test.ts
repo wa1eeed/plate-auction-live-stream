@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { diskDriver } from '@/lib/server/media/disk'
+import { assertPrivateIsolation, r2Driver } from '@/lib/server/media/r2'
 import { getMedia, mediaConfigured, resetMediaForTests } from '@/lib/server/media'
 import { platformKey, userFileKey } from '@/lib/server/media/keys'
 
@@ -130,5 +131,89 @@ describe('اختيار المحرّك ومجلَّده', () => {
     delete process.env.MEDIA_DIR
     delete process.env.PLATFORM_DATA_DIR
     expect(diskRootForTests()).toBe('.data/media')
+  })
+})
+
+/**
+ * **فصلُ الحاويتين — وإلّا انكشفت وثائق المستخدمين.**
+ *
+ * ربطُ نطاقٍ مخصّص بحاوية R2 يجعلها **كلَّها** مقروءةً علنًا عبره، لا
+ * البادئة التي تختارها. فلو سكنت `users-files/` حاويةَ البنرات لصار
+ * `cdn.…/users-files/usr_1/proof.pdf` مفتوحًا لمن بلغه.
+ */
+describe('حاويتا R2 — العامّة والخاصّة', () => {
+  const base = {
+    accountId: 'acc',
+    bucket: 'media-public',
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+  }
+
+  it('نطاقٌ عامٌّ بلا حاويةٍ خاصّة يُرفض — ولا يُكتفى بتحذير', () => {
+    expect(() =>
+      assertPrivateIsolation({ ...base, privateBucket: null, publicBaseUrl: 'https://cdn.example.com' }),
+    ).toThrow(/R2_PRIVATE_BUCKET/)
+
+    /* وحاويةٌ «خاصّة» هي نفسُها العامّة لا تفصل شيئًا */
+    expect(() =>
+      assertPrivateIsolation({
+        ...base,
+        privateBucket: 'media-public',
+        publicBaseUrl: 'https://cdn.example.com',
+      }),
+    ).toThrow(/R2_PRIVATE_BUCKET/)
+  })
+
+  it('وبحاويتين مستقلّتين يمرّ', () => {
+    expect(() =>
+      assertPrivateIsolation({
+        ...base,
+        privateBucket: 'media-private',
+        publicBaseUrl: 'https://cdn.example.com',
+      }),
+    ).not.toThrow()
+  })
+
+  it('وبلا نطاقٍ عامّ يمرّ — لا شيء يُقدَّم علنًا أصلًا', () => {
+    expect(() =>
+      assertPrivateIsolation({ ...base, privateBucket: null, publicBaseUrl: null }),
+    ).not.toThrow()
+  })
+
+  it('والمفتاح يختار حاويته: العامّ في العامّة والخاصّ في الخاصّة', async () => {
+    const seen: string[] = []
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seen.push(String(input))
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+
+    try {
+      const driver = r2Driver({
+        ...base,
+        privateBucket: 'media-private',
+        publicBaseUrl: 'https://cdn.example.com',
+      })
+      await driver.remove('platform/images/a.png')
+      await driver.remove('users-files/usr_1/proof.pdf')
+
+      expect(seen[0]).toContain('/media-public/platform/images/a.png')
+      expect(seen[1]).toContain('/media-private/users-files/usr_1/proof.pdf')
+      /* ولا يتسرّب الخاصُّ إلى الحاوية العامّة */
+      expect(seen[1]).not.toContain('media-public')
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('والرابطُ العامّ لا يُشتقّ لمفتاحٍ خاصّ — يُقدَّم من التطبيق وحده', () => {
+    const driver = r2Driver({
+      ...base,
+      privateBucket: 'media-private',
+      publicBaseUrl: 'https://cdn.example.com',
+    })
+    expect(driver.publicUrl('platform/images/a.png')).toBe(
+      'https://cdn.example.com/platform/images/a.png',
+    )
   })
 })

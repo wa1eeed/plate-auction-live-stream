@@ -59,6 +59,7 @@ export function getMedia(): MediaDriver {
     ? r2Driver({
         accountId: process.env.R2_ACCOUNT_ID!,
         bucket: process.env.R2_BUCKET!,
+        privateBucket: process.env.R2_PRIVATE_BUCKET?.trim() || null,
         accessKeyId: process.env.R2_ACCESS_KEY_ID!,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
         publicBaseUrl: process.env.R2_PUBLIC_BASE_URL?.trim().replace(/\/+$/, '') || null,
