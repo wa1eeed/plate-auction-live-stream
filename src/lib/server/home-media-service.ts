@@ -1,5 +1,5 @@
 import { getStore } from '@/lib/store'
-import { UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
+import { PROXY_MAX_BYTES, UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
 import { ServiceError } from './market-service'
 import {
   bannerRatioError,
@@ -51,7 +51,13 @@ export async function uploadMedia(input: {
   if (bytes.byteLength === 0) {
     throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
   }
-  const limit = UPLOAD_LIMITS[declaredMime]
+  /*
+   * سقفُ هذا المسلك أدنى من سقف النوع — لأنّه يقرأ الملفّ إلى الذاكرة.
+   *
+   * والفدّيو يُرفع مباشرةً إلى R2 بمئتَي ميغابايت، وهذا مسلكُ الرجوع ومحرّكِ
+   * القرص. فيُؤخذ الأدنى منهما، ولا يُترك سقفُ النوع يقود إلى قتل الحاوية.
+   */
+  const limit = Math.min(UPLOAD_LIMITS[declaredMime], PROXY_MAX_BYTES)
   if (bytes.byteLength > limit) {
     throw new ServiceError(
       `الملفّ ${Math.round(bytes.byteLength / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,

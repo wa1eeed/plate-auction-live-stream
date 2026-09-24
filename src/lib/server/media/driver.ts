@@ -70,6 +70,8 @@ export function contentTypeOf(key: string): string {
       return 'image/webp'
     case 'mp4':
       return 'video/mp4'
+    case 'mov':
+      return 'video/quicktime'
     case 'pdf':
       return 'application/pdf'
     default:

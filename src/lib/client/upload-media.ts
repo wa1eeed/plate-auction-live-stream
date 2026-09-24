@@ -1,4 +1,4 @@
-import { uploadRejection } from '@/lib/domain/upload-limits'
+import { PROXY_MAX_BYTES, uploadRejection } from '@/lib/domain/upload-limits'
 
 export type UploadResult = { key: string; width: number | null; height: number | null }
 export type UploadPurpose = 'banner' | 'story' | 'poster'
@@ -61,6 +61,21 @@ async function postJson(
  * تحتاج المجموعةُ حاويةً وسرًّا لتمرّ.
  */
 async function viaServer(file: File, purpose: UploadPurpose): Promise<UploadResult> {
+  /*
+   * سقفُ هذا المسلك أدنى — فيُقال قبل الإرسال لا بعد أن تُقطع الوصلة.
+   *
+   * والخادم يردّ `413` على ترويسة الحجم قبل قراءة الجسم، فيغلق الوصلة
+   * والمتصفّح ما زال يضخّ — فلا تصل رسالة. وهي العلّةُ نفسُها التي أضاعت
+   * ساعاتٍ، ولا تُعاد في مسلك الرجوع.
+   */
+  if (file.size > PROXY_MAX_BYTES) {
+    const mb = (n: number) => (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
+    throw new UploadError(
+      `الملفّ ${mb(file.size)} ميغابايت، والرفعُ عبر الخادم محدودٌ بـ${mb(PROXY_MAX_BYTES)} — ` +
+        'التخزين المباشر غيرُ مضبوطٍ على هذه النشرة',
+    )
+  }
+
   const form = new FormData()
   form.append('file', file)
   form.append('purpose', purpose)

@@ -1,15 +1,21 @@
 import { z } from 'zod'
 import { fail, handleError, ok } from '@/lib/server/api'
 import { requireAdminId } from '@/lib/server/require-admin'
-import { uploadMedia, UPLOAD_LIMITS } from '@/lib/server/home-media-service'
+import { uploadMedia } from '@/lib/server/home-media-service'
 import { isAllowedMime } from '@/lib/server/media'
+import { PROXY_MAX_BYTES } from '@/lib/domain/upload-limits'
 
 export const dynamic = 'force-dynamic'
 
 const purposeSchema = z.enum(['banner', 'story', 'poster', 'user-file'])
 
-/** أكبرُ حدٍّ في الجدول — سقفٌ يُردّ عنده قبل قراءة الجسم أصلًا. */
-const MAX_BYTES = Math.max(...Object.values(UPLOAD_LIMITS))
+/**
+ * سقفُ هذا المسار — **سقفُ الذاكرة لا سقفُ المخزن**.
+ *
+ * فهو يقرأ الملفّ كلَّه إلى الذاكرة. والفدّيو يُرفع اليوم مباشرةً إلى R2
+ * بمئتَي ميغابايت، وهذا المسلك مسلكُ الرجوع ومحرّكِ القرص — فيبقى على سقفه.
+ */
+const MAX_BYTES = PROXY_MAX_BYTES
 
 /**
  * رفعُ ملفٍّ من لوحة الإدارة.

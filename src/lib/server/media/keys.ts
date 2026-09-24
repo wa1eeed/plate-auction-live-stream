@@ -50,6 +50,14 @@ export const ALLOWED_MEDIA = {
   'image/png': { ext: 'png', scope: 'images' },
   'image/webp': { ext: 'webp', scope: 'images' },
   'video/mp4': { ext: 'mp4', scope: 'videos' },
+  /*
+   * QuickTime — وهو ما يخرج من كاميرا الآيفون.
+   *
+   * وحاويتُه نفسُها حاويةُ MP4 (ISO BMFF) بصندوق `ftyp` في أوّلها، فالفحصُ
+   * بالبايتات يقبلهما بلا تفريق. والفرقُ في **التشغيل** لا في القبول: انظر
+   * تحذير `docs/media-storage.md`.
+   */
+  'video/quicktime': { ext: 'mov', scope: 'videos' },
   'application/pdf': { ext: 'pdf', scope: 'files' },
 } as const satisfies Record<string, { ext: string; scope: MediaScope }>
 

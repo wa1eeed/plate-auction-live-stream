@@ -629,8 +629,12 @@ export function StoryManager({
 
                 <MediaUploadField
                   label={editing.draft.mediaKind === 'video' ? 'ملفّ الفدّيو' : 'الصورة'}
-                  hint={editing.draft.mediaKind === 'video' ? 'MP4 حتى ٢٤ ميغابايت' : 'يُفضَّل ٩:١٦'}
-                  accept={editing.draft.mediaKind === 'video' ? 'video/mp4' : 'image/png,image/jpeg,image/webp'}
+                  hint={editing.draft.mediaKind === 'video' ? 'MP4 أو MOV حتى ٢٠٠ ميغابايت' : 'يُفضَّل ٩:١٦'}
+                  accept={
+                    editing.draft.mediaKind === 'video'
+                      ? 'video/mp4,video/quicktime'
+                      : 'image/png,image/jpeg,image/webp'
+                  }
                   purpose="story"
                   aspect="aspect-[9/16] max-h-64 mx-auto"
                   value={editing.draft.mediaKey}
