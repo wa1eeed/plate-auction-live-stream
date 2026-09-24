@@ -44,6 +44,8 @@ export function MediaUploadField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  /** نسبةُ ما صعد — `null` قبل أن تصل أوّلُ إشارة تقدّم */
+  const [progress, setProgress] = useState<number | null>(null)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
   const [isVideo, setIsVideo] = useState(false)
 
@@ -62,8 +64,10 @@ export function MediaUploadField({
     setLocalPreview(url)
     setIsVideo(file.type.startsWith('video/'))
 
+    setProgress(0)
+
     try {
-      onUploaded(await uploadMedia(file, purpose))
+      onUploaded(await uploadMedia(file, purpose, setProgress))
     } catch (error) {
       /*
        * `UploadError` تحمل رسالةً عربيةً جاهزة — تُعرض كما هي.
@@ -84,6 +88,7 @@ export function MediaUploadField({
       setLocalPreview(null)
     } finally {
       setBusy(false)
+      setProgress(null)
       // يُفرَّغ ليقبل اختيار الملفّ نفسه مرّةً أخرى بعد خطأ
       if (inputRef.current) inputRef.current.value = ''
     }
@@ -118,8 +123,26 @@ export function MediaUploadField({
         )}
 
         {busy && (
-          <div className="absolute inset-0 grid place-items-center bg-ink-950/70">
+          <div className="absolute inset-0 grid place-items-center gap-3 bg-ink-950/70 px-6">
             <Loader2 className="size-5 animate-spin text-gold-500" />
+            {/*
+              شريطٌ يتقدّم — لا دوّارةٌ تدور بلا خبر.
+              ورفعُ مئةِ ميغابايت على وصلةٍ منزلية دقائق، ودوّارةٌ صامتة طولَها
+              تُقرأ تعليقًا فيُعاد التحميل، فيُقطع رفعٌ كان يتمّ.
+            */}
+            {progress !== null && (
+              <>
+                <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-ink-700">
+                  <div
+                    className="h-full rounded-full bg-gold-500 transition-[width] duration-200"
+                    style={{ width: `${Math.round(progress * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] font-bold tabular-nums text-paper">
+                  {Math.round(progress * 100)}٪
+                </span>
+              </>
+            )}
           </div>
         )}
 
