@@ -53,6 +53,9 @@ export const users = pgTable(
     bankName: text('bank_name'),
     bankIban: text('bank_iban'),
     bankAccountName: text('bank_account_name'),
+    /** لحظةُ التعطيل وسببُه — و`NULL` حسابٌ عامل. انظر `DisabledReason`. */
+    disabledAt: stamp('disabled_at'),
+    disabledReason: text('disabled_reason'),
     createdAt: stamp('created_at').notNull(),
   },
   (table) => [

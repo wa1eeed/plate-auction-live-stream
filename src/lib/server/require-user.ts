@@ -1,4 +1,5 @@
 import { ServiceError } from './market-service'
+import { DISABLED_ACCOUNT_MESSAGE } from './account-service'
 import { readUserSession } from './session'
 import { getStore } from '@/lib/store'
 import type { User } from '@/lib/domain/types'
@@ -16,12 +17,25 @@ export async function requireUserId(): Promise<string> {
 
   const user = await getStore().findUser(session.userId)
   if (!user) throw new ServiceError('انتهت الجلسة، سجّل الدخول من جديد', 401, 'NOT_AUTHENTICATED')
+  /*
+   * **الحسابُ المعطَّل يسقط بجلسته القائمة** — لا عند الدخول وحده.
+   *
+   * فمن عطّل حسابه وكوكيُّه في يده يبقى داخلًا إلى أن ينتهي أجلُه — فيزايد
+   * ويشتري ويبيع وهو «قيد الحذف». والفحصُ هنا يقطع ذلك في أوّل طلب.
+   */
+  if (user.disabledAt) throw new ServiceError(DISABLED_ACCOUNT_MESSAGE, 403, 'ACCOUNT_DISABLED')
   return user.id
 }
 
-/** يعيد المستخدم الحالي أو `null` — للصفحات العامة. */
+/**
+ * يعيد المستخدم الحالي أو `null` — للصفحات العامة.
+ *
+ * والمعطَّل يُقرأ `null`: الصفحاتُ العامّة تبني عليه واجهةَ «مسجَّل الدخول»،
+ * فلو عاد لظهرت له قوائمُ حسابٍ لا يستطيع فتح شيءٍ منها.
+ */
 export async function getCurrentUser(): Promise<User | null> {
   const session = await readUserSession()
   if (!session) return null
-  return getStore().findUser(session.userId)
+  const user = await getStore().findUser(session.userId)
+  return user?.disabledAt ? null : user
 }

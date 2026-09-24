@@ -471,6 +471,8 @@ export function seedDatabase(db: MemoryDatabase): void {
     handle: demo.email.split('@')[0],
     showcaseUsesHandle: false,
     avatarUrl: null,
+    disabledAt: null,
+    disabledReason: null,
     createdAt: iso(-(30 - index) * 86_400_000),
     passwordHash: hashPassword(demo.password),
   }))

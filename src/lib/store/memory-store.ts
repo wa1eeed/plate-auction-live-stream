@@ -293,6 +293,8 @@ export class MemoryStore implements AuctionStore {
       avatarUrl: null,
       social: { ...EMPTY_SOCIAL, ...input.social },
       payout: { ...EMPTY_PAYOUT_ACCOUNT },
+      disabledAt: null,
+      disabledReason: null,
       createdAt: new Date().toISOString(),
       passwordHash: input.passwordHash,
     }

@@ -460,6 +460,8 @@ export class PostgresStore implements AuctionStore {
               bankAccountName: patch.payout.accountName || null,
             }
           : {}),
+        ...(patch.disabledAt !== undefined ? { disabledAt: patch.disabledAt } : {}),
+        ...(patch.disabledReason !== undefined ? { disabledReason: patch.disabledReason } : {}),
       })
       .where(eq(t.users.id, id))
       .returning()
@@ -1556,6 +1558,8 @@ function userFromRow(row: UserRow): User {
       iban: row.bankIban ?? '',
       accountName: row.bankAccountName ?? '',
     },
+    disabledAt: row.disabledAt,
+    disabledReason: row.disabledReason as User['disabledReason'],
     createdAt: row.createdAt,
   }
 }

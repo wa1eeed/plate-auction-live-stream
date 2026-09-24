@@ -34,6 +34,8 @@ import {
 } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import { UserEditDialog } from '@/components/admin/user-edit-dialog'
+import { ReactivateUser } from '@/components/admin/reactivate-user'
+import { DISABLED_REASON_LABELS } from '@/lib/domain/types'
 import { showcasePath } from '@/lib/domain/reference'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { ContactCard } from '@/components/admin/contact-card'
@@ -122,6 +124,27 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         * يتبدّل. و**المعرّف العلنيّ** هو رابط معرضه الذي يشاركه، ويملكه هو
         * ويغيّره متى شاء. وخلطهما يجعل المشغّل يقتبس ما قد يتغيّر غدًا.
         */}
+      {/*
+        * حالةُ التعطيل **قبل كلّ شيء** — لا شارةً بين شارات.
+        *
+        * فمن يفتح الصفحة ليجيب عن «لماذا لا أستطيع الدخول؟» يحتاج الجواب في
+        * أوّل نظرة. وشارةٌ صغيرة بين شاراتٍ أخرى تُقرأ بعد أن يُبحث في السجلّ.
+        */}
+      {user.disabledAt && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/40 bg-danger/10 p-4">
+          <div>
+            <p className="font-bold text-danger">
+              الحساب معطَّل — {DISABLED_REASON_LABELS[user.disabledReason ?? 'admin']}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              منذ {new Date(user.disabledAt).toLocaleDateString('ar-SA')} · لا يستطيع الدخول ولا
+              التعامل، وسجلّه الماليّ محفوظ
+            </p>
+          </div>
+          <ReactivateUser userId={user.id} />
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <ReferenceChip reference={user.reference} kind="user" />
         {user.handle ? (

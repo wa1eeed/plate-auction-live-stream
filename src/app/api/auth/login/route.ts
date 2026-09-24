@@ -4,6 +4,7 @@ import { verifyPassword } from '@/lib/server/crypto'
 import { clientIp } from '@/lib/server/client-ip'
 import { rateLimit } from '@/lib/server/rate-limit'
 import { setUserSession } from '@/lib/server/session'
+import { DISABLED_ACCOUNT_MESSAGE } from '@/lib/server/account-service'
 import { getStore } from '@/lib/store'
 
 export async function POST(request: Request) {
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
     const account = await getStore().findUserByEmail(body.email)
     if (!account || !verifyPassword(body.password, account.passwordHash)) {
       return fail('البريد الإلكتروني أو كلمة المرور غير صحيحة', 401, 'INVALID_CREDENTIALS')
+    }
+    /*
+     * **بعد التحقّق من كلمة المرور لا قبله.**
+     *
+     * ولو رُدّ المعطَّلُ قبل الفحص لَصار المسارُ كاشفًا: يُجرَّب بريدٌ بكلمةٍ
+     * خاطئة، فإن قيل «معطَّل» عُرف أنّ الحساب قائم. فيُقال ذلك لمن أثبت
+     * أنّه صاحبُه.
+     */
+    if (account.disabledAt) {
+      return fail(DISABLED_ACCOUNT_MESSAGE, 403, 'ACCOUNT_DISABLED')
     }
     await setUserSession({ userId: account.id, email: account.email })
     return ok({ user: { id: account.id, displayName: account.displayName } })

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft, IdCard } from 'lucide-react'
 import { LogoutButton } from './logout-button'
 import { AppSettingsCard } from '@/components/layout/app-settings-card'
+import { DeleteAccount } from './delete-account'
 import { getCurrentUser } from '@/lib/server/require-user'
 
 export const dynamic = 'force-dynamic'
@@ -55,6 +56,20 @@ export default async function SettingsPage() {
         <p className="mt-1 text-sm text-muted">تسجيل الخروج من هذا الجهاز.</p>
         <div className="mt-4">
           <LogoutButton />
+        </div>
+      </section>
+
+      {/*
+        حذفُ الحساب — في الإعدادات لا مدفونًا في صفحةِ دعم.
+        آبل تشترط أن يجده المستخدم داخل التطبيق، ورفضُ ذلك سببُ ردٍّ معروف.
+      */}
+      <section className="rounded-2xl border border-danger/30 bg-ink-800 p-5">
+        <h2 className="font-bold text-danger">حذف الحساب</h2>
+        <p className="mt-1 text-sm text-muted">
+          يُعطَّل حسابك فلا تستطيع الدخول، ويبقى سجلّك الماليّ محفوظًا كما يقتضيه النظام.
+        </p>
+        <div className="mt-4">
+          <DeleteAccount />
         </div>
       </section>
     </div>
