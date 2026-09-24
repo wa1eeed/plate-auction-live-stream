@@ -322,3 +322,81 @@ describe('أعطالُ R2 تُنطَق لا تُخمَّن', () => {
     await expect(r2Driver(config).remove(key)).resolves.toBeUndefined()
   })
 })
+
+/**
+ * **الترويسةُ التي أسقطت الرفعَ كلَّه — ولم يمسكها فحصٌ واحد.**
+ *
+ * S3 تشترط `x-amz-content-sha256` مُرسَلةً و**موقَّعة**. وتعليقٌ في `sigv4.ts`
+ * كان يقول إنّ `r2.ts` يضيفها، و`r2.ts` لم يكن يضيفها — فلم تُرسل ولم
+ * تُوقَّع. فردّ R2 بـ403 على كلّ طلبٍ موقَّع: الرفعُ يرمي، والحذفُ يرمي،
+ * **والقراءةُ تردّ `null` صامتةً** فتُقرأ «ملفٌّ غير موجود» لا «رُفض».
+ *
+ * ولم تمسكه فحوصُ `sigv4` لأنّها تقيس التوقيعَ بمتّجهات أمازون — وهي صحيحةٌ
+ * حسابًا — ولا تقيس **أنّ ما يُرسَل إلى R2 يحمل ما تشترطه S3**. فهذا الفحص
+ * يقيس العقدَ لا الحساب.
+ *
+ * وقِيس على حاويةٍ حقيقية: بلا توقيعها `403`، وبتوقيعها `200`.
+ */
+describe('تجزئةُ الجسم — تُرسل وتُوقَّع في كلّ طلب', () => {
+  const config = {
+    accountId: 'acc',
+    bucket: 'media-public',
+    privateBucket: 'media-private',
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+    publicBaseUrl: null,
+  }
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  /** يُوقِع بكلّ عملياتِ المحرّك ويردّ ترويسات كلّ طلبٍ خرج. */
+  async function headersOf(): Promise<Record<string, string>[]> {
+    const sent: Record<string, string>[] = []
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push((init?.headers ?? {}) as Record<string, string>)
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+
+    const driver = r2Driver(config)
+    await driver.put(platformKey('image/png'), new Uint8Array([1, 2, 3]), 'image/png')
+    await driver.remove(platformKey('image/png'))
+    await driver.read(platformKey('image/png'))
+    return sent
+  }
+
+  it('الترويسةُ مُرسَلةٌ في الرفع والحذف والقراءة — ولا واحدةَ بلا', async () => {
+    const sent = await headersOf()
+    expect(sent).toHaveLength(3)
+    for (const headers of sent) {
+      expect(headers['x-amz-content-sha256'], JSON.stringify(headers)).toBeTruthy()
+    }
+  })
+
+  /*
+   * إرسالُها بلا توقيعٍ لا يكفي — وهو بعينه ما ردّ R2 عليه بـ403. فالفحص
+   * يقرأ `SignedHeaders` من ترويسة التوقيع نفسها.
+   */
+  it('ومذكورةٌ في `SignedHeaders` — فإرسالُها بلا توقيعٍ يُردّ بـ403', async () => {
+    const sent = await headersOf()
+    for (const headers of sent) {
+      const signedList = /SignedHeaders=([^,]+)/.exec(headers.authorization)?.[1] ?? ''
+      expect(signedList.split(';'), headers.authorization).toContain('x-amz-content-sha256')
+    }
+  })
+
+  it('وقيمتُها هي تجزئةُ ما رُفع فعلًا — لا قيمةً ثابتة', async () => {
+    const sent = await headersOf()
+    /* sha256 للبايتات [1,2,3] */
+    expect(sent[0]['x-amz-content-sha256']).toBe(
+      '039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81',
+    )
+    /* وللجسم الفارغ في الحذف */
+    expect(sent[1]['x-amz-content-sha256']).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    )
+    /* والقراءةُ بلا جسمٍ تُعلن ذلك صراحةً */
+    expect(sent[2]['x-amz-content-sha256']).toBe('UNSIGNED-PAYLOAD')
+  })
+})

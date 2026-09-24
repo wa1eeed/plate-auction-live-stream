@@ -108,6 +108,32 @@ export function r2Driver(config: R2Config): MediaDriver {
 
   assertPrivateIsolation(config)
 
+  /**
+   * كلُّ طلبٍ يُوقَّع من هنا — **وتجزئةُ الجسم من الترويسات الموقَّعة**.
+   *
+   * وS3 تشترط `x-amz-content-sha256` مُرسَلةً و**موقَّعة**. وكانت مفقودةً
+   * تمامًا: تعليقٌ في `sigv4.ts` يقول إنّ `r2.ts` يضيفها، و`r2.ts` لم يكن
+   * يضيفها — عقدٌ كُتب ولم يُنفَّذ، ولا فحصَ يمسكه لأنّ الفحوص كانت تقيس
+   * التوقيعَ بنفسه لا بما يقبله R2.
+   *
+   * وأثرُه أنّ R2 ردّ **403 على كلّ طلبٍ موقَّع**: الرفعُ يرمي، والحذفُ يرمي،
+   * **والقراءةُ تردّ `null` صامتةً** فتُقرأ «ملفٌّ غير موجود» لا «رُفض».
+   * وقِيس على حاويةٍ حقيقية: بلا توقيعها `403`، وبه `200`.
+   */
+  const signed = (
+    method: string,
+    url: URL,
+    payloadHash: string,
+    extra: Record<string, string> = {},
+  ): Record<string, string> =>
+    signRequest({
+      credentials,
+      method,
+      url,
+      headers: { ...extra, 'x-amz-content-sha256': payloadHash },
+      payloadHash,
+    })
+
   /** الحاوية تُختار **بالبادئة**: العامّ في حاويته، والخاصّ في حاويته. */
   const bucketOf = (key: string): string =>
     isPublicKey(key) ? config.bucket : (config.privateBucket ?? config.bucket)
@@ -128,12 +154,9 @@ export function r2Driver(config: R2Config): MediaDriver {
        * التوقيع حينئذٍ يشمل ما رُفع: بايتاتٌ بُدِّلت في الطريق تُردّ من R2
        * نفسه. والملفّات هنا ميغاباياتٌ معدودة، فالحساب لا يُذكر.
        */
-      const headers = signRequest({
-        credentials,
-        method: 'PUT',
-        url,
-        headers: { 'content-type': contentType, 'content-length': String(bytes.byteLength) },
-        payloadHash: sha256Hex(bytes),
+      const headers = signed('PUT', url, sha256Hex(bytes), {
+        'content-type': contentType,
+        'content-length': String(bytes.byteLength),
       })
 
       /*
@@ -153,13 +176,7 @@ export function r2Driver(config: R2Config): MediaDriver {
 
     async remove(key) {
       const url = endpoint(key)
-      const headers = signRequest({
-        credentials,
-        method: 'DELETE',
-        url,
-        headers: {},
-        payloadHash: sha256Hex(''),
-      })
+      const headers = signed('DELETE', url, sha256Hex(''))
       const response = await request('حذف الملفّ', url, { method: 'DELETE', headers }, META_TIMEOUT_MS)
       // 404 ليس خطأً: الحذف يُطلب بعد فشلٍ جزئيّ فيجد ما لم يُكتب
       if (!response.ok && response.status !== 404) {
@@ -169,13 +186,7 @@ export function r2Driver(config: R2Config): MediaDriver {
 
     async read(key) {
       const url = endpoint(key)
-      const headers = signRequest({
-        credentials,
-        method: 'GET',
-        url,
-        headers: {},
-        payloadHash: UNSIGNED_PAYLOAD,
-      })
+      const headers = signed('GET', url, UNSIGNED_PAYLOAD)
       const response = await request('قراءة الملفّ', url, { headers }, META_TIMEOUT_MS)
       if (!response.ok) return null
       return {
