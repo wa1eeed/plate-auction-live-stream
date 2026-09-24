@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { overLimitMessage } from '@/lib/domain/upload-limits'
 
 export type Uploaded = { key: string; width: number | null; height: number | null }
 
@@ -55,6 +56,20 @@ export function MediaUploadField({
   const preview = localPreview ?? previewUrl ?? null
 
   async function upload(file: File) {
+    /*
+     * الحجمُ يُقاس **قبل** أن يُرسل — وإلّا مات الطلبُ في الطريق بلا رسالة.
+     *
+     * الخادمُ يردّ `413` على `content-length` قبل أن يقرأ الجسم، فيغلق
+     * الوصلةَ والمتصفّحُ ما زال يرفع — فيُجهَض `fetch` ويُقرأ «تعذّر
+     * الاتّصال بالخادم». فيُطارَد عطلُ شبكةٍ لا وجود له، والعلّةُ ملفٌّ كبير.
+     */
+    const tooBig = overLimitMessage(file.type.trim().toLowerCase(), file.size)
+    if (tooBig) {
+      toast.error(tooBig)
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+
     setBusy(true)
     /*
      * الرابط المحلّيّ السابق يُبطَل قبل إنشاء غيره.

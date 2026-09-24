@@ -1,4 +1,5 @@
 import { getStore } from '@/lib/store'
+import { UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
 import { ServiceError } from './market-service'
 import {
   bannerRatioError,
@@ -19,13 +20,7 @@ import type { NewBanner, NewStory } from '@/lib/store/types'
  * و`content-length` يُصدَّق ابتداءً لردٍّ سريع، ثمّ **تُقاس البايتات بعد
  * قراءتها**: الترويسة يكتبها العميل، ومن أراد إغراق القرص كتب فيها ما شاء.
  */
-export const UPLOAD_LIMITS = {
-  'image/jpeg': 4 * 1024 * 1024,
-  'image/png': 4 * 1024 * 1024,
-  'image/webp': 4 * 1024 * 1024,
-  'video/mp4': 24 * 1024 * 1024,
-  'application/pdf': 8 * 1024 * 1024,
-} as const satisfies Record<AllowedMime, number>
+export const UPLOAD_LIMITS = SHARED_LIMITS satisfies Record<AllowedMime, number>
 
 export type UploadPurpose = 'banner' | 'story' | 'poster' | 'user-file'
 
