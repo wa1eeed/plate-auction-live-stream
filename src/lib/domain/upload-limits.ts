@@ -25,17 +25,40 @@ export function limitFor(mime: string): number | null {
   return (UPLOAD_LIMITS as Record<string, number | undefined>)[mime] ?? null
 }
 
+/** أكبرُ حدٍّ في الجدول — وعنده يردّ الخادم **قبل أن يقرأ الجسم**. */
+export const MAX_UPLOAD_BYTES = Math.max(...Object.values(UPLOAD_LIMITS))
+
 const megabytes = (bytes: number): string =>
   (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
 
+const SUPPORTED = 'JPEG و PNG و WebP للصور، و MP4 للفدّيو'
+
 /**
- * رسالةُ التجاوز، أو `null` إن كان الحجمُ مقبولًا.
+ * سببُ الردّ قبل الإرسال، أو `null` إن كان الملفّ مقبولًا.
  *
- * وبالميغابايت لا بالبايت: «٤٢ ميغابايت والحدّ ٢٤» يُقرأ ويُفهم، و
- * «44040192 بايت» رقمٌ يُعدّ بالأصابع.
+ * **ونوعٌ لا نعرفه لا يُترك يمرّ.** كان يُترك — فيُعاد له `null` ولا يُقاس
+ * حجمُه — وذلك بابُ العطب كلِّه: فدّيو الآيفون يأتي `video/quicktime` لا
+ * `video/mp4`، فيمرّ بلا قياسٍ مهما كبر. ثمّ يردّ الخادم `413` على ترويسة
+ * الحجم **قبل أن يقرأ الجسم**، فيغلق الوصلةَ والمتصفّحُ ما زال يضخّ —
+ * فيُجهَض الطلب: `ECONNRESET` عند الخادم، و`ERR_TIMED_OUT` عند المتصفّح،
+ * ولا تصل رسالةٌ إلى أحد. فتُقرأ «تعذّر الاتّصال بالخادم» والشبكةُ سليمة.
+ *
+ * والترتيب مقصود: **الحجمُ أوّلًا**. فملفٌّ ضخمٌ بنوعٍ غير مدعوم عطبُه
+ * الأوّل حجمُه — وهو الذي يقطع الوصلة — لا صيغتُه.
  */
-export function overLimitMessage(mime: string, bytes: number): string | null {
+export function uploadRejection(mime: string, bytes: number): string | null {
   const limit = limitFor(mime)
-  if (limit === null || bytes <= limit) return null
-  return `الملفّ ${megabytes(bytes)} ميغابايت والحدّ ${megabytes(limit)} — اختر ملفًّا أصغر`
+
+  if (bytes > (limit ?? MAX_UPLOAD_BYTES)) {
+    return `الملفّ ${megabytes(bytes)} ميغابايت والحدّ ${megabytes(limit ?? MAX_UPLOAD_BYTES)} — اختر ملفًّا أصغر`
+  }
+  /*
+   * والنوعُ المجهول يُردّ هنا لا في الخادم — وكان الخادم يردّه `415` برسالةٍ
+   * تصل فعلًا (لأنّه يقرأ الجسم أوّلًا)، لكنّ ذلك يعني رفعَ ملفٍّ كاملٍ
+   * ليُقال «غير مدعوم». والقائمةُ معروفةٌ للطرفين، فلا معنى لرفعه.
+   */
+  if (limit === null) {
+    return `صيغةٌ غير مدعومة${mime ? ` (${mime})` : ''} — المدعوم: ${SUPPORTED}`
+  }
+  return null
 }
