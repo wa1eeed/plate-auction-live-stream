@@ -61,6 +61,37 @@ const SALE_ICONS: Record<SaleType, typeof Gavel> = { auction: Gavel, fixed: Tag,
 /** لوحة الدراجة مقاسٌ واحد — لا طويلة ولا رياضية. */
 const MOTORCYCLE_FORMATS: readonly PlateFormat[] = ['standard']
 
+/**
+ * **مراحلُ الإضافة — على الجوّال وحده.**
+ *
+ * والنموذجُ خمسةُ أقسامٍ في صفحةٍ واحدة: على الحاسوب تُرى جملةً فيُعرف ما
+ * بقي، وعلى شاشةٍ بعرض ٣٦٠ تصير درجًا طويلًا لا يُعرف طولُه ولا موضعُ
+ * صاحبه منه — فيُترك في منتصفه.
+ *
+ * والمراحلُ تقول أين هو وكم بقي، وتمنع أن يبلغ آخرَه بحقلٍ ناقصٍ في أوّله:
+ * كلُّ مرحلةٍ تُفحص حقولُها قبل أن تُجاوَز.
+ *
+ * ولا تُبدَّل البنيةُ للحاسوب: النموذجُ واحد، والأقسامُ تُخفى بالعرض لا
+ * تُنقل. فما يُرسَل واحدٌ في الحالين، ولا يتشعّب التحقّق إلى مسارين.
+ */
+const WIZARD_STEPS: { title: string; fields: (keyof FormValues)[] }[] = [
+  { title: 'شكل اللوحة', fields: ['plateType', 'plateFormat'] },
+  { title: 'الحروف والأرقام', fields: ['arabicLetters', 'latinLetters', 'plateNumbers'] },
+  { title: 'الشعار والوصف', fields: ['description'] },
+  {
+    title: 'طريقة البيع',
+    fields: [
+      'saleType',
+      'price',
+      'startingPrice',
+      'minimumIncrement',
+      'reservePrice',
+      'minimumOffer',
+      'durationSeconds',
+    ],
+  },
+]
+
 type FormValues = {
   plateType: PlateType
   plateFormat: PlateFormat
@@ -137,7 +168,24 @@ export function ListingForm({
       : DEFAULTS,
   })
 
-  const { register, watch, setValue, handleSubmit, formState } = form
+  const { register, watch, setValue, handleSubmit, formState, trigger } = form
+
+  /** المرحلةُ الحالية — على الجوّال وحده، والحاسوب يرى الكلّ. */
+  const [step, setStep] = useState(0)
+  const lastStep = step === WIZARD_STEPS.length - 1
+
+  /*
+   * لا تُجاوَز مرحلةٌ بحقلٍ ناقص — ولا يُفحص ما بعدها.
+   *
+   * و`trigger()` بلا حقولٍ يفحص النموذج كلَّه، فيُظهر أخطاء مراحلَ لم يبلغها
+   * صاحبُه بعد — فيقرأ حمرةً في مكانٍ لم يره.
+   */
+  async function goNext() {
+    if (await trigger(WIZARD_STEPS[step].fields)) {
+      setStep((current) => Math.min(current + 1, WIZARD_STEPS.length - 1))
+      document.querySelector('[data-wizard-head]')?.scrollIntoView({ block: 'start' })
+    }
+  }
   const plateType = watch('plateType')
   const plateFormat = watch('plateFormat')
   // الرياضية بلا عربية أصلًا — فحقلاها يُخفيان ولا يُطلبان
@@ -322,8 +370,39 @@ export function ListingForm({
         </p>
       </section>
 
+      {/*
+        * رأسُ المعالج — **للجوّال وحده**، وبشريطٍ مقسَّم لا نسبةٍ مئوية.
+        *
+        * والنسبةُ تقول «٥٠٪» ولا تقول كم بقي من خطوة. والأقسامُ الأربعة
+        * تُرى فيُعرف الموضعُ والباقي بنظرة.
+        */}
+      <div data-wizard-head className="lg:hidden">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-extrabold">{WIZARD_STEPS[step].title}</h2>
+          <span className="text-[11px] text-muted">
+            الخطوة {step + 1} من {WIZARD_STEPS.length}
+          </span>
+        </div>
+        <ol aria-hidden className="mt-2 flex gap-1.5">
+          {WIZARD_STEPS.map((item, index) => (
+            <li
+              key={item.title}
+              className={cn(
+                'h-1 flex-1 rounded-full transition-colors',
+                index <= step ? 'bg-gold-500' : 'bg-ink-600',
+              )}
+            />
+          ))}
+        </ol>
+      </div>
+
       {/* ------------------------------------------------ الشكل */}
-      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+      <section
+        className={cn(
+          'space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5',
+          step !== 0 && 'hidden lg:block',
+        )}
+      >
         <h2 className="font-bold">شكل اللوحة</h2>
 
         {/*
@@ -411,7 +490,12 @@ export function ListingForm({
       </section>
 
       {/* ------------------------------------------------ الحروف والأرقام */}
-      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+      <section
+        className={cn(
+          'space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5',
+          step !== 1 && 'hidden lg:block',
+        )}
+      >
         <h2 className="font-bold">الحروف والأرقام</h2>
 
         {/*
@@ -486,7 +570,12 @@ export function ListingForm({
       </section>
 
       {/* ------------------------------------------------ الشعار والوصف */}
-      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+      <section
+        className={cn(
+          'space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5',
+          step !== 2 && 'hidden lg:block',
+        )}
+      >
         <h2 className="font-bold">{showsEmblem ? 'الشعار والوصف' : 'وصف اللوحة'}</h2>
 
         {showsEmblem && (
@@ -505,7 +594,12 @@ export function ListingForm({
       </section>
 
       {/* ------------------------------------------------ طريقة البيع */}
-      <section className="space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5">
+      <section
+        className={cn(
+          'space-y-4 rounded-2xl border border-ink-600 bg-ink-800 p-5',
+          step !== 3 && 'hidden lg:block',
+        )}
+      >
         <h2 className="font-bold">طريقة البيع</h2>
 
         <div className="grid gap-2 sm:grid-cols-3">
@@ -655,7 +749,36 @@ export function ListingForm({
         * السوق إلّا بحفظٍ ثمّ ذهابٍ إلى قائمة اللوحات ثمّ نشرٍ من هناك.
         * والمسودّة تبقى لمن يريد أن يُتمّ لاحقًا.
         */}
-      <div className="flex flex-wrap gap-2">
+      {/*
+        * التالي والسابق — ويُخفيان في المرحلة الأخيرة، فأزرارُ الحفظ تقوم
+        * مقامهما هناك. ولا يُجمع زرُّ «التالي» وزرُّ «حفظ ونشر» في شاشةٍ
+        * واحدة: أيُّهما يُنهي العمل؟
+        */}
+      {!lastStep && (
+        <div className="flex items-center gap-2 lg:hidden">
+          {step > 0 && (
+            <Button type="button" variant="ghost" size="lg" onClick={() => setStep(step - 1)}>
+              السابق
+            </Button>
+          )}
+          <Button type="button" size="lg" className="flex-1" onClick={goNext}>
+            التالي
+          </Button>
+        </div>
+      )}
+
+      <div className={cn('flex flex-wrap gap-2', !lastStep && 'hidden lg:flex')}>
+        {step > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="lg:hidden"
+            onClick={() => setStep(step - 1)}
+          >
+            السابق
+          </Button>
+        )}
         {canPublish && (
           <Button
             type="submit"

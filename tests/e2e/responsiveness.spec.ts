@@ -253,3 +253,40 @@ test.describe('التنقّل العالق يُنقَذ', () => {
     expect(new URL(page.url()).pathname).toBe(destination)
   })
 })
+
+/**
+ * **نموذجُ الإضافة على الجوّال درجٌ لا يُعرف طولُه.**
+ *
+ * خمسةُ أقسامٍ في صفحةٍ واحدة تُرى جملةً على الحاسوب، وعلى عرض ٣٧٥ تصير
+ * تمريرًا طويلًا لا يعرف صاحبُه موضعَه منه ولا كم بقي — فيُترك في منتصفه.
+ * فصار مراحلَ على الجوّال وحده، والنموذجُ واحدٌ لا يتشعّب.
+ */
+test.describe('أضف لوحة — مراحلُ الجوّال', () => {
+  test.use({ viewport: { width: 375, height: 812 } })
+
+  test('تتقدّم بالتالي، ولا تُجاوَز مرحلةٌ بحقلٍ ناقص', async ({ page }) => {
+    await loginUser(page)
+    await page.goto('/account/listings/new')
+
+    const head = page.locator('[data-wizard-head] h2')
+    await expect(head).toHaveText('شكل اللوحة')
+    /* وشريطُ المراحل أربعةٌ — لا نسبةٌ مئوية لا تقول كم بقي */
+    await expect(page.locator('[data-wizard-head] ol > li')).toHaveCount(4)
+
+    await page.getByRole('button', { name: 'التالي', exact: true }).click()
+    await expect(head).toHaveText('الحروف والأرقام')
+
+    /*
+     * **الحارس**: التجاوزُ بحقولٍ فارغة يُمنع ويُقال سببُه.
+     *
+     * ولولاه لَبلغ صاحبُه المرحلة الأخيرة ثمّ رأى حمرةً في مرحلةٍ خلفه لا
+     * يراها — فيبحث عن خطأٍ في شاشةٍ أخرى.
+     */
+    await page.getByRole('button', { name: 'التالي', exact: true }).click()
+    await expect(head).toHaveText('الحروف والأرقام')
+    await expect(page.getByText('أدخل رقم اللوحة')).toBeVisible()
+
+    /* وأزرارُ الحفظ لا تُعرض قبل المرحلة الأخيرة — فلا يُسأل أيُّهما يُنهي */
+    await expect(page.getByRole('button', { name: /حفظ/ })).toBeHidden()
+  })
+})

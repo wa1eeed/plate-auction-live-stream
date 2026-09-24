@@ -368,7 +368,16 @@ test.describe('لوحة المستخدم والإشعارات', () => {
     const balance = page.getByText('الرصيد المتاح للمزايدة')
     await expect(balance).toHaveCount(1)
     await expect(balance).toBeVisible()
-    await expect(page.getByText('لوحاتي المعروضة')).toBeVisible()
+    /*
+     * **المرئيُّ واحدٌ لا اثنان** — والنصّ في موضعين بحسب العرض.
+     *
+     * فصفحةُ الحساب صارت تعرض على الجوّال مجموعاتِ نشاطٍ تُفتح، وعلى الحاسوب
+     * مربّعاتِ أرقام، وكلاهما يحمل «لوحاتي المعروضة». والفحصُ يحرس أن يُرى
+     * **أحدهما** لا كلاهما: ظهورُهما معًا تكرارٌ في الصفحة، وغيابُهما معًا
+     * ضياعُ المدخل.
+     */
+    const listingsEntry = page.getByText('لوحاتي المعروضة').filter({ visible: true })
+    await expect(listingsEntry).toHaveCount(1)
     await expect(page.getByRole('heading', { name: 'مزادات أنت فيها' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'آخر التنبيهات' })).toBeVisible()
   })
