@@ -419,19 +419,73 @@ test.describe('الجوال عند 360px', () => {
     await loginUser(page, USERS.waleed)
     await page.goto('/account/listings')
 
-    const card = page.locator('main li').first()
-    await expect(card).toBeVisible()
+    /*
+     * الصفُّ يُلتقط بمِقبضه وبزرِّ الإلغاء فيه.
+     *
+     * وكان يُؤخذ بـ`li.lastElementChild`، فلمّا تغيّر بناءُ البطاقة صار ذلك
+     * غلافَها لا صفَّ أزرارها. وكان يقيس أوّلَ بطاقةٍ ثمّ يفتّش عن «إلغاء
+     * العرض» في الصفحة كلّها — فيقيس بطاقةً ويحكم على أخرى، وقد تكون الأولى
+     * بلا أفعالٍ أصلًا.
+     */
+    const rows = page.locator('[data-card-actions]')
+    await expect(rows.first()).toBeVisible()
 
-    const rows = await card.evaluate((li) => {
-      const footer = li.lastElementChild as HTMLElement
-      const kids = [...footer.children].filter((c) => (c as HTMLElement).offsetParent)
-      return {
-        lines: new Set(kids.map((c) => Math.round(c.getBoundingClientRect().top))).size,
-        hidden: footer.scrollWidth - footer.clientWidth,
-      }
+    /*
+     * يُقاس أعرضُ صفٍّ في الصفحة لا أوّلُه.
+     *
+     * فالبطاقاتُ تختلف أفعالُها بحال اللوحة: صفٌّ بزرّين لا يفيض عن أضيق
+     * شاشةٍ أبدًا، فقياسُه يمرّ دائمًا ولا يحرس شيئًا. والالتفافُ إن وقع
+     * وقع على أثقلها.
+     */
+    const widest = await rows.evaluateAll((list) => {
+      let best = 0
+      let most = -1
+      list.forEach((footer, index) => {
+        const kids = [...footer.querySelectorAll(':scope > *, :scope > .contents > *')].filter(
+          (c) =>
+            (c as HTMLElement).offsetParent && !(c as HTMLElement).classList.contains('contents'),
+        )
+        if (kids.length > most) {
+          most = kids.length
+          best = index
+        }
+      })
+      return best
     })
-    expect(rows.lines, 'الأزرار تلتفّ إلى أكثر من سطر').toBe(1)
-    expect(rows.hidden, 'زرٌّ مخبوء خلف الحافّة').toBeLessThanOrEqual(1)
+    const row = rows.nth(widest)
+    await expect(row).toBeVisible()
+
+    const measure = () =>
+      row.evaluate((footer: HTMLElement) => {
+        /* `display:contents` يجعل الأزرار أحفادًا في الشجرة وأبناءً في التخطيط */
+        const kids = [...footer.querySelectorAll(':scope > *, :scope > .contents > *')].filter(
+          (c) =>
+            (c as HTMLElement).offsetParent && !(c as HTMLElement).classList.contains('contents'),
+        )
+        return {
+          count: kids.length,
+          lines: new Set(kids.map((c) => Math.round(c.getBoundingClientRect().top))).size,
+          hidden: footer.scrollWidth - footer.clientWidth,
+        }
+      })
+
+    const wide = await measure()
+    // وإلّا قِيس صفٌّ بزرٍّ واحدٍ فمرّ الاختبار بلا معنى
+    expect(wide.count, 'لم يُلتقط صفُّ الأزرار').toBeGreaterThan(1)
+    expect(wide.lines, 'الأزرار تلتفّ إلى أكثر من سطر').toBe(1)
+    expect(wide.hidden, 'زرٌّ مخبوء خلف الحافّة عند 360').toBeLessThanOrEqual(1)
+
+    /*
+     * ثمّ يُضيَّق إلى 320.
+     *
+     * فعند 360 تسع الأزرارُ الصفَّ بعشرين بكسلًا فائضة — يستوي فيها الالتفافُ
+     * ومنعُه، فلا يُمسك الاختبارُ شيئًا. وعند 320 تفيض عن الصفّ، فإمّا التفّت
+     * سطرين وإمّا بقيت سطرًا يُمرَّر. وهذا هو المقيس.
+     */
+    await page.setViewportSize({ width: 320, height: 900 })
+    await expect(row).toBeVisible()
+    const narrow = await measure()
+    expect(narrow.lines, 'الأزرار تلتفّ عند 320 بدل أن تُمرَّر').toBe(1)
 
     const cancel = page.getByRole('button', { name: 'إلغاء العرض' }).first()
     await expect(cancel).toBeVisible()

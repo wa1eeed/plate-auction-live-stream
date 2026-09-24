@@ -44,7 +44,7 @@ import { buildStatement } from '@/lib/domain/wallet'
 import { getUserDetail } from '@/lib/server/admin-service'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { isServiceError } from '@/lib/server/market-service'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { OverdueTag } from '@/components/market/overdue-tag'
 
 export const dynamic = 'force-dynamic'
@@ -137,7 +137,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               الحساب معطَّل — {DISABLED_REASON_LABELS[user.disabledReason ?? 'admin']}
             </p>
             <p className="mt-1 text-sm text-muted">
-              منذ {new Date(user.disabledAt).toLocaleDateString('ar-SA')} · لا يستطيع الدخول ولا
+              منذ {formatDate(user.disabledAt)} · لا يستطيع الدخول ولا
               التعامل، وسجلّه الماليّ محفوظ
             </p>
           </div>

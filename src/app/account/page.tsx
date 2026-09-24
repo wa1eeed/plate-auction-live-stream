@@ -32,6 +32,8 @@ import {
 } from '@/lib/server/market-service'
 import { getPurchases, getSales } from '@/lib/server/order-service'
 import { getWalletView } from '@/lib/server/wallet-service'
+import { getPublicPaymentOptions } from '@/lib/server/payment-service'
+import { TopUpDialog } from '@/components/market/top-up-dialog'
 import { getNotifications } from '@/lib/server/notification-service'
 import { requireUserId } from '@/lib/server/require-user'
 import { getStore } from '@/lib/store'
@@ -52,16 +54,18 @@ export default async function AccountOverviewPage() {
   // مرجع واحد لعدّادات الصفحة، فلا تنحرف بساعة الجهاز
   const serverTime = new Date(now).toISOString()
 
-  const [user, listings, bids, offers, purchases, sales, wallet, notifications] = await Promise.all([
-    getStore().findUser(userId),
-    getAccountListings(userId),
-    getAccountBids(userId),
-    getOffersReceivedByUser(userId),
-    getPurchases(userId),
-    getSales(userId),
-    getWalletView(userId),
-    getNotifications(userId, 6),
-  ])
+  const [user, listings, bids, offers, purchases, sales, wallet, notifications, paymentOptions] =
+    await Promise.all([
+      getStore().findUser(userId),
+      getAccountListings(userId),
+      getAccountBids(userId),
+      getOffersReceivedByUser(userId),
+      getPurchases(userId),
+      getSales(userId),
+      getWalletView(userId),
+      getNotifications(userId, 6),
+      getPublicPaymentOptions(),
+    ])
 
   // ---- ما يحتاج تصرّفًا
   const outbid = bids.filter((bid) => !bid.isHighest && !isClosedListing(bid.listingStatus))
@@ -227,7 +231,11 @@ export default async function AccountOverviewPage() {
         */}
       {user && (
         <div className="space-y-3 lg:hidden">
-          <AccountHeader user={user} wallet={wallet} />
+          <AccountHeader
+            user={user}
+            wallet={wallet}
+            topUp={<TopUpDialog options={paymentOptions} triggerClassName="shrink-0 px-3" />}
+          />
           <AccountCounters
             columns={[
               {

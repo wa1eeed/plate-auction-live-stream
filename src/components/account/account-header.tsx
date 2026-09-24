@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { ArrowLeft, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { formatAmount } from '@/lib/domain/money'
 import type { User } from '@/lib/domain/types'
+import { formatYear } from '@/lib/utils'
 
 /**
  * **رأسُ الملفّ — هويّةٌ ورصيدٌ في بطاقةٍ واحدة.**
@@ -16,15 +17,18 @@ import type { User } from '@/lib/domain/types'
 export function AccountHeader({
   user,
   wallet,
+  topUp,
 }: {
   user: User
   wallet: { available: number; balance: number; held: number }
+  /** زرُّ الشحن — يُمرَّر من الصفحة لأنّه يحتاج خيارات الدفع من الخادم */
+  topUp?: React.ReactNode
 }) {
   const initial = user.displayName.trim().charAt(0) || '؟'
-  const year = new Date(user.createdAt).toLocaleDateString('ar-SA', { year: 'numeric' })
+  const year = formatYear(user.createdAt)
 
   return (
-    <section className="overflow-hidden rounded-3xl bg-ink-950 p-4 text-paper">
+    <section className="overflow-hidden rounded-3xl bg-slab p-4 text-slab-fg">
       <div className="flex items-center gap-3">
         <span
           aria-hidden
@@ -41,34 +45,43 @@ export function AccountHeader({
             * والرقمُ هو ما يُقتبَس في كلّ مراسلةٍ مع الإدارة، فموضعُه تحت
             * الاسم لا في قاعٍ يُبحث عنه.
             */}
-          <p className="mt-0.5 truncate text-[11px] text-muted">
+          <p className="mt-0.5 truncate text-[11px] text-slab-fg/60">
             {user.reference} · عضو منذ {year}
           </p>
         </div>
       </div>
 
-      {/* شريطُ المحفظة — داخل البطاقة لا تحتها */}
-      <Link
-        href="/account/wallet"
-        className="mt-3.5 flex items-center gap-3 rounded-2xl bg-ink-900/70 p-3.5 transition-colors hover:bg-ink-900"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gold-500/15 text-gold-500">
-          <Wallet className="size-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11px] text-muted">الرصيد المتاح للمزايدة</span>
-          <span className="block text-xl font-extrabold tabular-nums text-gold-500">
-            {formatAmount(wallet.available)}
-            <span className="ms-1 text-[11px] font-normal text-muted">ريال</span>
+      {/*
+       * شريطُ المحفظة — داخل البطاقة لا تحتها.
+       *
+       * والشحنُ زرٌّ إلى جانبه لا هدفٌ يُبحث عنه في صفحةٍ أخرى: مَن نظر إلى
+       * رصيده فوجده دون ما يريد، أراد شحنَه في اللحظة نفسها.
+       *
+       * وهو **بجانب** الرابط لا داخله: زرٌّ في جوف رابطٍ لا يصحّ في الترميز،
+       * ونقرةٌ واحدة تُشغّلهما معًا — فينتقل المستخدم وتُفتح النافذة.
+       */}
+      <div className="mt-3.5 flex items-center gap-2 rounded-2xl bg-white/8 p-3.5">
+        <Link href="/account/wallet" className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gold-500/15 text-gold-500">
+            <Wallet className="size-4" />
           </span>
-          {wallet.held > 0 && (
-            <span className="mt-0.5 block text-[11px] text-muted">
-              محجوز كعرابين <b className="text-paper">{formatAmount(wallet.held)}</b>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] whitespace-nowrap text-slab-fg/60">
+              الرصيد المتاح للمزايدة
             </span>
-          )}
-        </span>
-        <ArrowLeft className="size-4 shrink-0 text-muted" />
-      </Link>
+            <span className="block text-xl font-extrabold tabular-nums text-gold-500">
+              {formatAmount(wallet.available)}
+              <span className="ms-1 text-[11px] font-normal text-slab-fg/60">ر.س</span>
+            </span>
+            {wallet.held > 0 && (
+              <span className="mt-0.5 block text-[11px] text-slab-fg/60">
+                محجوز كعرابين <b className="text-slab-fg">{formatAmount(wallet.held)}</b>
+              </span>
+            )}
+          </span>
+        </Link>
+        {topUp}
+      </div>
     </section>
   )
 }

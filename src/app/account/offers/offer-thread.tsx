@@ -254,7 +254,7 @@ function Bubble({
           /* دون العرض الكامل: التقابلُ يمينًا ويسارًا هو ما يجعله خيطًا لا قائمة */
           'w-[88%] max-w-[22rem] rounded-2xl px-3.5 py-3',
           /* المِلكُ داكنٌ والوارد فاتح — كما تفرّق المحادثاتُ بين طرفيها */
-          mine ? 'bg-ink-950 text-paper' : 'border border-ink-600 bg-ink-800',
+          mine ? 'bg-slab text-slab-fg' : 'border border-ink-600 bg-ink-800',
         )}
       >
         <div className="flex items-center gap-2">
@@ -277,7 +277,12 @@ function Bubble({
           <span className="shrink-0 text-[10px] text-muted">{formatRelative(at)}</span>
         </div>
 
-        <div className="mt-2 flex items-end justify-between gap-3 rounded-xl bg-ink-900/60 px-3 py-2">
+        <div
+          className={cn(
+            'mt-2 flex items-end justify-between gap-3 rounded-xl px-3 py-2',
+            mine ? 'bg-white/8' : 'bg-ink-900/60',
+          )}
+        >
           <div>
             <p className="text-[10px] text-muted">{label}</p>
             <p className="text-xl font-extrabold tabular-nums text-gold-500">

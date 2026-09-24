@@ -206,10 +206,14 @@ export function MyListingCard({
         * محشورةً في عمود النصّ كانت تلتفّ سطرين وتزاحم الأرقام، وهنا تُصاب
         * بالإبهام ولا تُزاحم — و«عرض اللوحة» أوّلها لأنها الوجهة لا الأمر.
         */}
-      <div className="scrollbar-none flex flex-nowrap items-center gap-1.5 overflow-x-auto border-t border-ink-700 px-3 py-2.5 sm:gap-2 sm:px-4">
+      {/* `data-card-actions`: مِقبضٌ ثابتٌ للاختبار — الصفُّ يُلتقط به لا بموضعه في الشجرة */}
+      <div
+        data-card-actions
+        className="scrollbar-none flex flex-nowrap items-center gap-1.5 overflow-x-auto border-t border-ink-700 px-3 py-2.5 sm:gap-2 sm:px-4"
+      >
         <Link
           href={href}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-ink-600 bg-ink-700/60 px-2.5 text-xs font-bold text-paper transition-colors hover:border-gold-600/50 hover:text-gold-400"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-ink-600 bg-ink-700/60 px-2 text-xs sm:px-2.5 font-bold text-paper transition-colors hover:border-gold-600/50 hover:text-gold-400"
         >
           <Eye className="size-3.5" />
           عرض اللوحة

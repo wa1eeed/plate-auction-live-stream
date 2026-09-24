@@ -77,6 +77,8 @@ const dayFormat = new Intl.DateTimeFormat(LOCALE, {
   year: 'numeric',
 })
 
+const yearFormat = new Intl.DateTimeFormat(LOCALE, { year: 'numeric', timeZone: TIME_ZONE })
+
 /**
  * يوم وشهرٌ باسمه: `٤ سبتمبر`.
  *
@@ -88,6 +90,23 @@ const dayMonthFormat = new Intl.DateTimeFormat(LOCALE, {
   day: 'numeric',
   month: 'long',
 })
+
+/**
+ * سنةُ الانضمام: `2026`.
+ *
+ * وتمرّ على `LOCALE` كغيرها لا على `ar-SA` مجرّدًا — وإلّا خرجت «١٤٤٨»
+ * هجريّةً بأرقامٍ هنديّة، وهو ما يُحذَّر منه أعلاه: الخادمُ يرسم بتقويمه
+ * والعميلُ بتقويمه فيسقط الترطيب.
+ */
+export function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  return dayFormat.format(new Date(iso))
+}
+
+export function formatYear(iso: string | null): string {
+  if (!iso) return '—'
+  return yearFormat.format(new Date(iso))
+}
 
 export function formatDayMonth(iso: string | null): string {
   if (!iso) return '—'

@@ -77,14 +77,14 @@ export function ListingActions({
      */
     <div className="contents">
       {status === 'draft' && (
-        <Button size="sm" className="shrink-0 whitespace-nowrap px-2.5" onClick={() => act('publish', 'نُشرت اللوحة في السوق')} disabled={busy !== null}>
+        <Button size="sm" className="shrink-0 whitespace-nowrap px-2 sm:px-2.5" onClick={() => act('publish', 'نُشرت اللوحة في السوق')} disabled={busy !== null}>
           {busy === 'publish' ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           انشر في السوق
         </Button>
       )}
 
       {canEdit && (
-        <Button asChild size="sm" variant="outline" className="shrink-0 whitespace-nowrap px-2.5">
+        <Button asChild size="sm" variant="outline" className="shrink-0 whitespace-nowrap px-2 sm:px-2.5">
           <Link href={`/account/listings/${listingId}`}>
             <Pencil className="size-4" />
             تعديل
@@ -95,7 +95,7 @@ export function ListingActions({
       {canSellerRelist(status) && (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button size="sm" variant="outline" className="shrink-0 whitespace-nowrap px-2.5" disabled={busy !== null}>
+            <Button size="sm" variant="outline" className="shrink-0 whitespace-nowrap px-2 sm:px-2.5" disabled={busy !== null}>
               <RotateCcw className="size-4" />
               إعادة عرض
             </Button>
@@ -136,7 +136,7 @@ export function ListingActions({
                * فلا يُلبَس لون «تعديل» وهو ليس من جنسه.
                */
               variant="danger"
-              className="shrink-0 whitespace-nowrap px-2.5"
+              className="shrink-0 whitespace-nowrap px-2 sm:px-2.5"
               disabled={busy !== null}
             >
               <XCircle className="size-4" />
