@@ -45,6 +45,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       ...(icon && brand.icon
         ? [{ src: icon, sizes: 'any', type: brand.icon.mime, purpose: 'any' as const }]
         : []),
+      /*
+       * أيقونةُ التطبيق نقطيّةً قبل المرسومة — وهي المصمَّمة فعلًا.
+       *
+       * ولا تُعلَن `maskable`: حشوُها غيرُ معلوم واللوحةُ تمتدّ إلى أطرافها،
+       * فقناعُ النظام يقصّها. والمرسومة تبقى للقناع لأنّ حشوها مضمون.
+       */
+      { src: '/app-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
       { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
     ],

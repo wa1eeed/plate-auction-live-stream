@@ -46,8 +46,8 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: brand.name,
     alternates: { canonical: '/' },
     icons: {
-      icon: icon ? [{ url: icon }] : [{ url: '/app-icon.svg', type: 'image/svg+xml' }],
-      apple: icon ? [{ url: icon }] : [{ url: '/app-icon.svg' }],
+      icon: icon ? [{ url: icon }] : [{ url: '/app-icon.png', type: 'image/png' }],
+      apple: icon ? [{ url: icon }] : [{ url: '/app-icon.png' }],
     },
     /*
      * iOS لا يقرأ البيان في التثبيت.
