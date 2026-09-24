@@ -365,9 +365,8 @@ test.describe('لوحة المستخدم والإشعارات', () => {
      * `strict mode`. و`toHaveCount(1)` يُعيد المحاولة حتى تستقرّ، فلا تضعف
      * الحراسة: عنصران باقيان يُخفقان كما كانا.
      */
-    const balance = page.getByText('الرصيد المتاح للمزايدة')
+    const balance = page.getByText('الرصيد المتاح للمزايدة').filter({ visible: true })
     await expect(balance).toHaveCount(1)
-    await expect(balance).toBeVisible()
     /*
      * **المرئيُّ واحدٌ لا اثنان** — والنصّ في موضعين بحسب العرض.
      *

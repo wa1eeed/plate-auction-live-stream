@@ -23,6 +23,7 @@ import { isClosedListing, type Plate } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { ActivityGroups } from '@/components/account/activity-groups'
+import { AccountCounters, AccountHeader } from '@/components/account/account-header'
 import { isOverdue } from '@/lib/domain/wallet'
 import {
   getAccountBids,
@@ -209,9 +210,83 @@ export default async function AccountOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      {/*
+        * **عنوانٌ واحدٌ للصفحة — والرأسان مرئيّان لا عنوانان.**
+        *
+        * فالصفحة تعرض رأسين: بطاقةً داكنة للجوّال وترويسةً للحاسوب، وأحدهما
+        * مخفيٌّ دائمًا. ولو حمل كلٌّ منهما `<h1>` لَصار في المستند عنوانان
+        * من الدرجة الأولى — وهو خطأُ بنيةٍ لا يُصلحه أنّ أحدهما لا يُرى.
+        */}
+      <h1 className="sr-only">حسابي — {user?.displayName ?? ''}</h1>
+
+      {/*
+        * **رأسُ التطبيق: هويّةٌ ورصيدٌ وعدّادات — والحاسوب على ترتيبه.**
+        *
+        * ومن فتح ملفّه يسأل سؤالين: «كم أملك؟» و«ما الذي عندي؟». فيُجابان في
+        * أوّل شاشةٍ بلا تمرير، ثمّ تأتي المجموعاتُ لمن أراد التفصيل.
+        */}
+      {user && (
+        <div className="space-y-3 lg:hidden">
+          <AccountHeader user={user} wallet={wallet} />
+          <AccountCounters
+            columns={[
+              {
+                href: '/account/sales',
+                label: 'مبيعاتي',
+                total: sales.length,
+                rows: [
+                  {
+                    label: 'تحت الإجراء',
+                    count: sales.filter((o) =>
+                      ['awaiting_settlement', 'escrow_held', 'ownership_transferred', 'disputed'].includes(
+                        o.status,
+                      ),
+                    ).length,
+                  },
+                  { label: 'اكتملت', count: sales.filter((o) => o.status === 'completed').length },
+                ],
+              },
+              {
+                href: '/account/purchases',
+                label: 'مشترياتي',
+                total: purchases.length,
+                rows: [
+                  {
+                    label: 'بانتظار سدادك',
+                    count: purchases.filter((o) => o.status === 'awaiting_settlement').length,
+                  },
+                  {
+                    label: 'اكتملت',
+                    count: purchases.filter((o) => o.status === 'completed').length,
+                  },
+                ],
+              },
+              {
+                href: '/account/listings',
+                label: 'لوحاتي',
+                total: listings.length,
+                rows: [
+                  {
+                    label: 'معروضة',
+                    count: listings.filter((l) => l.status === 'active').length,
+                  },
+                  { label: 'مسودّة', count: drafts.length },
+                ],
+              },
+            ]}
+          />
+          <Button asChild className="w-full">
+            <Link href="/account/listings/new">
+              <Plus className="size-4" />
+              أضف لوحة
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      <header className="hidden flex-wrap items-center justify-between gap-3 lg:flex">
         <div>
-          <h1 className="text-2xl font-extrabold">أهلًا {user?.displayName ?? ''}</h1>
+          <p className="text-2xl font-extrabold">أهلًا {user?.displayName ?? ''}</p>
           <p className="mt-1 text-sm text-muted">ملخّص نشاطك بيعًا وشراءً.</p>
           {/* رقم الحساب مع اسمه لا مختصرًا: هو ما يُقتبَس في أي مراسلة مع
               الإدارة، وهو نفسه ما تراه هي في ملفّك */}
@@ -230,10 +305,10 @@ export default async function AccountOverviewPage() {
         </Button>
       </header>
 
-      {/* المحفظة أولًا: لا مزايدة في مزاد بعربون بلا رصيد متاح */}
+      {/* المحفظة أولًا: لا مزايدة في مزاد بعربون بلا رصيد متاح — وعلى الجوّال هي في رأس البطاقة */}
       <Link
         href="/account/wallet"
-        className="surface group flex flex-wrap items-center gap-4 rounded-2xl p-5 transition-colors hover:border-gold-600/50"
+        className="surface group hidden flex-wrap items-center gap-4 rounded-2xl p-5 transition-colors hover:border-gold-600/50 lg:flex"
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-gold-600/40 bg-gold-500/10 text-gold-500">
           <Wallet className="size-5" />
