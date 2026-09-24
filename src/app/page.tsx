@@ -6,6 +6,8 @@ import { PageShell } from '@/components/layout/page-shell'
 import { HomeHero } from '@/components/market/home-hero'
 import { StoryRail } from '@/components/home/story-rail'
 import { BannerSlider } from '@/components/home/banner-slider'
+import { EndingSoon } from '@/components/home/ending-soon'
+import { GuestPrompt, QuickActions } from '@/components/home/quick-actions'
 import { PlateCarousel } from '@/components/market/plate-carousel'
 import { Card, CardContent } from '@/components/ui/card'
 import { config, DEMO_PRIMARY_USER } from '@/lib/config'
@@ -64,11 +66,25 @@ export default async function HomePage() {
           * حلقاتٍ فوقها يقرأه زائرُ الحاسوب زينةً لا مدخلًا. وهي صفحةٌ
           * تُقاس على الجوال حيث يقع أكثر التصفّح.
           */}
+        {/*
+          * **رئيسيةُ التطبيق — لا صفحةُ هبوطٍ مصغَّرة.**
+          *
+          * من فتح التطبيق عرف المنصّة وثبّتها، وإنّما جاء ليرى ما يفوته أو
+          * يُكمل ما بدأ. فيُقدَّم له العملُ والمزادُ المنتهي قريبًا، ويُؤخَّر
+          * التعريفُ بالمنصّة إلى الحاسوب حيث يقع أوّلُ لقاءٍ بها.
+          *
+          * و`lg:hidden` تفصل بالعرض لا بالغلاف عمدًا: ويبُ الجوّال يُفتح من
+          * الجهاز نفسِه ولصاحبه الحاجةُ نفسُها.
+          */}
         <div className="space-y-4 pt-3 lg:hidden">
           <StoryRail stories={stories} />
           <BannerSlider banners={banners} />
+          {viewer ? <QuickActions /> : <GuestPrompt tagline={brand.metaDescription} />}
+          <EndingSoon cards={auctions} serverTime={serverTime} />
         </div>
 
+        {/* البطلُ التعريفيّ للحاسوب وحده — انظر تعليق الكتلة أعلاه */}
+        <div className="hidden lg:block">
         <HomeHero
           brand={brand}
           plates={open.slice(0, 3).map((card) => card.plate)}
@@ -80,6 +96,7 @@ export default async function HomePage() {
               .reduce((sum, card) => sum + card.displayPrice, 0),
           }}
         />
+        </div>
 
         {/* خلاصات المعروض — قسم لكل طريقة بيع */}
         <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-12 sm:px-6 lg:py-16">
@@ -117,8 +134,8 @@ export default async function HomePage() {
           />
         </div>
 
-        {/* لماذا هذه المنصّة */}
-        <section className="border-t border-ink-600/70 bg-ink-900/30">
+        {/* لماذا هذه المنصّة — للحاسوب وحده، وهو موضع أوّل لقاء */}
+        <section className="hidden border-t border-ink-600/70 bg-ink-900/30 lg:block">
           <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-2xl font-extrabold sm:text-3xl">{pages.trust.title}</h2>
@@ -150,7 +167,7 @@ export default async function HomePage() {
         </section>
 
         {config.demoHints && (
-          <div className="mx-auto w-full max-w-7xl px-4 pb-14 pt-12 sm:px-6">
+          <div className="mx-auto hidden w-full max-w-7xl px-4 pb-14 pt-12 sm:px-6 lg:block">
             <div className="ring-gold rounded-3xl bg-gold-500/[0.06] p-6 sm:p-8">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
