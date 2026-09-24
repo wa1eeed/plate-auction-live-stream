@@ -3,6 +3,9 @@ import { UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
 import { ServiceError } from './market-service'
 import {
   bannerRatioError,
+  contentTypeOf,
+  isStagingKey,
+  stagingKey,
   getMedia,
   isAllowedMime,
   isMp4,
@@ -57,33 +60,7 @@ export async function uploadMedia(input: {
     )
   }
 
-  /*
-   * النوعُ المعلن يُطابَق بالبايتات — فما سُمّي صورةً وليس صورةً يُردّ.
-   *
-   * وهي الحراسة التي تمنع رفع HTML باسم `.png` ثمّ تقديمه من نطاقٍ يثق
-   * به المتصفّح. و`nosniff` تحمي من جانبٍ آخر، والاثنتان معًا لا واحدة.
-   */
-  let width: number | null = null
-  let height: number | null = null
-
-  if (declaredMime === 'video/mp4') {
-    if (!isMp4(bytes)) throw new ServiceError('الملفّ ليس فدّيو MP4', 422, 'MEDIA_MISMATCH')
-  } else if (declaredMime === 'application/pdf') {
-    const head = String.fromCharCode(...bytes.slice(0, 5))
-    if (head !== '%PDF-') throw new ServiceError('الملفّ ليس PDF', 422, 'MEDIA_MISMATCH')
-  } else {
-    const probe = probeImage(bytes)
-    if (!probe) throw new ServiceError('الملفّ ليس صورةً صالحة', 422, 'MEDIA_MISMATCH')
-    if (probe.mime !== declaredMime) {
-      throw new ServiceError(`الملفّ ${probe.mime} لا ${declaredMime}`, 422, 'MEDIA_MISMATCH')
-    }
-    if (purpose === 'banner') {
-      const ratio = bannerRatioError(probe)
-      if (ratio) throw new ServiceError(ratio, 422, 'MEDIA_RATIO')
-    }
-    width = probe.width
-    height = probe.height
-  }
+  const { width, height } = inspectHead(declaredMime, bytes, purpose)
 
   const key =
     purpose === 'user-file'
@@ -95,6 +72,169 @@ export async function uploadMedia(input: {
 
   await getMedia().put(key, bytes, declaredMime)
   return { key, width, height }
+}
+
+/**
+ * الحكمُ على البايتات — **دالّةٌ واحدة يقرؤها المساران**.
+ *
+ * والرفعُ صار طريقين: عبر الخادم، ومباشرةً إلى R2 ثمّ تأكيدٌ يقرأ الرأس.
+ * ولو كُتبت الحراسةُ في كلٍّ منهما لانحرفتا — فتُشدَّد نسبةُ البنر في طريقٍ
+ * وتُنسى في الآخر، ويصير البابُ المفتوح هو الذي لا أحدَ ينظر إليه.
+ *
+ * **وتكفيها الرؤوس**: نوعُ الصورة وأبعادُها في أوّلها، و`ftyp` في أوّل اثني
+ * عشر بايتًا من MP4، و`%PDF-` في خمسة. فما يُمرَّر هنا إمّا الملفُّ كلُّه
+ * (الطريق القديم) أو أوّلُ ربع ميغابايت منه (الطريق الجديد) — والحكمُ واحد.
+ */
+function inspectHead(
+  declaredMime: AllowedMime,
+  head: Uint8Array,
+  purpose: UploadPurpose,
+): { width: number | null; height: number | null } {
+  if (declaredMime === 'video/mp4') {
+    if (!isMp4(head)) throw new ServiceError('الملفّ ليس فدّيو MP4', 422, 'MEDIA_MISMATCH')
+    return { width: null, height: null }
+  }
+  if (declaredMime === 'application/pdf') {
+    const magic = String.fromCharCode(...head.slice(0, 5))
+    if (magic !== '%PDF-') throw new ServiceError('الملفّ ليس PDF', 422, 'MEDIA_MISMATCH')
+    return { width: null, height: null }
+  }
+
+  const probe = probeImage(head)
+  if (!probe) throw new ServiceError('الملفّ ليس صورةً صالحة', 422, 'MEDIA_MISMATCH')
+  if (probe.mime !== declaredMime) {
+    throw new ServiceError(`الملفّ ${probe.mime} لا ${declaredMime}`, 422, 'MEDIA_MISMATCH')
+  }
+  if (purpose === 'banner') {
+    const ratio = bannerRatioError(probe)
+    if (ratio) throw new ServiceError(ratio, 422, 'MEDIA_RATIO')
+  }
+  return { width: probe.width, height: probe.height }
+}
+
+/* ------------------------------------------------- الرفع المباشر إلى المخزن */
+
+/**
+ * مدّةُ رابط الرفع — تكفي لرفعٍ بطيء ولا تكفي لأن يُتداول.
+ *
+ * وربعُ ساعةٍ ليس اعتباطًا: مئةُ ميغابايت على وصلةٍ متواضعة تقارب العشر
+ * دقائق، وما زاد على ذلك رابطُ كتابةٍ يعيش بلا حاجة.
+ */
+const UPLOAD_URL_TTL_SECONDS = 15 * 60
+
+/**
+ * ما يُقرأ من رأس الملفّ للحكم عليه.
+ *
+ * وربعُ ميغابايت سخاءٌ مقصود: أبعادُ JPEG تقع بعد EXIF، وEXIF قد تحمل صورةً
+ * مصغَّرة تبلغ عشرات الكيلوبايتات. فيُؤخذ هامشٌ يفوق أيَّ رأسٍ معقول، ويبقى
+ * ما يُنقل جزءًا من ألفٍ من ملفٍّ كبير.
+ */
+const HEAD_BYTES = 256 * 1024
+
+/**
+ * يوقّع رابطًا يرفع إليه **المتصفّح مباشرةً**، أو `null` لمحرّكٍ لا يدعمه.
+ *
+ * والحجمُ المعلن يُفحص هنا رفقًا لا حراسةً: يمنع رفعًا محكومًا بالفشل قبل أن
+ * يبدأ. والحراسةُ الحقيقية في `confirmUpload` — على الحجم الذي يراه المخزن.
+ */
+export async function signUpload(input: {
+  purpose: UploadPurpose
+  declaredMime: string
+  declaredSize: number
+}): Promise<{ key: string; url: string } | null> {
+  const { declaredMime, declaredSize } = input
+  if (!isAllowedMime(declaredMime)) {
+    throw new ServiceError('صيغة غير مدعومة', 415, 'MEDIA_TYPE')
+  }
+  if (!Number.isFinite(declaredSize) || declaredSize <= 0) {
+    throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
+  }
+  const limit = UPLOAD_LIMITS[declaredMime]
+  if (declaredSize > limit) {
+    throw new ServiceError(
+      `الملفّ ${Math.round(declaredSize / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,
+      413,
+      'MEDIA_TOO_LARGE',
+    )
+  }
+
+  const key = stagingKey(declaredMime)
+  const url = await getMedia().signedUpload({
+    key,
+    contentType: declaredMime,
+    expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+  })
+  return url ? { key, url } : null
+}
+
+/**
+ * يُصدّق ما رفعه المتصفّح — **ولا يُنقل إلى موضعه إلّا بعد أن يُقرأ**.
+ *
+ * وهنا تقع كلُّ الحراسة التي كانت تقع وقت المرور بالخادم: الحجمُ الحقيقيّ
+ * كما يراه المخزن لا كما ادّعاه العميل، والنوعُ بالبايتات لا بالترويسة،
+ * ونسبةُ البنر. وما سقط في شيءٍ منها **يُمحى من الحجر** ولا يُترك.
+ *
+ * والنقلُ آخرُ ما يقع: ما دام في `staging/` فهو في حاويةٍ لا نطاقَ لها، ولا
+ * يبلغه أحد. فإن صحّ انتقل إلى موضعه، وإن لم يصحّ لم يكن له موضعٌ قطّ.
+ */
+export async function confirmUpload(input: {
+  key: string
+  purpose: UploadPurpose
+  ownerId?: string
+}): Promise<{ key: string; width: number | null; height: number | null }> {
+  const { key, purpose } = input
+  const media = getMedia()
+
+  if (!isStagingKey(key)) throw new ServiceError('مفتاح غير صالح', 400, 'MEDIA_KEY')
+
+  /*
+   * النوعُ يُشتقّ من المفتاح الذي **نحن** أنشأناه، ثمّ يُقابَل بما سجّله
+   * المخزن. والثاني موثوقٌ لأنّ التوقيع شمله: R2 يردّ ما كُتب بنوعٍ سواه.
+   */
+  const declaredMime = contentTypeOf(key)
+  if (!isAllowedMime(declaredMime)) throw new ServiceError('مفتاح غير صالح', 400, 'MEDIA_KEY')
+
+  try {
+    const info = await media.head(key)
+    if (!info) throw new ServiceError('لم يصل الملفّ إلى المخزن', 404, 'MEDIA_MISSING')
+
+    if (info.size === 0) throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
+    const limit = UPLOAD_LIMITS[declaredMime]
+    if (info.size > limit) {
+      throw new ServiceError(
+        `الملفّ ${Math.round(info.size / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,
+        413,
+        'MEDIA_TOO_LARGE',
+      )
+    }
+
+    const head = await media.readRange(key, HEAD_BYTES)
+    if (!head || head.byteLength === 0) {
+      throw new ServiceError('تعذّرت قراءة الملفّ', 422, 'MEDIA_UNREADABLE')
+    }
+    const { width, height } = inspectHead(declaredMime, head, purpose)
+
+    const target =
+      purpose === 'user-file'
+        ? userFileKey(
+            input.ownerId ?? (() => { throw new ServiceError('لا صاحب للملفّ', 400, 'MEDIA_OWNER') })(),
+            declaredMime,
+          )
+        : platformKey(declaredMime)
+
+    await media.move(key, target)
+    return { key: target, width, height }
+  } catch (error) {
+    /*
+     * ما لم يُصدَّق يُمحى — **ولا يُترك في الحجر ينتظر دورةَ الحياة**.
+     *
+     * وقاعدةُ الحياة شبكةُ أمانٍ لما انقطع اتّصالُه، لا بديلٌ عن التنظيف.
+     * وفشلُ المحو لا يُخفي سببَ الردّ: الأوّل عارضٌ يُكنس بعد يوم، والثاني
+     * هو ما ينتظره من رفع.
+     */
+    await media.remove(key).catch(() => undefined)
+    throw error
+  }
 }
 
 /* ----------------------------------------------------------------- القراءة */

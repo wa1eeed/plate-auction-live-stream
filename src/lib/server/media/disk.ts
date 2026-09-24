@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 import { contentTypeOf, type MediaDriver } from './driver'
 import { isSafeKey } from './keys'
@@ -59,6 +59,41 @@ export function diskDriver(root: string): MediaDriver {
     /* يقدّمه المسار المحروس نفسه — فلا رابط موقَّت ولا إعادة توجيه */
     async signedUrl() {
       return null
+    },
+
+    /*
+     * **لا رفعَ مباشرًا على القرص — و`null` هنا قرارٌ لا نقص.**
+     *
+     * لا مخزنَ خارجيًّا يُوقَّع له رابط، ومحاكاتُه بمسارٍ في التطبيق تعني
+     * بابَ كتابةٍ ثانيًا يُحرَس على حدة — وبابان يُحرسان أسوأ من باب.
+     * فيقرأ العميلُ `null` ويرجع إلى الرفع عبر الخادم كما كان.
+     */
+    async signedUpload() {
+      return null
+    },
+
+    async head(key) {
+      try {
+        const info = await stat(pathOf(key))
+        return { size: info.size, contentType: contentTypeOf(key) }
+      } catch {
+        return null
+      }
+    },
+
+    async readRange(key, length) {
+      /* القرص يقرأ الملفّ ثمّ يقتطع — والملفّات هنا للفحص لا للإنتاج */
+      try {
+        return new Uint8Array(await readFile(pathOf(key))).slice(0, length)
+      } catch {
+        return null
+      }
+    },
+
+    async move(from, to) {
+      const target = pathOf(to)
+      await mkdir(dirname(target), { recursive: true })
+      await rename(pathOf(from), target)
     },
   }
 }

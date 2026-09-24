@@ -15,7 +15,16 @@ const config = [
     },
   },
   // ‏.next-e2e مخرجات الاختبار الشامل — مبنى مولّد لا مصدر
-  { ignores: ['.next/**', '.next-e2e/**', 'node_modules/**', 'tests/e2e/**', 'next-env.d.ts'] },
+  {
+    ignores: [
+      '.next/**',
+      '.next-e2e/**',
+      '.next-dev/**',
+      'node_modules/**',
+      'tests/e2e/**',
+      'next-env.d.ts',
+    ],
+  },
 ]
 
 export default config

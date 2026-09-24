@@ -177,13 +177,21 @@ export function presignUrl(input: {
   method: string
   url: URL
   expiresInSeconds: number
+  /**
+   * ترويساتٌ **تُوقَّع ويجب أن يرسلها العميل بحرفها**.
+   *
+   * وفائدتُها في رابط الرفع: توقيعُ `content-type` يجعل R2 نفسَه يرفض أن
+   * يُكتب الكائنُ بنوعٍ غير الذي أذنّا به — فلا يُرفع HTML إلى رابطٍ وُقّع
+   * لصورة، ولو بلغ الرابطُ من لا نريد.
+   */
+  headers?: Record<string, string>
   now?: Date
 }): string {
   const { credentials, method, expiresInSeconds } = input
   const { amzDate, dateStamp } = stamps(input.now ?? new Date())
   const url = new URL(input.url.toString())
 
-  const headers = { host: url.host }
+  const headers = { ...input.headers, host: url.host }
   const { canonical, signed } = canonicalHeaders(headers)
 
   url.searchParams.set('X-Amz-Algorithm', ALGORITHM)

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { diskDriver } from '@/lib/server/media/disk'
 import { assertPrivateIsolation, r2Driver } from '@/lib/server/media/r2'
 import { getMedia, mediaConfigured, resetMediaForTests } from '@/lib/server/media'
-import { platformKey, userFileKey } from '@/lib/server/media/keys'
+import { platformKey, stagingKey, userFileKey } from '@/lib/server/media/keys'
 
 describe('محرّك القرص', () => {
   let root = ''
@@ -398,5 +398,96 @@ describe('تجزئةُ الجسم — تُرسل وتُوقَّع في كلّ ط
     )
     /* والقراءةُ بلا جسمٍ تُعلن ذلك صراحةً */
     expect(sent[2]['x-amz-content-sha256']).toBe('UNSIGNED-PAYLOAD')
+  })
+})
+
+/**
+ * **الرفع المباشر في R2 — وأين تهبط البايتاتُ غيرُ المفحوصة.**
+ *
+ * الخادم لا يرى ما كتبه المتصفّح وقتَ كتابته. فلو هبط في الحاوية العامّة
+ * لَسكن — ولو دقيقة — حاويةً يقدّمها نطاقٌ عامّ بلا سؤال، والرافعُ يعرف
+ * مفتاحَه. فالحجرُ في الحاوية الخاصّة شرطُ الأمان لا ترتيبُ مجلّدات.
+ */
+describe('الرفع المباشر في R2', () => {
+  const config = {
+    accountId: 'acc',
+    bucket: 'media-public',
+    privateBucket: 'media-private',
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+    publicBaseUrl: null,
+  }
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  it('مفتاحُ الحجر يسكن الحاوية **الخاصّة** — لا العامّة', async () => {
+    const key = stagingKey('image/png')
+    const url = await r2Driver(config).signedUpload({
+      key,
+      contentType: 'image/png',
+      expiresInSeconds: 900,
+    })
+    expect(url).toContain('/media-private/')
+    expect(url).not.toContain('media-public')
+  })
+
+  /*
+   * **الحارس الذي يمنع كتابةَ نوعٍ لم نأذن به.**
+   *
+   * ولو سقط لَأمكن لحامل الرابط أن يكتب به HTML بمفتاحٍ ينتهي بـ`.png`،
+   * فيُقدَّم من نطاقٍ يثق به المتصفّح. وR2 نفسه يردّه ما دام النوع موقَّعًا.
+   */
+  it('والنوعُ موقَّعٌ في الرابط — فلا يُكتب بغيره', async () => {
+    const url = await r2Driver(config).signedUpload({
+      key: stagingKey('image/png'),
+      contentType: 'image/png',
+      expiresInSeconds: 900,
+    })
+    const signed = decodeURIComponent(/X-Amz-SignedHeaders=([^&]+)/.exec(url!)?.[1] ?? '')
+    expect(signed.split(';')).toContain('content-type')
+    expect(signed.split(';')).toContain('host')
+    expect(url).toMatch(/X-Amz-Signature=[a-f0-9]{64}/)
+  })
+
+  it('ومدّتُه محدودة — رابطُ كتابةٍ لا يعيش بلا أجل', async () => {
+    const url = await r2Driver(config).signedUpload({
+      key: stagingKey('image/png'),
+      contentType: 'image/png',
+      expiresInSeconds: 900,
+    })
+    expect(url).toContain('X-Amz-Expires=900')
+  })
+
+  it('والنقلُ نسخٌ بأمر المخزن ثمّ حذفٌ — ولا تمرّ البايتاتُ بالخادم', async () => {
+    const calls: { url: string; method: string; source?: string }[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = (init?.headers ?? {}) as Record<string, string>
+      calls.push({ url: String(input), method: init?.method ?? 'GET', source: headers['x-amz-copy-source'] })
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+
+    await r2Driver(config).move('staging/abc.png', 'platform/images/xyz.png')
+
+    /* ١) نسخٌ إلى العامّة، ومصدرُه في الخاصّة — والحاويتان مذكورتان */
+    expect(calls[0].method).toBe('PUT')
+    expect(calls[0].url).toContain('/media-public/platform/images/xyz.png')
+    expect(calls[0].source).toBe('/media-private/staging/abc.png')
+    /* ولا جسمَ يُرسل: النسخُ أمرٌ لا نقلُ بايتات */
+    /* ٢) ثمّ يُحذف الحجر */
+    expect(calls[1].method).toBe('DELETE')
+    expect(calls[1].url).toContain('/media-private/staging/abc.png')
+  })
+
+  it('وقراءةُ الرأس تطلب مدًى — لا الملفَّ كلَّه', async () => {
+    let range = ''
+    globalThis.fetch = (async (_i: RequestInfo | URL, init?: RequestInit) => {
+      range = ((init?.headers ?? {}) as Record<string, string>).range ?? ''
+      return new Response(new Uint8Array([1, 2, 3]), { status: 206 })
+    }) as typeof fetch
+
+    await r2Driver(config).readRange('staging/abc.png', 256 * 1024)
+    expect(range).toBe('bytes=0-262143')
   })
 })

@@ -215,5 +215,64 @@ export function r2Driver(config: R2Config): MediaDriver {
         expiresInSeconds,
       })
     },
+
+    /**
+     * رابطُ رفعٍ مباشر — **ونوعُه موقَّعٌ فيه**.
+     *
+     * فلا يستطيع حاملُ الرابط أن يكتب به نوعًا سوى الذي أذنّا به: R2 يقابل
+     * الترويسةَ بالتوقيع فيردّ ما خالف. وهي الحراسةُ الوحيدة التي تقع
+     * **وقت الكتابة**؛ وما عداها يقع بعدها في مسار التأكيد.
+     */
+    async signedUpload({ key, contentType, expiresInSeconds }) {
+      return presignUrl({
+        credentials,
+        method: 'PUT',
+        url: endpoint(key),
+        expiresInSeconds,
+        headers: { 'content-type': contentType },
+      })
+    },
+
+    async head(key) {
+      const url = endpoint(key)
+      const response = await request(
+        'قراءة وصف الملفّ',
+        url,
+        { method: 'HEAD', headers: signed('HEAD', url, UNSIGNED_PAYLOAD) },
+        META_TIMEOUT_MS,
+      )
+      if (!response.ok) return null
+      return {
+        size: Number(response.headers.get('content-length') ?? 0),
+        contentType: response.headers.get('content-type') ?? contentTypeOf(key),
+      }
+    },
+
+    async readRange(key, length) {
+      const url = endpoint(key)
+      const headers = signed('GET', url, UNSIGNED_PAYLOAD, { range: `bytes=0-${length - 1}` })
+      const response = await request('قراءة رأس الملفّ', url, { headers }, META_TIMEOUT_MS)
+      /* 206 جزئيّ و200 ملفٌّ أصغر من المدى — وكلاهما مقبول */
+      if (!response.ok) return null
+      return new Uint8Array(await response.arrayBuffer())
+    },
+
+    /**
+     * النقل نسخٌ ثمّ حذف — **بأمر المخزن لا بمرور البايتات**.
+     *
+     * و`x-amz-copy-source` تحمل الحاوية والمفتاح معًا، فالنسخ يعبر من
+     * الحاوية الخاصّة (حيث الحجر) إلى العامّة (حيث يُقدَّم) بلا أن يحمل
+     * خادمُنا ميغابايتًا واحدًا.
+     */
+    async move(from, to) {
+      const url = endpoint(to)
+      const source = `/${bucketOf(from)}/${from}`
+      const headers = signed('PUT', url, sha256Hex(''), { 'x-amz-copy-source': source })
+      const response = await request('نسخ الملفّ', url, { method: 'PUT', headers }, PUT_TIMEOUT_MS)
+      if (!response.ok) {
+        throw new Error(`تعذّر نقل الملفّ في R2 (${response.status}${await reasonOf(response)})`)
+      }
+      await this.remove(from)
+    },
   }
 }

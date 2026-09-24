@@ -58,6 +58,22 @@ export function middleware(request: NextRequest) {
   const mediaHost = process.env.R2_PUBLIC_BASE_URL?.trim().replace(/\/+$/, '') ?? ''
   const media = /^https:\/\/[^\s'";]+$/.test(mediaHost) ? ` ${new URL(mediaHost).origin}` : ''
 
+  /*
+   * مضيفُ الرفع المباشر — **وهو غيرُ مضيف التقديم**.
+   *
+   * البنراتُ تُقدَّم من `cdn.…`، لكنّ المتصفّح يرفع إلى واجهة R2 نفسها
+   * (`<الحساب>.r2.cloudflarestorage.com`). وسياسةٌ لا تعرفه تحجب الرفعَ
+   * كلَّه — بلا رسالةٍ في الصفحة، وبخطأٍ في الطرفيّة وحدها لا يراه أحد.
+   *
+   * ولا يُبنى المضيفُ من قيمةٍ لم تُفحص: معرّفُ الحساب اثنان وثلاثون حرفًا
+   * من السدس عشري، وقيمةٌ فيها مسافةٌ أو فاصلةٌ منقوطة تكسر السياسةَ كلَّها
+   * — فتُفتح أبوابٌ لم تُقصد. فما لم يطابق الشكل لم يُذكر.
+   */
+  const account = process.env.R2_ACCOUNT_ID?.trim() ?? ''
+  const uploadHost = /^[a-f0-9]{32}$/i.test(account)
+    ? ` https://${account}.r2.cloudflarestorage.com`
+    : ''
+
   const directives = [
     `default-src 'self'`,
     `script-src ${script}`,
@@ -68,8 +84,11 @@ export function middleware(request: NextRequest) {
     `media-src 'self' blob:${media}`,
     /* الخطّ يستضيفه Next في `_next/static` — لا طلب إلى جوجل */
     `font-src 'self'`,
-    /* المزايدة اللحظية على `/ws` — نفس الأصل، والصريح أوضح من الاتّكال على `'self'` */
-    `connect-src 'self' ws: wss:`,
+    /*
+     * المزايدة اللحظية على `/ws` — نفس الأصل، والصريح أوضح من الاتّكال على
+     * `'self'`. ومضيفُ R2 لأنّ لوحةَ الإدارة ترفع إليه **مباشرةً**.
+     */
+    `connect-src 'self' ws: wss:${uploadHost}`,
     `worker-src 'self'`,
     `manifest-src 'self'`,
     /* لا إطار ولا مصدر قاعدة ولا هدف نموذج خارج المنصّة */

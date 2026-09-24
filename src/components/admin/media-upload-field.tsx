@@ -6,15 +6,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { uploadRejection } from '@/lib/domain/upload-limits'
+import { uploadMedia, UploadError } from '@/lib/client/upload-media'
 
 export type Uploaded = { key: string; width: number | null; height: number | null }
-
-/** ما قد يردّه الخادم — نجاحًا أو خطأً، وقد لا يردّ شيئًا مفهومًا. */
-type UploadReply = Partial<Uploaded> & { error?: { message?: string } }
-
-/** سقفُ انتظار الرفع — فوق أبطأ رفعٍ معقول لـ٢٤ ميغابايت، ودون صبرِ من ينتظر. */
-const UPLOAD_TIMEOUT_MS = 120_000
 
 /**
  * حقلُ رفع — يرفع **فورًا** ويردّ المفتاح، لا عند حفظ النموذج.
@@ -56,20 +50,6 @@ export function MediaUploadField({
   const preview = localPreview ?? previewUrl ?? null
 
   async function upload(file: File) {
-    /*
-     * الملفُّ يُفحص **قبل** أن يُرسل — وإلّا مات الطلبُ في الطريق بلا رسالة.
-     *
-     * الخادمُ يردّ `413` على `content-length` قبل أن يقرأ الجسم، فيغلق
-     * الوصلةَ والمتصفّحُ ما زال يرفع — فيُجهَض `fetch` ويُقرأ «تعذّر
-     * الاتّصال بالخادم». فيُطارَد عطلُ شبكةٍ لا وجود له، والعلّةُ ملفٌّ كبير.
-     */
-    const rejected = uploadRejection(file.type.trim().toLowerCase(), file.size)
-    if (rejected) {
-      toast.error(rejected)
-      if (inputRef.current) inputRef.current.value = ''
-      return
-    }
-
     setBusy(true)
     /*
      * الرابط المحلّيّ السابق يُبطَل قبل إنشاء غيره.
@@ -83,53 +63,22 @@ export function MediaUploadField({
     setIsVideo(file.type.startsWith('video/'))
 
     try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('purpose', purpose)
-
-      const response = await fetch('/api/admin/media', {
-        method: 'POST',
-        body: form,
-        /* مهلةٌ صريحة — وبلا `signal` يبقى الطلب معلَّقًا بلا سقفٍ ولا رسالة */
-        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(UPLOAD_TIMEOUT_MS) : undefined,
-      })
-
-      /*
-       * الجسم يُقرأ **نصًّا** ثمّ يُحاوَل تحليله — لا `response.json()` رأسًا.
-       *
-       * وكان رأسًا و**قبل** فحص `ok`، فكان يُخفي كلَّ ما يقوله الخادم: وكيلٌ
-       * عكسيّ يردّ 504 بصفحة HTML، أو ردٌّ فارغ، أو مهلةٌ انقضت — كلُّها ترمي
-       * في `json()` فتقع في `catch` فيُقرأ «تعذّر الاتّصال بالخادم». فيُطارد
-       * صاحبُ اللوحة شبكةً سليمة، والخادم قد قال سببه بالحرف ولم يُسمع.
-       */
-      const raw = await response.text()
-      let data: UploadReply | null = null
-      try {
-        data = raw ? (JSON.parse(raw) as UploadReply) : null
-      } catch {
-        data = null
-      }
-
-      if (!response.ok) {
-        toast.error(data?.error?.message ?? `تعذّر الرفع — ردّ الخادم ${response.status}`)
-        URL.revokeObjectURL(url)
-        setLocalPreview(null)
-        return
-      }
-      /* ردٌّ بحالة 200 بلا مفتاح ليس نجاحًا — ولا يُمرَّر فراغٌ إلى النموذج */
-      if (typeof data?.key !== 'string') {
-        toast.error(`تعذّر الرفع — ردٌّ غير مفهوم من الخادم (${response.status})`)
-        URL.revokeObjectURL(url)
-        setLocalPreview(null)
-        return
-      }
-      onUploaded(data as Uploaded)
+      onUploaded(await uploadMedia(file, purpose))
     } catch (error) {
+      /*
+       * `UploadError` تحمل رسالةً عربيةً جاهزة — تُعرض كما هي.
+       *
+       * وما سواها لم يبلغ الخادمَ أصلًا: وصلةٌ انقطعت أو مهلةٌ انقضت. وهي
+       * الحالة **الوحيدة** التي تُقال فيها «تعذّر الاتّصال» — وكانت تُقال
+       * لكلّ عطلٍ فتُخفي ما قاله الخادمُ بالحرف.
+       */
       const timedOut = (error as { name?: string })?.name === 'TimeoutError'
       toast.error(
-        timedOut
-          ? 'انقضت مهلة الرفع — الملفّ كبير أو الشبكة بطيئة، أعد المحاولة'
-          : 'تعذّر الاتّصال بالخادم',
+        error instanceof UploadError
+          ? error.message
+          : timedOut
+            ? 'انقضت مهلة الرفع — الشبكة بطيئة، أعد المحاولة'
+            : 'تعذّر الاتّصال بالخادم',
       )
       URL.revokeObjectURL(url)
       setLocalPreview(null)

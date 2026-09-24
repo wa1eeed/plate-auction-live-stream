@@ -23,6 +23,19 @@ import { newId } from '@/lib/server/crypto'
 export const PUBLIC_PREFIX = 'platform'
 export const USER_FILES_PREFIX = 'users-files'
 
+/**
+ * بادئةُ الحجْر — **حيث يهبط ما رفعه المتصفّح قبل أن يُصدَّق**.
+ *
+ * والرفعُ المباشر إلى R2 يعني أنّ الخادم لم يرَ البايتات وقت كتابتها. فلو
+ * هبطت في `platform/` لَسكنت — ولو دقيقةً — حاويةً يقدّمها نطاقٌ عامّ بلا
+ * سؤال. ودقيقةٌ تكفي: الرافع يعرف المفتاح، فيبلغه ويبلغ من شاء.
+ *
+ * فتهبط هنا، في الحاوية **الخاصّة** التي لا نطاقَ لها، ولا تُنقل إلى موضعها
+ * إلّا بعد أن تُقرأ رؤوسُها ويُحكم عليها. وما لم يُصدَّق لا يُنقل، وما لم
+ * يُؤكَّد أصلًا تمسحه قاعدةُ دورة حياةٍ بعد يوم.
+ */
+export const STAGING_PREFIX = 'staging'
+
 export const MEDIA_SCOPES = ['images', 'videos', 'files'] as const
 export type MediaScope = (typeof MEDIA_SCOPES)[number]
 
@@ -87,5 +100,19 @@ export function isSafeKey(key: string): boolean {
   if (!key || key.length > 512) return false
   if (key.startsWith('/') || key.includes('..') || key.includes('//')) return false
   if (!/^[A-Za-z0-9/_.-]+$/.test(key)) return false
-  return key.startsWith(`${PUBLIC_PREFIX}/`) || key.startsWith(`${USER_FILES_PREFIX}/`)
+  return (
+    key.startsWith(`${PUBLIC_PREFIX}/`) ||
+    key.startsWith(`${USER_FILES_PREFIX}/`) ||
+    key.startsWith(`${STAGING_PREFIX}/`)
+  )
+}
+
+/** أمفتاحُ حجْرٍ هو؟ — وما في الحجر لا يُقدَّم ولا يُشتقّ له رابطٌ عامّ. */
+export function isStagingKey(key: string): boolean {
+  return isSafeKey(key) && key.startsWith(`${STAGING_PREFIX}/`)
+}
+
+/** مفتاحُ حجْرٍ جديد — بامتدادٍ من النوع المعلن لا من اسم الملفّ. */
+export function stagingKey(mime: AllowedMime): string {
+  return `${STAGING_PREFIX}/${newId('s').slice(2)}.${ALLOWED_MEDIA[mime].ext}`
 }

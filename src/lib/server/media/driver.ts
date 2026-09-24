@@ -26,6 +26,35 @@ export type MediaDriver = {
    * بنفسه فيُبثّ من المسار المحروس بدل إعادة التوجيه.
    */
   signedUrl(key: string, expiresInSeconds: number): Promise<string | null>
+
+  /**
+   * رابطٌ يرفع إليه **المتصفّح مباشرةً**، أو `null` لمحرّكٍ لا يدعمه.
+   *
+   * و`null` ليست عطبًا بل مسلكًا آخر: محرّك القرص لا رابطَ له، فيرجع العميل
+   * إلى الرفع عبر الخادم كما كان. فيبقى التطوير والفحص بلا حاويةٍ ولا سرّ.
+   *
+   * و`contentType` **يُوقَّع**: R2 يرفض كتابةَ الكائن بنوعٍ سواه.
+   */
+  signedUpload(input: {
+    key: string
+    contentType: string
+    expiresInSeconds: number
+  }): Promise<string | null>
+
+  /** وصفُ كائنٍ بلا تحميله — حجمُه الحقيقيّ كما يراه المخزن، لا كما ادُّعي. */
+  head(key: string): Promise<{ size: number; contentType: string } | null>
+
+  /**
+   * أوّلُ بايتاتٍ من كائن — **بها يُفحص ما رُفع بلا أن يُحمَّل**.
+   *
+   * وكلُّ فحوصنا تقرأ الرأس: نوعُ الصورة وأبعادُها في أوّلها، و`ftyp` في
+   * أوّل اثني عشر بايتًا من MP4. فأربعةٌ وستّون كيلوبايت تكفي لِما كان
+   * يُقرأ له مئتا ميغابايت.
+   */
+  readRange(key: string, length: number): Promise<Uint8Array | null>
+
+  /** نقلُ كائنٍ داخل المخزن — **ولا تمرّ بايتاتُه بالخادم**. */
+  move(from: string, to: string): Promise<void>
 }
 
 /** نوعُ المحتوى من امتداد المفتاح — ما يُكتب في الترويسة عند التقديم. */
