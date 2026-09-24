@@ -10,6 +10,11 @@ export function fail(message: string, status = 400, code = 'BAD_REQUEST') {
   return NextResponse.json({ error: { message, code } }, { status })
 }
 
+/** يمنع تسرّب رابطٍ أو توقيعٍ إلى السجلّ — كما في `server.mjs`. */
+function redactUrls(text: string): string {
+  return String(text).replace(/\b[a-z+]+:\/\/[^\s'"]*/gi, '‹رابط محجوب›')
+}
+
 /** يحوّل أي خطأ إلى استجابة عربية آمنة بلا تسريب تفاصيل داخلية. */
 export function handleError(error: unknown) {
   if (isServiceError(error)) {
@@ -20,8 +25,16 @@ export function handleError(error: unknown) {
     return fail(first?.message ?? 'بيانات غير صحيحة', 422, 'VALIDATION_ERROR')
   }
   if (error instanceof Error) {
-    // لا نسجّل أي أسرار — الرسالة فقط
-    if (process.env.NODE_ENV !== 'production') console.error('[api]', error.message)
+    /*
+     * يُسجَّل في الإنتاج أيضًا — وكان في التطوير وحده.
+     *
+     * وهذا الفرع هو «ما لم نتوقّعه»: `ServiceError` و`ZodError` نتائجُ محكومة
+     * يقرؤها العميل في الردّ، وما يبلغ هنا عطبٌ أو عطلُ بنية. فكتمُه في
+     * الإنتاج يعني أنّ رفعًا يفشل على الخادم فلا يبقى منه **سطرٌ واحد** في
+     * السجلّ — فيُشخَّص بالحدس بدل أن يُقرأ. والروابط تُحجب: رسائل السائق
+     * والتوقيع قد تحمل رابط اتّصالٍ أو توقيعًا موقَّتًا.
+     */
+    console.error('[api]', redactUrls(error.message))
     return fail(error.message, 400, 'ERROR')
   }
   return fail('حدث خطأ غير متوقع', 500, 'INTERNAL')

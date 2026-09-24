@@ -9,6 +9,12 @@ import { cn } from '@/lib/utils'
 
 export type Uploaded = { key: string; width: number | null; height: number | null }
 
+/** ما قد يردّه الخادم — نجاحًا أو خطأً، وقد لا يردّ شيئًا مفهومًا. */
+type UploadReply = Partial<Uploaded> & { error?: { message?: string } }
+
+/** سقفُ انتظار الرفع — فوق أبطأ رفعٍ معقول لـ٢٤ ميغابايت، ودون صبرِ من ينتظر. */
+const UPLOAD_TIMEOUT_MS = 120_000
+
 /**
  * حقلُ رفع — يرفع **فورًا** ويردّ المفتاح، لا عند حفظ النموذج.
  *
@@ -66,17 +72,50 @@ export function MediaUploadField({
       form.append('file', file)
       form.append('purpose', purpose)
 
-      const response = await fetch('/api/admin/media', { method: 'POST', body: form })
-      const data = await response.json()
+      const response = await fetch('/api/admin/media', {
+        method: 'POST',
+        body: form,
+        /* مهلةٌ صريحة — وبلا `signal` يبقى الطلب معلَّقًا بلا سقفٍ ولا رسالة */
+        signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(UPLOAD_TIMEOUT_MS) : undefined,
+      })
+
+      /*
+       * الجسم يُقرأ **نصًّا** ثمّ يُحاوَل تحليله — لا `response.json()` رأسًا.
+       *
+       * وكان رأسًا و**قبل** فحص `ok`، فكان يُخفي كلَّ ما يقوله الخادم: وكيلٌ
+       * عكسيّ يردّ 504 بصفحة HTML، أو ردٌّ فارغ، أو مهلةٌ انقضت — كلُّها ترمي
+       * في `json()` فتقع في `catch` فيُقرأ «تعذّر الاتّصال بالخادم». فيُطارد
+       * صاحبُ اللوحة شبكةً سليمة، والخادم قد قال سببه بالحرف ولم يُسمع.
+       */
+      const raw = await response.text()
+      let data: UploadReply | null = null
+      try {
+        data = raw ? (JSON.parse(raw) as UploadReply) : null
+      } catch {
+        data = null
+      }
+
       if (!response.ok) {
-        toast.error(data?.error?.message ?? 'تعذّر الرفع')
+        toast.error(data?.error?.message ?? `تعذّر الرفع — ردّ الخادم ${response.status}`)
+        URL.revokeObjectURL(url)
+        setLocalPreview(null)
+        return
+      }
+      /* ردٌّ بحالة 200 بلا مفتاح ليس نجاحًا — ولا يُمرَّر فراغٌ إلى النموذج */
+      if (typeof data?.key !== 'string') {
+        toast.error(`تعذّر الرفع — ردٌّ غير مفهوم من الخادم (${response.status})`)
         URL.revokeObjectURL(url)
         setLocalPreview(null)
         return
       }
       onUploaded(data as Uploaded)
-    } catch {
-      toast.error('تعذّر الاتّصال بالخادم')
+    } catch (error) {
+      const timedOut = (error as { name?: string })?.name === 'TimeoutError'
+      toast.error(
+        timedOut
+          ? 'انقضت مهلة الرفع — الملفّ كبير أو الشبكة بطيئة، أعد المحاولة'
+          : 'تعذّر الاتّصال بالخادم',
+      )
       URL.revokeObjectURL(url)
       setLocalPreview(null)
     } finally {

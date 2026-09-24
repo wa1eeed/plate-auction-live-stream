@@ -40,6 +40,58 @@ export function assertPrivateIsolation(config: Pick<R2Config, 'bucket' | 'privat
   )
 }
 
+/*
+ * مُهَلُ الشبكة — و`fetch` بلا `signal` **لا سقفَ له**.
+ *
+ * وأثرُ غيابها ليس بطئًا: طلبٌ معلَّق يمسك مجرى الطلب حتى مهلة undici
+ * الداخلية (٣٠٠ ثانية)، والوكيل العكسيّ أمامه ينقطع قبلها بكثير فيردّ 504
+ * **بصفحة HTML** — فيقرأ صاحبُ اللوحة «تعذّر الاتّصال بالخادم» ولا يبقى في
+ * السجلّ سطرٌ يقول ما وقع. فالسقفُ هنا يجعل العطل يُنطَق لا يُخمَّن.
+ */
+const PUT_TIMEOUT_MS = 60_000
+const META_TIMEOUT_MS = 15_000
+
+/** يطلب من R2 بسقفٍ، ويحوّل «fetch failed» إلى سببٍ يُقرأ. */
+async function request(
+  what: string,
+  url: URL,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+  } catch (error) {
+    /*
+     * `fetch failed` وحدها لا تدلّ على شيء. والسبب الحقيقيّ في `cause.code`:
+     * `ENOTFOUND` معرِّفُ حسابٍ خاطئ، و`ECONNREFUSED` منفذٌ مغلق،
+     * و`ConnectTimeoutError` خادمٌ لا يبلغ كلاودفلير أصلًا. وكلُّ واحدةٍ
+     * تُصلَح بغير ما تُصلَح به الأخرى.
+     */
+    const named = error as { name?: string; message?: string; cause?: { code?: string; message?: string } }
+    const why =
+      named?.name === 'TimeoutError'
+        ? `انقضت المهلة بعد ${Math.round(timeoutMs / 1000)} ثانية`
+        : (named?.cause?.code ?? named?.cause?.message ?? named?.message ?? 'سببٌ غير معروف')
+    throw new Error(`تعذّر ${what} — لم يُبلَغ R2: ${why}`)
+  }
+}
+
+/**
+ * رمزُ الخطأ من جسم R2 — و«403» وحدها لا تقول أيَّ شيء يُصلَح.
+ *
+ * R2 يردّ XML فيه `<Code>`: `SignatureDoesNotMatch` مفتاحٌ أو سرٌّ خاطئ،
+ * و`NoSuchBucket` اسمُ حاويةٍ لا وجود لها، و`AccessDenied` رمزٌ بلا صلاحية
+ * الكتابة. ثلاثةُ أعطالٍ تحت رقمٍ واحد، وكلٌّ له إصلاحه.
+ */
+async function reasonOf(response: Response): Promise<string> {
+  try {
+    const code = /<Code>([^<]{1,64})<\/Code>/.exec((await response.text()).slice(0, 2048))?.[1]
+    return code ? ` ${code}` : ''
+  } catch {
+    return ''
+  }
+}
+
 /**
  * محرّك Cloudflare R2 — عبر واجهة S3 وتوقيع SigV4.
  *
@@ -93,9 +145,9 @@ export function r2Driver(config: R2Config): MediaDriver {
        * `applicationServerKey` بمفتاح الدفع.
        */
       const body = bytes.slice().buffer as ArrayBuffer
-      const response = await fetch(url, { method: 'PUT', headers, body })
+      const response = await request('رفع الملفّ', url, { method: 'PUT', headers, body }, PUT_TIMEOUT_MS)
       if (!response.ok) {
-        throw new Error(`تعذّر رفع الملفّ إلى R2 (${response.status})`)
+        throw new Error(`تعذّر رفع الملفّ إلى R2 (${response.status}${await reasonOf(response)})`)
       }
     },
 
@@ -108,10 +160,10 @@ export function r2Driver(config: R2Config): MediaDriver {
         headers: {},
         payloadHash: sha256Hex(''),
       })
-      const response = await fetch(url, { method: 'DELETE', headers })
+      const response = await request('حذف الملفّ', url, { method: 'DELETE', headers }, META_TIMEOUT_MS)
       // 404 ليس خطأً: الحذف يُطلب بعد فشلٍ جزئيّ فيجد ما لم يُكتب
       if (!response.ok && response.status !== 404) {
-        throw new Error(`تعذّر حذف الملفّ من R2 (${response.status})`)
+        throw new Error(`تعذّر حذف الملفّ من R2 (${response.status}${await reasonOf(response)})`)
       }
     },
 
@@ -124,7 +176,7 @@ export function r2Driver(config: R2Config): MediaDriver {
         headers: {},
         payloadHash: UNSIGNED_PAYLOAD,
       })
-      const response = await fetch(url, { headers })
+      const response = await request('قراءة الملفّ', url, { headers }, META_TIMEOUT_MS)
       if (!response.ok) return null
       return {
         bytes: new Uint8Array(await response.arrayBuffer()),

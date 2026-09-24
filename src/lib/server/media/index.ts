@@ -15,12 +15,32 @@ export * from './image'
  */
 let cached: MediaDriver | null = null
 
+const R2_KEYS = ['R2_ACCOUNT_ID', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'] as const
+
+const setOf = (name: string): boolean => Boolean(process.env[name]?.trim())
+
 export function mediaConfigured(): boolean {
-  return Boolean(
-    process.env.R2_ACCOUNT_ID &&
-      process.env.R2_BUCKET &&
-      process.env.R2_ACCESS_KEY_ID &&
-      process.env.R2_SECRET_ACCESS_KEY,
+  return R2_KEYS.every(setOf)
+}
+
+/**
+ * ضبطٌ ناقص يُرفض — ولا يُنزَل صامتًا إلى القرص.
+ *
+ * ومتغيّرٌ واحدٌ أُخطئ اسمُه (`R2_SECRET_KEY` بدل `R2_SECRET_ACCESS_KEY` مثلًا)
+ * كان يعني أنّ `mediaConfigured()` تردّ `false`، فتسكن البنراتُ **قرصَ
+ * الحاوية** بينما تحسبها الإدارةُ في R2. والحاوية تُستبدل مع كلّ نشرة — فتضيع
+ * كلُّ صورةٍ رُفعت، وتبقى صفوفُها في القاعدة تشير إلى ما لم يعد موجودًا.
+ *
+ * وثلاثةٌ من أربعةٍ ليست نيّةً أحدٍ. فيُرمى **عند الاستعمال** لا عند الإقلاع:
+ * الصفحاتُ تُعرض وتُقرأ، ويفشل الرفعُ وحده برسالةٍ تسمّي ما نقص.
+ */
+function assertNoPartialR2(): void {
+  const missing = R2_KEYS.filter((key) => !setOf(key))
+  if (missing.length === 0 || missing.length === R2_KEYS.length) return
+  throw new Error(
+    `ضبطُ R2 ناقص — ${missing.join(' و')} غيرُ مضبوطة. ` +
+      'فاضبطها كلَّها ليُستعمل R2، أو أفرغها كلَّها ليُستعمل قرصُ الخادم — ' +
+      'ولا يُنزَل إلى القرص صامتًا فتضيع الملفّات مع أوّل نشرة.',
   )
 }
 
@@ -54,6 +74,7 @@ export function mediaPublicOrigin(): string | null {
 
 export function getMedia(): MediaDriver {
   if (cached) return cached
+  assertNoPartialR2()
 
   cached = mediaConfigured()
     ? r2Driver({

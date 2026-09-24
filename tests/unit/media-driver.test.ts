@@ -107,6 +107,25 @@ describe('اختيار المحرّك ومجلَّده', () => {
   })
 
   /*
+   * **ضبطٌ ناقص كان يُنزِل المنصّة إلى القرص بلا كلمة.**
+   *
+   * ولو سقط لَسكنت البنراتُ قرصَ الحاوية والإدارةُ تحسبها في R2 — فتضيع مع
+   * أوّل نشرة، وتبقى صفوفُها في القاعدة تشير إلى ما لم يعد موجودًا.
+   */
+  it('وثلاثةٌ من أربعةٍ تُرفض — ولا يُنزَل إلى القرص صامتًا', () => {
+    Object.assign(process.env, {
+      R2_ACCOUNT_ID: 'acc',
+      R2_BUCKET: 'bucket',
+      R2_ACCESS_KEY_ID: 'key',
+    })
+    delete process.env.R2_SECRET_ACCESS_KEY
+    resetMediaForTests()
+
+    expect(mediaConfigured()).toBe(false)
+    expect(() => getMedia()).toThrow(/R2_SECRET_ACCESS_KEY/)
+  })
+
+  /*
    * **الفخُّ الذي لا يظهر إلّا بعد النشر.**
    *
    * `.data/media` نسبيٌّ داخل الحاوية، والحاوية تُستبدل مع كلّ نشرة. وصفُّ
@@ -215,5 +234,91 @@ describe('حاويتا R2 — العامّة والخاصّة', () => {
     expect(driver.publicUrl('platform/images/a.png')).toBe(
       'https://cdn.example.com/platform/images/a.png',
     )
+  })
+})
+
+/**
+ * **العطل يجب أن يَنطق** — وقد كان يبلغ صاحبَ اللوحة «تعذّر الاتّصال بالخادم».
+ *
+ * ثلاثةُ أعطالٍ كانت تُقرأ عطلًا واحدًا: طلبٌ معلَّق بلا سقف (فيردّ الوكيل
+ * العكسيّ 504 بصفحة HTML)، و`fetch failed` بلا سبب، و«403» بلا رمز. فلا
+ * يُعرف أمفتاحٌ خاطئ أم حاويةٌ مفقودة أم خادمٌ لا يبلغ كلاودفلير — وكلٌّ
+ * يُصلَح بغير ما يُصلَح به الآخر.
+ */
+describe('أعطالُ R2 تُنطَق لا تُخمَّن', () => {
+  const config = {
+    accountId: 'acc',
+    bucket: 'media-public',
+    privateBucket: 'media-private',
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+    publicBaseUrl: null,
+  }
+  const key = platformKey('image/png')
+  const bytes = new Uint8Array([1, 2, 3])
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  /*
+   * **الحارس الذي يمنع التعليق بلا سقف.**
+   *
+   * ولو سقط لعاد `fetch` بلا `signal`، فبقي الطلب معلَّقًا حتى مهلة undici
+   * الداخلية — وهي أطول من كلّ وكيلٍ عكسيّ أمامه.
+   */
+  it('كلُّ طلبٍ يحمل سقفَ مهلةٍ — ولا يُترك معلَّقًا', async () => {
+    const signals: (AbortSignal | null | undefined)[] = []
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      signals.push(init?.signal)
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+
+    const driver = r2Driver(config)
+    await driver.put(key, bytes, 'image/png')
+    await driver.remove(key)
+    await driver.read(key)
+
+    expect(signals).toHaveLength(3)
+    for (const signal of signals) expect(signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('وانقضاءُ المهلة يُقال مهلةً — لا «تعذّر الاتّصال»', async () => {
+    globalThis.fetch = (async () => {
+      const error = new Error('The operation was aborted due to timeout')
+      error.name = 'TimeoutError'
+      throw error
+    }) as typeof fetch
+
+    await expect(r2Driver(config).put(key, bytes, 'image/png')).rejects.toThrow(/المهلة/)
+  })
+
+  it('و«fetch failed» تُبدَّل بسببها من `cause.code`', async () => {
+    globalThis.fetch = (async () => {
+      throw Object.assign(new Error('fetch failed'), { cause: { code: 'ENOTFOUND' } })
+    }) as typeof fetch
+
+    await expect(r2Driver(config).put(key, bytes, 'image/png')).rejects.toThrow(/ENOTFOUND/)
+  })
+
+  /*
+   * «403» وحدها لا تُصلَح: مفتاحٌ خاطئ، أو رمزٌ بلا صلاحية كتابة، أو حاويةٌ
+   * باسمٍ آخر — ثلاثتُها تحت الرقم نفسه، ورمزُ R2 في الجسم يفرّقها.
+   */
+  it('ورمزُ خطأ R2 يُقتطف من الجسم فيُقرأ مع الرقم', async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        '<?xml version="1.0"?><Error><Code>SignatureDoesNotMatch</Code><Message>…</Message></Error>',
+        { status: 403 },
+      )) as typeof fetch
+
+    await expect(r2Driver(config).put(key, bytes, 'image/png')).rejects.toThrow(
+      /403 SignatureDoesNotMatch/,
+    )
+  })
+
+  it('وحذفُ ما ليس موجودًا يبقى غيرَ خطأ — 404 تُحتمل', async () => {
+    globalThis.fetch = (async () => new Response('', { status: 404 })) as typeof fetch
+    await expect(r2Driver(config).remove(key)).resolves.toBeUndefined()
   })
 })
