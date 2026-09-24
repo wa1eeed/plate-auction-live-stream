@@ -147,3 +147,39 @@ export function arabicCount(
     category === 'few' ? forms.few : category === 'many' ? forms.many : (forms.other ?? forms.many)
   return `${count} ${noun}`
 }
+
+/**
+ * «قبل ساعتين» لا «٢٤ سبتمبر · ١١:٠٢».
+ *
+ * في خيط تفاوضٍ يجري الآن، السؤال «كم مضى؟» لا «متى بالضبط؟» — والتاريخ
+ * الكامل يُجبر القارئ على طرحه من تاريخ اليوم ليعرف أنّ العرض طازج.
+ * وما تجاوز الأسبوع يُكتب بتاريخه: «قبل ٤٣ يومًا» لا يُقرأ.
+ *
+ * والصياغة من `arabicCount` لا من شروطٍ بأيدينا، فتخرج «ساعتان» لا «2 ساعة».
+ */
+export function formatRelative(iso: string | null, nowMs: number = Date.now()): string {
+  if (!iso) return '—'
+  const then = Date.parse(iso)
+  if (Number.isNaN(then)) return '—'
+
+  const seconds = Math.round((nowMs - then) / 1000)
+  if (seconds < 0) return formatTimestamp(iso)
+  if (seconds < 60) return 'الآن'
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) {
+    return `قبل ${arabicCount(minutes, { one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة' })}`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) {
+    return `قبل ${arabicCount(hours, { one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة' })}`
+  }
+
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'أمس'
+  if (days <= 7) {
+    return `قبل ${arabicCount(days, { one: 'يوم', two: 'يومين', few: 'أيام', many: 'يومًا' })}`
+  }
+  return formatDayMonth(iso)
+}

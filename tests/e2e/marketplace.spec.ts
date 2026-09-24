@@ -15,17 +15,43 @@ async function login(page: Page, user: { email: string; password: string }) {
   await page.waitForURL('**/account')
 }
 
-/** يجلب أول إعلان بطريقة بيع معيّنة لا يملكها المستخدم الحالي. */
-async function findListing(page: Page, saleType: 'auction' | 'fixed' | 'offers', excludeSeller: string) {
+/**
+ * يجلب إعلانًا بطريقة بيع معيّنة لا يملكها المستخدم الحالي.
+ *
+ * و`last` ليس ترفًا: اختباران يقبلان عرضًا على الإعلان نفسه يتعارضان —
+ * الأوّلُ يترك صفقةً تنتظر سدادها، والمنصّةُ لا تقبل ثانيةً على لوحةٍ واحدة
+ * حتى تُسدَّد الأولى. فيأخذ كلٌّ طرفًا من القائمة.
+ */
+async function findListing(
+  page: Page,
+  saleType: 'auction' | 'fixed' | 'offers',
+  excludeSeller: string,
+  options: { last?: boolean } = {},
+) {
   const response = await page.request.get('/api/listings')
   const { listings } = (await response.json()) as {
     listings: { id: string; saleType: string; status: string; sellerName: string }[]
   }
-  const found = listings.find(
+  const matches = listings.filter(
     (l) => l.saleType === saleType && l.status === 'active' && l.sellerName !== excludeSeller,
   )
+  const found = options.last ? matches[matches.length - 1] : matches[0]
   expect(found, `لا يوجد إعلان ${saleType} متاح`).toBeTruthy()
-  return found!.id
+  return found.id
+}
+
+/**
+ * يُخلي مقعدَ العرض على إعلانٍ قبل استعماله.
+ *
+ * والخادمُ المحلّيّ يُعاد استعماله بين التشغيلات (`reuseExistingServer`)،
+ * فعرضٌ وضعه تشغيلٌ سابق يبقى قائمًا — فلا يجد التشغيلُ التالي حقلَ المبلغ
+ * أصلًا، بل «عرضك الحالي». فيُسحب أوّلًا، ويبقى الاختبار صالحًا للتكرار.
+ */
+async function clearStandingOffer(page: Page) {
+  const withdraw = page.getByRole('button', { name: 'اسحب العرض' })
+  if ((await withdraw.count()) === 0) return
+  await withdraw.first().click()
+  await expect(page.getByLabel('مبلغ العرض')).toBeVisible({ timeout: 15_000 })
 }
 
 test.describe('سوق تداول اللوحات', () => {
@@ -115,6 +141,7 @@ test.describe('سوق تداول اللوحات', () => {
     const amount = Math.round(detail.minimumOffer / 100) + 1_500
 
     await buyer.goto(`/market/${listingId}`)
+    await clearStandingOffer(buyer)
     await buyer.getByLabel('مبلغ العرض').fill(String(amount))
     await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
     await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
@@ -150,15 +177,16 @@ test.describe('سوق تداول اللوحات', () => {
   test('السوم يُرسل ويقبله المشتري فتقع الصفقة بمبلغ البائع', async ({ browser }) => {
     const buyerContext = await browser.newContext()
     const buyer = await buyerContext.newPage()
-    await login(buyer, USERS.majed)
+    await login(buyer, USERS.waleed)
 
-    const listingId = await findListing(buyer, 'offers', USERS.majed.name)
+    const listingId = await findListing(buyer, 'offers', USERS.waleed.name, { last: true })
     const detail = await (await buyer.request.get(`/api/listings/${listingId}`)).json()
     const sellerName = detail.seller.displayName as string
     const offered = Math.round(detail.minimumOffer / 100) + 1_500
     const counter = offered + 4_000
 
     await buyer.goto(`/market/${listingId}`)
+    await clearStandingOffer(buyer)
     await buyer.getByLabel('مبلغ العرض').fill(String(offered))
     await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
     await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
@@ -178,7 +206,20 @@ test.describe('سوق تداول اللوحات', () => {
     // والمشتري يقبل السوم
     await buyer.goto('/account/offers')
     await buyer.getByRole('tab', { name: /التي أرسلتها/ }).click()
+    /*
+     * يُنتظر ردُّ الخادم نفسه قبل الانتقال.
+     *
+     * فالنقرةُ تُرسل ولا تُتمّ، والانتقالُ إثرها يقطع الطلبَ في الطريق —
+     * فتُقرأ صفحةُ المشتريات قبل أن تُنشأ الصفقة. وانتظارُ كلمةٍ على الشاشة
+     * لا يكفي: «مقبول» قد تكون على عرضٍ آخر في القائمة، فيمضي الانتظار
+     * فورًا ولم يقع شيء — وهو ما وقع فعلًا فسقط الاختبار على غير علّة.
+     */
+    const accepted = buyer.waitForResponse(
+      (response) =>
+        response.url().includes('/counter') && response.request().method() === 'PATCH',
+    )
     await buyer.getByRole('button', { name: /^أقبل/ }).first().click()
+    expect((await accepted).ok(), 'رُفض قبولُ السوم').toBe(true)
 
     // الرقمُ الفارق: الصفقةُ بمبلغ السوم لا بمبلغ العرض
     await buyer.goto('/account/purchases')

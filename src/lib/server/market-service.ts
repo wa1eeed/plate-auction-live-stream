@@ -1228,6 +1228,21 @@ async function decorateOffers(
   counterpart: 'buyer' | 'seller',
 ): Promise<AccountOffer[]> {
   const result: AccountOffer[] = []
+  /* المشتري الواحد يعرض على لوحاتٍ عدّة — فلا يُقرأ سجلُّه مرّةً لكلّ عرض */
+  const records = new Map<string, { settled: number; defaulted: number }>()
+
+  async function recordOf(userId: string) {
+    const cached = records.get(userId)
+    if (cached) return cached
+    const orders = await store.listOrders({ buyerId: userId })
+    const record = {
+      settled: orders.filter((row) => row.status === 'completed').length,
+      defaulted: orders.filter((row) => row.status === 'defaulted').length,
+    }
+    records.set(userId, record)
+    return record
+  }
+
   for (const offer of offers) {
     const listing = await store.getListing(offer.listingId)
     if (!listing) continue
@@ -1251,7 +1266,10 @@ async function decorateOffers(
       listingStatus: listing.status,
       counterpartName: other?.displayName ?? 'مستخدم',
       listingAsk: listing.price || listing.minimumOffer || listing.startingPrice,
+      listingAskKind: listing.saleType === 'offers' ? 'floor' : 'ask',
       isHighest: isOpenOffer(offer.status) && (offer.counterAmount ?? offer.amount) >= top,
+      /* سجلُّ المشتري دائمًا — هو مَن يدفع، بائعًا كان القارئ أو مشتريًا */
+      counterpartRecord: await recordOf(offer.buyerId),
     })
   }
   return result

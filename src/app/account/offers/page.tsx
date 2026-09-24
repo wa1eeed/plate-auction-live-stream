@@ -10,6 +10,7 @@ import { formatAmount } from '@/lib/domain/money'
 import { isOpenOffer, type AccountOffer } from '@/lib/domain/types'
 import { getOffersMadeByUser, getOffersReceivedByUser } from '@/lib/server/market-service'
 import { requireUserId } from '@/lib/server/require-user'
+import { arabicCount } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,10 @@ export default async function OffersPage() {
     getOffersMadeByUser(userId),
   ])
   const open = received.filter((offer) => isOpenOffer(offer.status)).length
+  /* الدورُ عليه: عرضٌ لم يُردّ عليه بعد */
+  const pendingCount = received.filter((offer) => offer.status === 'pending').length
+  /* الدورُ على غيره: سومٌ أرسله وينتظر */
+  const counteredCount = received.filter((offer) => offer.status === 'countered').length
   /* ما ينتظر ردَّ صاحب الصفحة: السومُ الوارد لا عرضُه هو */
   const awaiting = made.filter((offer) => offer.status === 'countered').length
 
@@ -77,6 +82,9 @@ export default async function OffersPage() {
         </TabsList>
 
         <TabsContent value="received">
+          {pendingCount + counteredCount > 0 && (
+            <OffersBanner pending={pendingCount} countered={counteredCount} />
+          )}
           {received.length === 0 ? (
             <EmptyState
               title="لا توجد عروض واردة"
@@ -118,10 +126,51 @@ export default async function OffersPage() {
   )
 }
 
+/**
+ * شريطُ الصدارة — الدورُ عليك في كم عرضًا.
+ *
+ * وقراءةُ القائمة وعدُّ ما ينتظر ردًّا عملٌ يفعله صاحبُ الحساب بعينه كلّما
+ * فتح الصفحة. فيُقال له في سطر، ويُفصل ما الدورُ فيه عليه عمّا ينتظر غيرَه
+ * — فالأوّل عملٌ مؤجَّل والثاني انتظارٌ لا حيلة له فيه.
+ */
+function OffersBanner({ pending, countered }: { pending: number; countered: number }) {
+  return (
+    <div className="mb-4 flex items-center gap-3 rounded-2xl border border-success/40 bg-success/10 p-4">
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-success text-lg font-extrabold text-white tabular-nums">
+        {pending}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-extrabold text-paper">
+          {pending > 0
+            ? `${arabicCount(pending, {
+                one: 'عرضٌ جديد ينتظر ردّك',
+                two: 'عرضان جديدان ينتظران ردّك',
+                few: 'عروض جديدة تنتظر ردّك',
+                many: 'عرضًا جديدًا ينتظر ردّك',
+              })}`
+            : 'لا عرضَ ينتظر ردّك'}
+        </p>
+        {countered > 0 && (
+          <p className="mt-0.5 text-xs text-muted">
+            و
+            {arabicCount(countered, {
+              one: 'سومٌ أرسلتَه ينتظر المشتري',
+              two: 'سومان أرسلتَهما ينتظران المشتري',
+              few: 'سومات أرسلتَها تنتظر المشتري',
+              many: 'سومًا أرسلتَه ينتظر المشتري',
+            })}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function OfferGroup({ offers, side }: { offers: AccountOffer[]; side: 'buyer' | 'seller' }) {
   const head = offers[0]
   const openCount = offers.filter((offer) => isOpenOffer(offer.status)).length
-  const top = Math.max(...offers.map((offer) => offer.amount))
+  /* الرقمُ القائم لا الأوّل: سومُ البائع يَنسخ عرضَ المشتري في هذه الجولة */
+  const top = Math.max(...offers.map((offer) => offer.counterAmount ?? offer.amount))
 
   return (
     <PlateRow
@@ -129,11 +178,15 @@ function OfferGroup({ offers, side }: { offers: AccountOffer[]; side: 'buyer' | 
       rowId={`offers-${head.listingId}`}
       aside={
         <>
-          <p className="text-[11px] text-muted">المطلوب</p>
+          <p className="text-[11px] text-muted">
+            {head.listingAskKind === 'floor' ? 'أقلّ عرض مقبول' : 'المطلوب'}
+          </p>
           <p className="text-lg font-extrabold tabular-nums text-paper">
             {formatAmount(head.listingAsk)}
           </p>
-          <p className="mt-1 text-[11px] text-muted">أعلى عرض</p>
+          <p className="mt-1 text-[11px] text-muted">
+            {side === 'seller' ? 'أعلى عرض' : 'الرقم القائم'}
+          </p>
           <p className="text-base font-extrabold tabular-nums text-gold-500">{formatAmount(top)}</p>
         </>
       }
@@ -142,16 +195,35 @@ function OfferGroup({ offers, side }: { offers: AccountOffer[]; side: 'buyer' | 
           {offers.map((offer) => (
             <OfferThread key={offer.id} offer={offer} side={side} />
           ))}
+          <p className="text-[10px] leading-relaxed text-muted">
+            كلُّ عرضٍ هنا مسجَّلٌ ومربوطٌ باللوحة — ولا رسائل خارج السجلّ.
+          </p>
         </div>
       }
     >
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant={openCount > 0 ? 'gold' : 'muted'}>
-          {openCount > 0 ? `${openCount} قائم` : 'انتهت'}
+          {openCount > 0
+            ? arabicCount(openCount, {
+                one: 'عرضٌ قائم',
+                two: 'عرضان قائمان',
+                few: 'عروض قائمة',
+                many: 'عرضًا قائمًا',
+              })
+            : 'انتهت'}
         </Badge>
-        <span className="text-xs text-muted">
-          {offers.length === 1 ? 'عرضٌ واحد' : `${offers.length} عروض`}
-        </span>
+        {/* «عرضٌ قائم من عرضٍ واحد» لغوٌ — الإجماليُّ يُقال متى خالف القائم */}
+        {offers.length > openCount && (
+          <span className="text-xs text-muted">
+            من{' '}
+            {arabicCount(offers.length, {
+              one: 'عرضٍ واحد',
+              two: 'عرضين',
+              few: 'عروض',
+              many: 'عرضًا',
+            })}
+          </span>
+        )}
       </div>
       <p className="text-xs leading-relaxed text-muted">
         <Link href={`/market/${head.listingId}`} className="hover:text-gold-500">
