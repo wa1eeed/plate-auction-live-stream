@@ -315,6 +315,33 @@ export function ListingForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/*
+        * رأسُ المعالج — **للجوّال وحده**، وبشريطٍ مقسَّم لا نسبةٍ مئوية.
+        *
+        * والنسبةُ تقول «٥٠٪» ولا تقول كم بقي من خطوة. والأقسامُ الأربعة
+        * تُرى فيُعرف الموضعُ والباقي بنظرة.
+        */}
+      {/* وعناوينُ الأقسام تُخفى على الجوّال، فهذا يسمّي الخطوة — وتكرارُه لغو */}
+      <div data-wizard-head className="lg:hidden">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-extrabold">{WIZARD_STEPS[step].title}</h2>
+          <span className="text-[11px] text-muted">
+            الخطوة {step + 1} من {WIZARD_STEPS.length}
+          </span>
+        </div>
+        <ol aria-hidden className="mt-2 flex gap-1.5">
+          {WIZARD_STEPS.map((item, index) => (
+            <li
+              key={item.title}
+              className={cn(
+                'h-1 flex-1 rounded-full transition-colors',
+                index <= step ? 'bg-gold-500' : 'bg-ink-600',
+              )}
+            />
+          ))}
+        </ol>
+      </div>
+
       {/* ------------------------------------------------ رأس النموذج: اللوحة */}
       {/*
         * اللوحة أوّل ما يُرى، وتبقى مرئيّةً وأنت تملأ.
@@ -370,32 +397,6 @@ export function ListingForm({
         </p>
       </section>
 
-      {/*
-        * رأسُ المعالج — **للجوّال وحده**، وبشريطٍ مقسَّم لا نسبةٍ مئوية.
-        *
-        * والنسبةُ تقول «٥٠٪» ولا تقول كم بقي من خطوة. والأقسامُ الأربعة
-        * تُرى فيُعرف الموضعُ والباقي بنظرة.
-        */}
-      <div data-wizard-head className="lg:hidden">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-extrabold">{WIZARD_STEPS[step].title}</h2>
-          <span className="text-[11px] text-muted">
-            الخطوة {step + 1} من {WIZARD_STEPS.length}
-          </span>
-        </div>
-        <ol aria-hidden className="mt-2 flex gap-1.5">
-          {WIZARD_STEPS.map((item, index) => (
-            <li
-              key={item.title}
-              className={cn(
-                'h-1 flex-1 rounded-full transition-colors',
-                index <= step ? 'bg-gold-500' : 'bg-ink-600',
-              )}
-            />
-          ))}
-        </ol>
-      </div>
-
       {/* ------------------------------------------------ الشكل */}
       <section
         className={cn(
@@ -403,7 +404,7 @@ export function ListingForm({
           step !== 0 && 'hidden lg:block',
         )}
       >
-        <h2 className="font-bold">شكل اللوحة</h2>
+        <h2 className="hidden font-bold lg:block">شكل اللوحة</h2>
 
         {/*
           * صنف المركبة بالأزرار لا بقائمة منسدلة.
@@ -496,7 +497,7 @@ export function ListingForm({
           step !== 1 && 'hidden lg:block',
         )}
       >
-        <h2 className="font-bold">الحروف والأرقام</h2>
+        <h2 className="hidden font-bold lg:block">الحروف والأرقام</h2>
 
         {/*
           * الحروف تُدخَل عربيةً ولو كانت اللوحة رياضية.
@@ -576,7 +577,7 @@ export function ListingForm({
           step !== 2 && 'hidden lg:block',
         )}
       >
-        <h2 className="font-bold">{showsEmblem ? 'الشعار والوصف' : 'وصف اللوحة'}</h2>
+        <h2 className="hidden font-bold lg:block">{showsEmblem ? 'الشعار والوصف' : 'وصف اللوحة'}</h2>
 
         {showsEmblem && (
           <PlateEmblemPicker
@@ -600,7 +601,7 @@ export function ListingForm({
           step !== 3 && 'hidden lg:block',
         )}
       >
-        <h2 className="font-bold">طريقة البيع</h2>
+        <h2 className="hidden font-bold lg:block">طريقة البيع</h2>
 
         <div className="grid gap-2 sm:grid-cols-3">
           {SALE_TYPES.map((type) => {
@@ -755,7 +756,7 @@ export function ListingForm({
         * واحدة: أيُّهما يُنهي العمل؟
         */}
       {!lastStep && (
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="action-bar -mx-4 flex items-center gap-2 border-t border-ink-600 bg-ink-950/95 px-4 py-3 backdrop-blur lg:hidden">
           {step > 0 && (
             <Button type="button" variant="ghost" size="lg" onClick={() => setStep(step - 1)}>
               السابق

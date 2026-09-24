@@ -248,6 +248,22 @@
     padding-bottom: 0;
   }
 
+  /*
+   * شريطُ الأفعال اللاصق — فوق الملاحة لا تحتها.
+   *
+   * و`bottom: 0` يلصقه بقاع النافذة، والملاحةُ مثبّتةٌ هناك — فيختفي الزرّ
+   * خلفها في التطبيق ويظهر في المتصفّح. فيُرفع بقدرها حيث توجد.
+   */
+  .action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+  }
+
+  :root[data-native] .action-bar {
+    bottom: calc(4rem + var(--safe-bottom));
+  }
+
   /* مساحة لمس لا تقلّ عن 44px للأزرار الصغيرة على الأجهزة اللمسية */
   @media (pointer: coarse) {
     button:not([data-compact]),
