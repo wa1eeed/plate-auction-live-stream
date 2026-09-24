@@ -15,6 +15,40 @@ function redactUrls(text: string): string {
   return String(text).replace(/\b[a-z+]+:\/\/[^\s'"]*/gi, '‹رابط محجوب›')
 }
 
+/*
+ * الرسالةُ المكرَّرة تُكتم — **وإلّا غرق السجلُّ فيما جاء ليُظهره**.
+ *
+ * والمسحُ الدوريّ في `server.mjs` يطلب مسارًا داخليًّا كلَّ خمس ثوان: فعطلٌ
+ * قائمٌ فيه يكتب سبعةَ عشرَ ألفَ سطرٍ في اليوم، ويدفن تحتها السطرَ الواحدَ
+ * الذي يُبحث عنه. وقد وقع هذا فعلًا في البوّابة أوّلَ ما رُفع الكتمُ عن
+ * الإنتاج، فكان الإصلاحُ يهدم غرضَه.
+ *
+ * فأوّلُ ظهورٍ يُكتب في حينه — لا يُؤجَّل ولا يُجمَّع — ثمّ لا يُعاد نصُّه
+ * إلّا بعد دقيقة، ومعه عددُ ما كُتم فلا يضيع أنّه تكرّر.
+ */
+const LOG_WINDOW_MS = 60_000
+/** سقفٌ يمنع نموَّ الخريطة بلا حدّ: الرسائل قد تحمل معرّفًا يتبدّل. */
+const LOG_KEYS_MAX = 200
+const logged = new Map<string, { at: number; muted: number }>()
+
+function logOnce(message: string): void {
+  const now = Date.now()
+  const seen = logged.get(message)
+  if (seen && now - seen.at < LOG_WINDOW_MS) {
+    seen.muted += 1
+    return
+  }
+  if (logged.size >= LOG_KEYS_MAX) logged.clear()
+  logged.set(message, { at: now, muted: 0 })
+  const muted = seen?.muted ?? 0
+  console.error(muted > 0 ? `[api] ${message} (وكُتم ${muted} مثلُها)` : `[api] ${message}`)
+}
+
+/** للفحص وحده — يُنسى ما سُجِّل فتُقاس نافذةُ الكتم من جديد. */
+export function resetLogThrottleForTests(): void {
+  logged.clear()
+}
+
 /** يحوّل أي خطأ إلى استجابة عربية آمنة بلا تسريب تفاصيل داخلية. */
 export function handleError(error: unknown) {
   if (isServiceError(error)) {
@@ -34,7 +68,7 @@ export function handleError(error: unknown) {
      * السجلّ — فيُشخَّص بالحدس بدل أن يُقرأ. والروابط تُحجب: رسائل السائق
      * والتوقيع قد تحمل رابط اتّصالٍ أو توقيعًا موقَّتًا.
      */
-    console.error('[api]', redactUrls(error.message))
+    logOnce(redactUrls(error.message))
     return fail(error.message, 400, 'ERROR')
   }
   return fail('حدث خطأ غير متوقع', 500, 'INTERNAL')
