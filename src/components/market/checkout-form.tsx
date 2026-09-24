@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Banknote, CreditCard, Loader2, Lock, Wallet } from 'lucide-react'
+import { Banknote, CreditCard, Loader2, Lock, ShieldCheck, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { formatAmount, type Halalas } from '@/lib/domain/money'
@@ -123,14 +123,49 @@ export function CheckoutForm({
         </dl>
       )}
 
-      <Button type="submit" size="lg" className="w-full" disabled={busy || !selected}>
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
-        {selected === 'wallet' ? 'ادفع من رصيدي' : 'متابعة السداد'}
-      </Button>
+      {/*
+        * **طمأنةُ الضمان قبل الزرّ لا بعده.**
+        *
+        * ومن يدفع عشرات الآلاف لمن لم يلقَه يسأل: «إلى أين يذهب مالي الآن؟».
+        * فيُجاب قبل أن يضغط — وجوابٌ بعد الضغط طمأنةٌ فات أوانُها.
+        */}
+      <p className="flex items-start gap-2 rounded-xl border border-success/40 bg-success-soft p-3.5 text-[11px] leading-relaxed">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
+        <span>
+          يبقى المبلغ <b className="text-success">محجوزًا لدى المنصّة</b> حتى تنقل الملكية
+          وتتحقّق الإدارة منها، ثمّ يُحوَّل إلى البائع. ولا تُخصم أي مبالغ قبل تأكيدك.
+        </span>
+      </p>
 
-      <p className="text-[11px] leading-relaxed text-muted">
-        لا تُخصم أي مبالغ قبل تأكيدك. والدفع من المحفظة يُتمّ الصفقة فورًا، وغيره يُعتمد بعد
-        تحقّق الإدارة أو ردّ البوابة.
+      {/*
+        * الفعلُ لاصقٌ أسفل الشاشة على الجوّال — ومعه المستحقّ.
+        *
+        * فصفحةُ السداد تُمرَّر: طريقةُ الدفع وبياناتُ الحساب وعاقبةُ التأخير.
+        * وزرُّ الدفع في قاعها يعني تمريرًا في كلّ مرّة يُراجع فيها شيئًا.
+        * والمبلغُ معه لأنّه ما يُقرّ عليه، فلا يُضغط الزرُّ على رقمٍ غاب.
+        */}
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 border-t border-ink-600 bg-ink-800/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md',
+          'lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none',
+        )}
+      >
+        <div className="mx-auto flex max-w-3xl items-center gap-3">
+          <span className="shrink-0 lg:hidden">
+            <span className="block text-[10px] text-muted">المستحقّ</span>
+            <b className="block text-lg font-extrabold tabular-nums text-gold-500">
+              {formatAmount(due)}
+            </b>
+          </span>
+          <Button type="submit" size="lg" className="flex-1" disabled={busy || !selected}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
+            {selected === 'wallet' ? 'ادفع من رصيدي' : 'ادفع عبر الضمان'}
+          </Button>
+        </div>
+      </div>
+
+      <p className="hidden text-[11px] leading-relaxed text-muted lg:block">
+        والدفع من المحفظة يُتمّ الصفقة فورًا، وغيره يُعتمد بعد تحقّق الإدارة أو ردّ البوابة.
       </p>
     </form>
   )

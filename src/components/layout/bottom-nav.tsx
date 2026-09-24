@@ -50,6 +50,15 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
    */
   if (/^\/market\/[^/]+$/.test(pathname)) return null
 
+  /*
+   * **ولا في مسار السداد** — وهو مهمّةٌ لها بدايةٌ ونهاية لا تصفّحٌ بين أقسام.
+   *
+   * وفيه شريطُ دفعٍ لاصقٌ يحمل المستحقَّ والزرّ، فشريطان أحدهما فوق الآخر
+   * يزاحمان الإبهام على مبلغٍ بعشرات الآلاف. والتطبيقاتُ الأصيلة تُخفي شريطَ
+   * أقسامها في الدفع للسبب نفسه: لا يُغادَر ما بدأ إلّا بإتمامه أو بردّ.
+   */
+  if (pathname.startsWith('/checkout/')) return null
+
   const active = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)
 

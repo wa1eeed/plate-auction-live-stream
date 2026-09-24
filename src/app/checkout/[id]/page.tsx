@@ -8,8 +8,8 @@ import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { CheckoutForm } from '@/components/market/checkout-form'
 import { formatAmount } from '@/lib/domain/money'
 import { OrderSettlementCard } from '@/components/market/order-timeline'
-import { OrderStageCallout } from '@/components/market/order-journey'
-import { currentOrderStage } from '@/lib/domain/order-timeline'
+import { OrderJourney, OrderStageCallout } from '@/components/market/order-journey'
+import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,8 +68,24 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
+        {/*
+          * خطُّ المراحل — **أين نحن من الصفقة كلِّها**.
+          *
+          * ونداءُ المرحلة فوقه يقول ما المطلوب الآن، وهذا يقول ما قبله وما
+          * بعده. فمن يدفع يرى أنّ الدفع محطّةٌ من خمس لا نهايةَ الطريق —
+          * فلا يسأل بعده «وماذا الآن؟».
+          */}
+        {!done && (
+          <div className="mb-5">
+            <OrderJourney
+              steps={order.timeline}
+              money={orderMoneyMarker(order, 'buyer')}
+            />
+          </div>
+        )}
+
         {/* الفعل فوق الطيّة على الجوال: مهمّة الصفحة السداد لا تأمّل اللوحة */}
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+        <div className="grid gap-5 pb-28 lg:grid-cols-[1fr_1.1fr] lg:items-start lg:pb-0">
           <div className="order-2 space-y-4 lg:order-none">
             <div className="rounded-2xl border border-ink-600 bg-ink-700/45 p-5">
               <SaudiLicensePlate {...order.plate} size="fullscreen" />
