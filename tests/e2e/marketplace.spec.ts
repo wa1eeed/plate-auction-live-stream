@@ -140,6 +140,56 @@ test.describe('سوق تداول اللوحات', () => {
     await sellerContext.close()
   })
 
+  /**
+   * السوم — والمقصودُ إثباتُ **الرقم** لا الأزرار.
+   *
+   * فالمسار يمرّ برقمين: ما عرضه المشتري وما سام به البائع. والعطبُ الذي
+   * يُخشى أن تقع الصفقةُ على الأوّل — يدفع المشتري ما لم يقبله البائع.
+   * فيُقرأ المبلغ من صفحة المبيعات بعد تمام الجولة.
+   */
+  test('السوم يُرسل ويقبله المشتري فتقع الصفقة بمبلغ البائع', async ({ browser }) => {
+    const buyerContext = await browser.newContext()
+    const buyer = await buyerContext.newPage()
+    await login(buyer, USERS.majed)
+
+    const listingId = await findListing(buyer, 'offers', USERS.majed.name)
+    const detail = await (await buyer.request.get(`/api/listings/${listingId}`)).json()
+    const sellerName = detail.seller.displayName as string
+    const offered = Math.round(detail.minimumOffer / 100) + 1_500
+    const counter = offered + 4_000
+
+    await buyer.goto(`/market/${listingId}`)
+    await buyer.getByLabel('مبلغ العرض').fill(String(offered))
+    await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
+    await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
+
+    // البائع يسوم بدل أن يقبل
+    const sellerUser = Object.values(USERS).find((u) => u.name === sellerName)!
+    const sellerContext = await browser.newContext()
+    const seller = await sellerContext.newPage()
+    await login(seller, sellerUser)
+
+    await seller.goto('/account/offers')
+    await seller.getByRole('button', { name: 'مقابل' }).first().click()
+    await seller.getByLabel('سومُك').first().fill(String(counter))
+    await seller.getByRole('button', { name: 'أرسل السوم' }).click()
+    await expect(seller.getByText('بانتظار ردّ المشتري').first()).toBeVisible({ timeout: 15_000 })
+
+    // والمشتري يقبل السوم
+    await buyer.goto('/account/offers')
+    await buyer.getByRole('tab', { name: /التي أرسلتها/ }).click()
+    await buyer.getByRole('button', { name: /^أقبل/ }).first().click()
+
+    // الرقمُ الفارق: الصفقةُ بمبلغ السوم لا بمبلغ العرض
+    await buyer.goto('/account/purchases')
+    const priced = buyer.getByText(counter.toLocaleString('en-US')).first()
+    await expect(priced).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByText(offered.toLocaleString('en-US'))).toHaveCount(0)
+
+    await buyerContext.close()
+    await sellerContext.close()
+  })
+
   test('إضافة لوحة ونشرها في السوق', async ({ page }) => {
     await login(page, USERS.waleed)
     await page.goto('/account/listings/new')

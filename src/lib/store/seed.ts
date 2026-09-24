@@ -1329,11 +1329,18 @@ export function seedDatabase(db: MemoryDatabase): void {
       createdAt: iso(-5_400_000),
       respondedAt: null,
     },
+    /*
+     * عرضٌ ثانٍ على اللوحة نفسها — به تظهر المجموعة و«الأعلى».
+     *
+     * وموضعُه `listings[5]` لا `listings[4]`: الأخيرُ يملك ماجدٌ وحدَه أن
+     * يعرض عليه بعد وليد، وهو مسارُ اختبارٍ حيّ — فلو شُغل مقعدُه بالبذرة
+     * لَوجد الاختبارُ عرضَه قائمًا ولا حقلَ يكتب فيه.
+     */
     {
       id: newId('ofr'),
-      listingId: listings[4].id,
-      buyerId: users[2].id,
-      amount: riyalsToHalalas(8_200),
+      listingId: listings[5].id,
+      buyerId: users[0].id,
+      amount: riyalsToHalalas(40_000),
       message: 'أدفع فوق عرض الأخ.',
       status: 'pending',
       counterAmount: null,
