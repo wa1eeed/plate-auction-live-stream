@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  limitFor,
-  MAX_UPLOAD_BYTES,
-  PROXY_MAX_BYTES,
-  uploadRejection,
-  UPLOAD_LIMITS,
-} from '@/lib/domain/upload-limits'
+import { limitFor, MAX_UPLOAD_BYTES, uploadRejection, UPLOAD_LIMITS } from '@/lib/domain/upload-limits'
 import { ALLOWED_MEDIA } from '@/lib/server/media/keys'
 
 const MB = 1024 * 1024
@@ -24,14 +18,14 @@ const MB = 1024 * 1024
  */
 describe('ما يُردّ قبل الإرسال', () => {
   it('ما دون الحدّ يمرّ', () => {
-    expect(uploadRejection('image/png', 4 * MB)).toBeNull()
+    expect(uploadRejection('image/png', 8 * MB)).toBeNull()
     expect(uploadRejection('video/mp4', 1024)).toBeNull()
   })
 
   it('وما فوقه يُردّ برسالةٍ فيها الرقمان — بالميغابايت لا بالبايت', () => {
-    const message = uploadRejection('video/mp4', 250 * MB)
-    expect(message).toContain('250')
-    expect(message).toContain('200')
+    const message = uploadRejection('video/mp4', 150 * MB)
+    expect(message).toContain('150')
+    expect(message).toContain('100')
     expect(message).not.toMatch(/\d{7,}/)
   })
 
@@ -41,12 +35,12 @@ describe('ما يُردّ قبل الإرسال', () => {
    */
   it('و`video/quicktime` مقبولٌ بحدّ الفدّيو — لا يُردّ بصيغته', () => {
     expect(limitFor('video/quicktime')).toBe(limitFor('video/mp4'))
-    expect(uploadRejection('video/quicktime', 150 * MB)).toBeNull()
-    expect(uploadRejection('video/quicktime', 250 * MB)).toMatch(/250/)
+    expect(uploadRejection('video/quicktime', 90 * MB)).toBeNull()
+    expect(uploadRejection('video/quicktime', 150 * MB)).toMatch(/150/)
   })
 
   it('وبايتٌ واحدٌ فوق الحدّ تجاوزٌ — فالحدُّ حدٌّ', () => {
-    expect(uploadRejection('image/png', 4 * MB + 1)).not.toBeNull()
+    expect(uploadRejection('image/png', 8 * MB + 1)).not.toBeNull()
   })
 
   /*
@@ -59,10 +53,10 @@ describe('ما يُردّ قبل الإرسال', () => {
    * ولو سقط هذا الفحص لعاد العطبُ نفسُه حرفًا.
    */
   it('ونوعٌ مجهولٌ **ضخم** يُردّ بالحجم — لا يمرّ بحجّة أنّا لا نعرف نوعه', () => {
-    const message = uploadRejection('video/x-matroska', 250 * MB)
+    const message = uploadRejection('video/x-matroska', 150 * MB)
     expect(message).not.toBeNull()
-    expect(message).toContain('250')
-    expect(message).toContain('200')
+    expect(message).toContain('150')
+    expect(message).toContain('100')
   })
 
   it('ونوعٌ مجهولٌ صغيرٌ يُردّ بالصيغة — ولا يُرفع ليُقال له «غير مدعوم»', () => {
@@ -82,18 +76,6 @@ describe('ما يُردّ قبل الإرسال', () => {
     expect(limitFor('video/x-matroska')).toBeNull()
   })
 
-  /*
-   * **سقفان لا سقف — والخلطُ بينهما يقتل الحاوية.**
-   *
-   * الرفعُ المباشر لا يحمل شيئًا في ذاكرة الخادم، فسقفُه سقفُ المخزن.
-   * والرفعُ عبر الخادم يقرأ الملفّ كلَّه، فسقفُه سقفُ الذاكرة. ولو ساويناهما
-   * لَقرأ مسلكُ الرجوع مئتَي ميغابايت إلى ذاكرة حاويةٍ صغيرة.
-   */
-  it('وسقفُ الرفع عبر الخادم أدنى من سقف المخزن — ولا يُساوى به', () => {
-    expect(PROXY_MAX_BYTES).toBeLessThan(MAX_UPLOAD_BYTES)
-    /* ويسع أكبرَ صورة، فمسلكُ الرجوع يبقى صالحًا لما يُرفع عادةً */
-    expect(PROXY_MAX_BYTES).toBeGreaterThanOrEqual(UPLOAD_LIMITS['image/jpeg'])
-  })
 
   /*
    * حدٌّ في المتصفّح يخالف حدَّ الخادم أسوأ من لا حدّ: يَعِد بقبولٍ يُردّ،

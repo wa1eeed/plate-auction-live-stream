@@ -1,11 +1,8 @@
 import { getStore } from '@/lib/store'
-import { PROXY_MAX_BYTES, UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
+import { UPLOAD_LIMITS as SHARED_LIMITS } from '@/lib/domain/upload-limits'
 import { ServiceError } from './market-service'
 import {
   bannerRatioError,
-  contentTypeOf,
-  isStagingKey,
-  stagingKey,
   getMedia,
   isAllowedMime,
   isMp4,
@@ -51,13 +48,7 @@ export async function uploadMedia(input: {
   if (bytes.byteLength === 0) {
     throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
   }
-  /*
-   * سقفُ هذا المسلك أدنى من سقف النوع — لأنّه يقرأ الملفّ إلى الذاكرة.
-   *
-   * والفدّيو يُرفع مباشرةً إلى R2 بمئتَي ميغابايت، وهذا مسلكُ الرجوع ومحرّكِ
-   * القرص. فيُؤخذ الأدنى منهما، ولا يُترك سقفُ النوع يقود إلى قتل الحاوية.
-   */
-  const limit = Math.min(UPLOAD_LIMITS[declaredMime], PROXY_MAX_BYTES)
+  const limit = UPLOAD_LIMITS[declaredMime]
   if (bytes.byteLength > limit) {
     throw new ServiceError(
       `الملفّ ${Math.round(bytes.byteLength / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,
@@ -81,15 +72,13 @@ export async function uploadMedia(input: {
 }
 
 /**
- * الحكمُ على البايتات — **دالّةٌ واحدة يقرؤها المساران**.
+ * الحكمُ على البايتات — **فما سُمّي صورةً وليس صورةً يُردّ**.
  *
- * والرفعُ صار طريقين: عبر الخادم، ومباشرةً إلى R2 ثمّ تأكيدٌ يقرأ الرأس.
- * ولو كُتبت الحراسةُ في كلٍّ منهما لانحرفتا — فتُشدَّد نسبةُ البنر في طريقٍ
- * وتُنسى في الآخر، ويصير البابُ المفتوح هو الذي لا أحدَ ينظر إليه.
+ * وهي الحراسة التي تمنع رفع HTML باسم `.png` ثمّ تقديمه من مسارٍ يثق به
+ * المتصفّح. و`nosniff` تحمي من جانبٍ آخر، والاثنتان معًا لا واحدة.
  *
- * **وتكفيها الرؤوس**: نوعُ الصورة وأبعادُها في أوّلها، و`ftyp` في أوّل اثني
- * عشر بايتًا من MP4، و`%PDF-` في خمسة. فما يُمرَّر هنا إمّا الملفُّ كلُّه
- * (الطريق القديم) أو أوّلُ ربع ميغابايت منه (الطريق الجديد) — والحكمُ واحد.
+ * وتكفيها الرؤوس: نوعُ الصورة وأبعادُها في أوّلها، و`ftyp` في أوّل اثني عشر
+ * بايتًا من MP4 و MOV، و`%PDF-` في خمسة.
  */
 function inspectHead(
   declaredMime: AllowedMime,
@@ -116,131 +105,6 @@ function inspectHead(
     if (ratio) throw new ServiceError(ratio, 422, 'MEDIA_RATIO')
   }
   return { width: probe.width, height: probe.height }
-}
-
-/* ------------------------------------------------- الرفع المباشر إلى المخزن */
-
-/**
- * مدّةُ رابط الرفع — تكفي لرفعٍ بطيء ولا تكفي لأن يُتداول.
- *
- * وربعُ ساعةٍ ليس اعتباطًا: مئةُ ميغابايت على وصلةٍ متواضعة تقارب العشر
- * دقائق، وما زاد على ذلك رابطُ كتابةٍ يعيش بلا حاجة.
- */
-const UPLOAD_URL_TTL_SECONDS = 15 * 60
-
-/**
- * ما يُقرأ من رأس الملفّ للحكم عليه.
- *
- * وربعُ ميغابايت سخاءٌ مقصود: أبعادُ JPEG تقع بعد EXIF، وEXIF قد تحمل صورةً
- * مصغَّرة تبلغ عشرات الكيلوبايتات. فيُؤخذ هامشٌ يفوق أيَّ رأسٍ معقول، ويبقى
- * ما يُنقل جزءًا من ألفٍ من ملفٍّ كبير.
- */
-const HEAD_BYTES = 256 * 1024
-
-/**
- * يوقّع رابطًا يرفع إليه **المتصفّح مباشرةً**، أو `null` لمحرّكٍ لا يدعمه.
- *
- * والحجمُ المعلن يُفحص هنا رفقًا لا حراسةً: يمنع رفعًا محكومًا بالفشل قبل أن
- * يبدأ. والحراسةُ الحقيقية في `confirmUpload` — على الحجم الذي يراه المخزن.
- */
-export async function signUpload(input: {
-  purpose: UploadPurpose
-  declaredMime: string
-  declaredSize: number
-}): Promise<{ key: string; url: string } | null> {
-  const { declaredMime, declaredSize } = input
-  if (!isAllowedMime(declaredMime)) {
-    throw new ServiceError('صيغة غير مدعومة', 415, 'MEDIA_TYPE')
-  }
-  if (!Number.isFinite(declaredSize) || declaredSize <= 0) {
-    throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
-  }
-  const limit = UPLOAD_LIMITS[declaredMime]
-  if (declaredSize > limit) {
-    throw new ServiceError(
-      `الملفّ ${Math.round(declaredSize / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,
-      413,
-      'MEDIA_TOO_LARGE',
-    )
-  }
-
-  const key = stagingKey(declaredMime)
-  const url = await getMedia().signedUpload({
-    key,
-    contentType: declaredMime,
-    expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
-  })
-  return url ? { key, url } : null
-}
-
-/**
- * يُصدّق ما رفعه المتصفّح — **ولا يُنقل إلى موضعه إلّا بعد أن يُقرأ**.
- *
- * وهنا تقع كلُّ الحراسة التي كانت تقع وقت المرور بالخادم: الحجمُ الحقيقيّ
- * كما يراه المخزن لا كما ادّعاه العميل، والنوعُ بالبايتات لا بالترويسة،
- * ونسبةُ البنر. وما سقط في شيءٍ منها **يُمحى من الحجر** ولا يُترك.
- *
- * والنقلُ آخرُ ما يقع: ما دام في `staging/` فهو في حاويةٍ لا نطاقَ لها، ولا
- * يبلغه أحد. فإن صحّ انتقل إلى موضعه، وإن لم يصحّ لم يكن له موضعٌ قطّ.
- */
-export async function confirmUpload(input: {
-  key: string
-  purpose: UploadPurpose
-  ownerId?: string
-}): Promise<{ key: string; width: number | null; height: number | null }> {
-  const { key, purpose } = input
-  const media = getMedia()
-
-  if (!isStagingKey(key)) throw new ServiceError('مفتاح غير صالح', 400, 'MEDIA_KEY')
-
-  /*
-   * النوعُ يُشتقّ من المفتاح الذي **نحن** أنشأناه، ثمّ يُقابَل بما سجّله
-   * المخزن. والثاني موثوقٌ لأنّ التوقيع شمله: R2 يردّ ما كُتب بنوعٍ سواه.
-   */
-  const declaredMime = contentTypeOf(key)
-  if (!isAllowedMime(declaredMime)) throw new ServiceError('مفتاح غير صالح', 400, 'MEDIA_KEY')
-
-  try {
-    const info = await media.head(key)
-    if (!info) throw new ServiceError('لم يصل الملفّ إلى المخزن', 404, 'MEDIA_MISSING')
-
-    if (info.size === 0) throw new ServiceError('الملفّ فارغ', 422, 'MEDIA_EMPTY')
-    const limit = UPLOAD_LIMITS[declaredMime]
-    if (info.size > limit) {
-      throw new ServiceError(
-        `الملفّ ${Math.round(info.size / 1024)} كيلوبايت، والحدّ ${Math.round(limit / 1024)}`,
-        413,
-        'MEDIA_TOO_LARGE',
-      )
-    }
-
-    const head = await media.readRange(key, HEAD_BYTES)
-    if (!head || head.byteLength === 0) {
-      throw new ServiceError('تعذّرت قراءة الملفّ', 422, 'MEDIA_UNREADABLE')
-    }
-    const { width, height } = inspectHead(declaredMime, head, purpose)
-
-    const target =
-      purpose === 'user-file'
-        ? userFileKey(
-            input.ownerId ?? (() => { throw new ServiceError('لا صاحب للملفّ', 400, 'MEDIA_OWNER') })(),
-            declaredMime,
-          )
-        : platformKey(declaredMime)
-
-    await media.move(key, target)
-    return { key: target, width, height }
-  } catch (error) {
-    /*
-     * ما لم يُصدَّق يُمحى — **ولا يُترك في الحجر ينتظر دورةَ الحياة**.
-     *
-     * وقاعدةُ الحياة شبكةُ أمانٍ لما انقطع اتّصالُه، لا بديلٌ عن التنظيف.
-     * وفشلُ المحو لا يُخفي سببَ الردّ: الأوّل عارضٌ يُكنس بعد يوم، والثاني
-     * هو ما ينتظره من رفع.
-     */
-    await media.remove(key).catch(() => undefined)
-    throw error
-  }
 }
 
 /* ----------------------------------------------------------------- القراءة */

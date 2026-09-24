@@ -60,6 +60,34 @@ function redact(text) {
   return String(text).replace(/\b[a-z+]+:\/\/[^\s'"]*/gi, '‹رابط محجوب›')
 }
 
+/*
+ * **أحُجمٌ دائمٌ هو، أم مجلَّدٌ يموت مع الحاوية؟**
+ *
+ * الوسائط تسكن `PLATFORM_DATA_DIR/media`، والإعداداتُ تسكن معها. فإن لم
+ * يُربط المسار بحجمٍ في لوحة النشر فهو مجلَّدٌ داخل الحاوية — تُستبدل الحاوية
+ * مع كلّ نشرة فيضيع ما فيه، **وتبقى صفوفُه في القاعدة** تشير إلى ملفّاتٍ لم
+ * تعد موجودة. فتُعرض صورٌ مكسورة بلا رسالةِ خطأ واحدة، ولا يُكتشف إلّا بعد
+ * أن تضيع.
+ *
+ * ويُعرف بالمقارنة: المجلَّد المربوط يسكن جهازًا غير جهاز جذر الحاوية
+ * (`stat.dev`). فيُقال عند الإقلاع صراحةً بدل أن يُترك للصدفة.
+ */
+if (process.env.PLATFORM_DATA_DIR) {
+  try {
+    const { statSync, mkdirSync } = await import('node:fs')
+    const dir = process.env.PLATFORM_DATA_DIR
+    mkdirSync(dir, { recursive: true })
+    if (statSync(dir).dev === statSync('/').dev) {
+      console.warn(`[media] ⚠ ${dir} ليس حجمًا دائمًا — الوسائط والإعدادات تُمحى مع كلّ نشرة`)
+      console.warn('[media] ⚠ اربطه في لوحة النشر: Coolify → Storages → Volume Mount')
+    } else {
+      console.log(`[media] الحجم الدائم مربوط على ${dir}`)
+    }
+  } catch (error) {
+    console.warn('[media] تعذّر فحص الحجم الدائم:', error?.message ?? error)
+  }
+}
+
 await app.prepare()
 
 // يجب استدعاؤه بعد prepare — يخدم ترقيات Next (إعادة التحميل الساخن)

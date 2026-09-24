@@ -15,8 +15,9 @@
     ".next-imp/types/**/*.ts",
     ".next-live/types/**/*.ts",
     ".next-probe/types/**/*.ts",
+    ".next-probe2/types/**/*.ts",
     "next-env.d.ts",
-    ".next-probe2/types/**/*.ts"
+    ".next-chk/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -4,9 +4,6 @@ import { contentTypeOf, getMedia, isPublicKey, isSafeKey, ownerOfKey } from '@/l
 
 export const dynamic = 'force-dynamic'
 
-/** مدّةُ الرابط الموقَّع — تكفي لفتح الملفّ ولا تكفي لمشاركته. */
-const SIGNED_TTL_SECONDS = 120
-
 /**
  * تقديمُ الملفّات — **بابان لا باب**.
  *
@@ -17,8 +14,8 @@ const SIGNED_TTL_SECONDS = 120
  * وهذا المسار هو **الوحيد** الذي يبلغ البادئة الخاصّة: مفاتيحها لا تُكتب في
  * صفحة، ولا يُشتقّ لها رابطٌ من CDN، ولا تُذكر في حمولةٍ عامّة.
  *
- * ولا يعمل في الإنتاج إلّا لما هو خاصّ: العامّ يُقدَّم من `R2_PUBLIC_BASE_URL`
- * مباشرةً، فلا يمرّ بايتُ فدّيو واحدٍ بالخادم.
+ * **وكلُّ بايتٍ يمرّ بهذا المسار** — العامُّ والخاصّ. وهو ثمنُ التخزين على
+ * قرص الخادم: لا CDN يقدّم عنه، فوصلةُ كلّ مشاهدٍ وصلةٌ عليه.
  */
 export async function GET(_request: Request, context: { params: Promise<{ key: string[] }> }) {
   const { key: segments } = await context.params
@@ -45,21 +42,6 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
 
   const media = getMedia()
 
-  /*
-   * الخاصُّ يُعاد توجيهه إلى رابطٍ موقَّتٍ حيث يدعمه المحرّك.
-   *
-   * فلا تمرّ البايتات بالخادم، ويبقى الفحصُ عليه: الإذن يُقرَّر هنا، وما
-   * يُسلَّم بعده رابطٌ يعيش دقيقتين.
-   */
-  if (!isPublicKey(key)) {
-    const signed = await media.signedUrl(key, SIGNED_TTL_SECONDS)
-    if (signed) {
-      return new Response(null, {
-        status: 302,
-        headers: { location: signed, 'cache-control': 'private, no-store' },
-      })
-    }
-  }
 
   const file = await media.read(key)
   if (!file) return new Response('غير موجود', { status: 404 })

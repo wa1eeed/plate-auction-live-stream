@@ -1,17 +1,16 @@
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 import { contentTypeOf, type MediaDriver } from './driver'
 import { isSafeKey } from './keys'
 
 /**
- * محرّك القرص — للتطوير والفحص، ولنشرةٍ صغيرةٍ لا حاوية لها بعد.
+ * محرّك القرص — **وهو المخزن كلُّه**.
  *
- * ووجودُه ليس ترفًا: بلاه تحتاج المجموعةُ مفاتيحَ R2 لتمرّ، فلا تعمل على
- * جهازٍ جديد ولا في البوّابة إلّا بسرٍّ يُوزَّع. وبه تمرّ المجموعة كاملةً
- * بلا إعداد، ويبقى ما يُقاس هو المنطق نفسه لا الشبكة.
+ * الملفّات تحت مجلَّدٍ واحد يُربط بحجمٍ دائم، وتُقدَّم من `/api/media/` في
+ * نفس الأصل. فلا مضيفَ خارجيًّا في سياسة المحتوى، ولا سرَّ يُوزَّع لتمرّ
+ * الفحوص، ولا بايتَ يُقرأ إلّا بعد أن يُفحص الإذن.
  *
- * **ولا يُقدَّم العامّ منه من نطاقٍ آخر** — بل من `/api/media/` في نفس
- * الأصل، فلا تحتاج سياسةُ المحتوى إلى مضيفٍ إضافيّ في التطوير.
+ * والثمن صريح: كلُّ بايت فدّيو يمرّ بالخادم، ووصلةٌ طويلة لكلّ مشاهد.
  */
 export function diskDriver(root: string): MediaDriver {
   const base = resolve(root)
@@ -56,44 +55,5 @@ export function diskDriver(root: string): MediaDriver {
       return `/api/media/${key}`
     },
 
-    /* يقدّمه المسار المحروس نفسه — فلا رابط موقَّت ولا إعادة توجيه */
-    async signedUrl() {
-      return null
-    },
-
-    /*
-     * **لا رفعَ مباشرًا على القرص — و`null` هنا قرارٌ لا نقص.**
-     *
-     * لا مخزنَ خارجيًّا يُوقَّع له رابط، ومحاكاتُه بمسارٍ في التطبيق تعني
-     * بابَ كتابةٍ ثانيًا يُحرَس على حدة — وبابان يُحرسان أسوأ من باب.
-     * فيقرأ العميلُ `null` ويرجع إلى الرفع عبر الخادم كما كان.
-     */
-    async signedUpload() {
-      return null
-    },
-
-    async head(key) {
-      try {
-        const info = await stat(pathOf(key))
-        return { size: info.size, contentType: contentTypeOf(key) }
-      } catch {
-        return null
-      }
-    },
-
-    async readRange(key, length) {
-      /* القرص يقرأ الملفّ ثمّ يقتطع — والملفّات هنا للفحص لا للإنتاج */
-      try {
-        return new Uint8Array(await readFile(pathOf(key))).slice(0, length)
-      } catch {
-        return null
-      }
-    },
-
-    async move(from, to) {
-      const target = pathOf(to)
-      await mkdir(dirname(target), { recursive: true })
-      await rename(pathOf(from), target)
-    },
   }
 }
