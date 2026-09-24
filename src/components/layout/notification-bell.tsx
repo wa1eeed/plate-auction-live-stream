@@ -31,6 +31,7 @@ const ICONS: Record<NotificationType, React.ElementType> = {
   offer_received: HandCoins,
   offer_accepted: HandCoins,
   offer_declined: XCircle,
+  offer_countered: HandCoins,
   listing_sold: Trophy,
   payment_confirmed: Wallet,
   payment_failed: XCircle,

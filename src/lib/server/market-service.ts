@@ -25,7 +25,7 @@ import type {
   Order,
   SaleType,
 } from '@/lib/domain/types'
-import { availableBalance, computeCommission, toPlate } from '@/lib/domain/types'
+import { availableBalance, computeCommission, isOpenOffer, toPlate } from '@/lib/domain/types'
 import { buildOrderSettlement, buildOrderTimeline } from '@/lib/domain/order-timeline'
 import {
   assertDepositEligibility,
@@ -998,6 +998,148 @@ export async function respondToOffer(input: {
   return { offer: updated, order }
 }
 
+/**
+ * **سومُ البائع — الردّ بمبلغٍ بدل القبول أو الرفض.**
+ *
+ * وكان الباب اثنين لا ثالثَ لهما، فيموت العرضُ القريبُ لأنّه دون المطلوب
+ * بقليل — ويخسر الطرفان صفقةً كانت تتمّ بمكالمةٍ خارج المنصّة. والسومُ
+ * يُبقيها داخلها، وهو ما يقتضيه بيعٌ اسمُه «على السوم».
+ *
+ * ولا يُغيّر العرضَ الأصليّ: مبلغُ المشتري يبقى مكتوبًا كما أرسله، ويُضاف
+ * إليه مبلغُ البائع. فيُقرأ الخيطُ كما جرى — من قال ماذا ومتى — لا كرقمٍ
+ * واحدٍ تبدّل فلا يُعرف أصلُه.
+ */
+export async function counterOffer(input: {
+  offerId: string
+  sellerId: string
+  amount: number
+  message: string | null
+}): Promise<Offer> {
+  const store = getStore()
+  const offer = await store.getOffer(input.offerId)
+  if (!offer) throw new ServiceError('العرض غير موجود', 404, 'OFFER_NOT_FOUND')
+
+  const listing = await store.getListing(offer.listingId)
+  if (!listing) throw new ServiceError('الإعلان غير موجود', 404, 'LISTING_NOT_FOUND')
+  if (listing.sellerId !== input.sellerId) {
+    throw new ServiceError('لا تملك صلاحية على هذا العرض', 403, 'FORBIDDEN')
+  }
+  if (offer.status !== 'pending') {
+    throw new ServiceError('تمّت الاستجابة لهذا العرض مسبقًا', 409, 'OFFER_CLOSED')
+  }
+  if (listing.status !== 'active') {
+    throw new ServiceError('الإعلان لم يعد متاحًا', 409, 'LISTING_NOT_ACTIVE')
+  }
+  /*
+   * سومٌ دون ما عُرض عليك ليس سومًا.
+   *
+   * ولو قُبل لَردّ البائعُ بأقلّ ممّا أعطاه المشتري، فيقرأ المشتري «ردَّ
+   * البائع» ثمّ يجد رقمًا أدنى من رقمه — فيظنّه عطبًا لا عرضًا.
+   */
+  if (input.amount <= offer.amount) {
+    throw new ServiceError('سومُك يجب أن يزيد على ما عُرض عليك', 422, 'COUNTER_TOO_LOW')
+  }
+
+  const now = new Date().toISOString()
+  const updated = await store.updateOffer(offer.id, {
+    status: 'countered',
+    counterAmount: input.amount,
+    counterMessage: input.message,
+    counterAt: now,
+  })
+
+  await publish(store, listing.id, 'offer_countered', { offerId: offer.id, amount: input.amount })
+  await notify(store, {
+    userId: offer.buyerId,
+    type: 'offer_countered',
+    title: 'ردَّ البائع بمبلغ',
+    body: `سام البائع على «${listing.arabicLetters} ${listing.plateNumbers}» بـ${formatAmount(input.amount)} ريال.`,
+    href: '/account/offers',
+    listingId: listing.id,
+  })
+  return updated
+}
+
+/**
+ * ردُّ المشتري على سوم البائع — قبولًا أو رفضًا.
+ *
+ * والقبولُ يُنشئ الصفقة **بمبلغ البائع** لا بمبلغ المشتري الأوّل: هو ما
+ * اتُّفق عليه آخرًا. وخلطُهما يعني صفقةً بغير ما تراضيا عليه.
+ */
+export async function respondToCounter(input: {
+  offerId: string
+  buyerId: string
+  decision: 'accept' | 'decline'
+}): Promise<{ offer: Offer; order: Order | null }> {
+  const store = getStore()
+  const offer = await store.getOffer(input.offerId)
+  if (!offer) throw new ServiceError('العرض غير موجود', 404, 'OFFER_NOT_FOUND')
+  if (offer.buyerId !== input.buyerId) {
+    throw new ServiceError('لا تملك صلاحية على هذا العرض', 403, 'FORBIDDEN')
+  }
+  if (offer.status !== 'countered' || offer.counterAmount === null) {
+    throw new ServiceError('لا سومَ على هذا العرض', 409, 'NO_COUNTER')
+  }
+
+  const listing = await store.getListing(offer.listingId)
+  if (!listing) throw new ServiceError('الإعلان غير موجود', 404, 'LISTING_NOT_FOUND')
+
+  const now = new Date().toISOString()
+
+  if (input.decision === 'decline') {
+    const updated = await store.updateOffer(offer.id, { status: 'declined', respondedAt: now })
+    await notify(store, {
+      userId: listing.sellerId,
+      type: 'offer_declined',
+      title: 'رُفض سومُك',
+      body: `لم يقبل المشتري سومك على «${listing.arabicLetters} ${listing.plateNumbers}».`,
+      href: '/account/offers',
+      listingId: listing.id,
+    })
+    return { offer: updated, order: null }
+  }
+
+  if (listing.status !== 'active') {
+    throw new ServiceError('الإعلان لم يعد متاحًا', 409, 'LISTING_NOT_ACTIVE')
+  }
+  /* والحارسُ نفسه: قبولٌ واحدٌ قائم على اللوحة — انظر `respondToOffer` */
+  const standing = (await store.listOrders({ listingId: listing.id })).find(
+    (row) => row.status === 'awaiting_settlement',
+  )
+  if (standing) {
+    throw new ServiceError(
+      'على هذه اللوحة عرضٌ مقبولٌ ينتظر سداده — لا يُقبل غيره حتى يُسدَّد أو تنقضي مهلته',
+      409,
+      'LISTING_HAS_PENDING_ORDER',
+    )
+  }
+
+  const updated = await store.updateOffer(offer.id, { status: 'accepted', respondedAt: now })
+  const order = await store.createOrder({
+    listingId: listing.id,
+    buyerId: offer.buyerId,
+    sellerId: listing.sellerId,
+    amount: offer.counterAmount,
+    source: 'offer',
+    status: 'awaiting_settlement',
+    paymentDueAt: paymentDueAt(listing, Date.now()),
+    depositId: null,
+  })
+  await publish(store, listing.id, 'offer_accepted', {
+    offerId: offer.id,
+    amount: offer.counterAmount,
+  })
+  await notify(store, {
+    userId: listing.sellerId,
+    type: 'offer_accepted',
+    title: 'قُبل سومُك',
+    body: `قبل المشتري سومك على «${listing.arabicLetters} ${listing.plateNumbers}» بـ${formatAmount(offer.counterAmount)} ريال.`,
+    href: '/account/sales',
+    listingId: listing.id,
+  })
+  return { offer: updated, order }
+}
+
 export async function withdrawOffer(offerId: string, buyerId: string): Promise<Offer> {
   const store = getStore()
   const offer = await store.getOffer(offerId)
@@ -1091,11 +1233,25 @@ async function decorateOffers(
     if (!listing) continue
     const otherId = counterpart === 'buyer' ? offer.buyerId : listing.sellerId
     const other = await store.findUser(otherId)
+
+    /*
+     * «الأعلى» يُقاس بين العروض **القائمة** وحدها.
+     *
+     * ومرفوضٌ بمئةِ ألفٍ لا يُزاحم قائمًا بثمانين: صاحبُه انصرف. ولو عُدّ
+     * لَقرأ البائع أنّ ما بيده ليس الأعلى وهو أعلى ما يستطيع قبولَه.
+     */
+    const siblings = (await store.listOffers({ listingId: listing.id })).filter((row) =>
+      isOpenOffer(row.status),
+    )
+    const top = Math.max(0, ...siblings.map((row) => row.counterAmount ?? row.amount))
+
     result.push({
       ...offer,
       plate: toPlate(listing),
       listingStatus: listing.status,
       counterpartName: other?.displayName ?? 'مستخدم',
+      listingAsk: listing.price || listing.minimumOffer || listing.startingPrice,
+      isHighest: isOpenOffer(offer.status) && (offer.counterAmount ?? offer.amount) >= top,
     })
   }
   return result

@@ -39,7 +39,11 @@ export type UserAccount = User & { passwordHash: string }
 export type AdminRecord = AdminAccount & { passwordHash: string }
 
 export type NewListing = Omit<Listing, 'id' | 'reference' | 'createdAt' | 'updatedAt'>
-export type NewOffer = Omit<Offer, 'id' | 'createdAt' | 'respondedAt'>
+/** وحقولُ السوم ليست منه: تبدأ فارغةً ولا تُملى عند الإنشاء. */
+export type NewOffer = Omit<
+  Offer,
+  'id' | 'createdAt' | 'respondedAt' | 'counterAmount' | 'counterMessage' | 'counterAt'
+>
 export type NewOrder = Omit<
   Order,
   | 'id'

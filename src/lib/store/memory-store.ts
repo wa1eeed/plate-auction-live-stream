@@ -496,6 +496,9 @@ export class MemoryStore implements AuctionStore {
       id: newId('ofr'),
       createdAt: new Date().toISOString(),
       respondedAt: null,
+      counterAmount: null,
+      counterMessage: null,
+      counterAt: null,
     }
     this.db.offers.push(offer)
     return clone(offer)

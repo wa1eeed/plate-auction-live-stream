@@ -14,6 +14,7 @@ export const metadata = { title: 'السوم' }
 
 const TONE: Record<OfferStatus, 'gold' | 'success' | 'danger' | 'muted'> = {
   pending: 'gold',
+  countered: 'gold',
   accepted: 'success',
   declined: 'danger',
   withdrawn: 'muted',

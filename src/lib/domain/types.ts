@@ -400,13 +400,28 @@ export type Bid = {
   cancellationReason: string | null
 }
 
-export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn'
+/**
+ * حالُ العرض — **و`countered` هي السوم**.
+ *
+ * وكان البائع يقبل أو يرفض ولا ثالثَ لهما، فيموت العرضُ القريبُ لأنّه دون
+ * المطلوب بقليل. والسومُ أن يُردّ بمبلغٍ آخر فيبقى البابُ مفتوحًا — وهو ما
+ * يقتضيه بيعٌ اسمُه «على السوم».
+ */
+export type OfferStatus = 'pending' | 'countered' | 'accepted' | 'declined' | 'withdrawn'
 
 export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
   pending: 'بانتظار الرد',
+  countered: 'ردَّ البائع بمبلغ',
   accepted: 'مقبول',
   declined: 'مرفوض',
   withdrawn: 'مسحوب',
+}
+
+/** ما زال البابُ مفتوحًا — عرضٌ ينتظر ردًّا من أحد الطرفين. */
+export const OPEN_OFFER_STATUSES: readonly OfferStatus[] = ['pending', 'countered']
+
+export function isOpenOffer(status: OfferStatus): boolean {
+  return OPEN_OFFER_STATUSES.includes(status)
 }
 
 export type Offer = {
@@ -418,6 +433,16 @@ export type Offer = {
   status: OfferStatus
   createdAt: string
   respondedAt: string | null
+  /**
+   * مبلغُ البائع المقابل — `null` لعرضٍ لم يُسَم عليه.
+   *
+   * ويُحفظ على العرض نفسه لا في صفٍّ ثانٍ: السومُ جولةٌ بين طرفين على عرضٍ
+   * بعينه، فجمعُهما في صفٍّ واحد يُبقي «من قال ماذا» مقروءًا بلا وصلٍ بين
+   * صفوف. ومن أراد جولةً ثالثة أرسل عرضًا جديدًا — وهو خيطٌ مفهوم.
+   */
+  counterAmount: Halalas | null
+  counterMessage: string | null
+  counterAt: string | null
 }
 
 /**
@@ -547,6 +572,8 @@ export type ListingEventType =
   | 'offer_placed'
   | 'offer_accepted'
   | 'offer_declined'
+  /** سامَ البائعُ على عرضٍ بمبلغٍ آخر — والبابُ باقٍ مفتوحًا */
+  | 'offer_countered'
   | 'listing_sold'
   | 'listing_cancelled'
 
@@ -761,6 +788,15 @@ export type AccountOffer = Offer & {
   plate: Plate
   listingStatus: ListingStatus
   counterpartName: string
+  /** ما يطلبه البائع — به يُقاس بُعدُ العرض عن المراد */
+  listingAsk: Halalas
+  /**
+   * أهو أعلى عرضٍ قائمٍ على اللوحة؟
+   *
+   * ويُحسب في الخادم لا في الواجهة: الصفحةُ تعرض عروضَ صاحبها وحده، فلا
+   * تعرف ما عُرض على اللوحة من غيره — فتُسمّي الأعلى بين ما ترى لا بين ما وقع.
+   */
+  isHighest: boolean
 }
 
 export type AccountOrder = Order & {
@@ -1325,6 +1361,7 @@ export type NotificationType =
   | 'offer_received'
   | 'offer_accepted'
   | 'offer_declined'
+  | 'offer_countered'
   | 'listing_sold'
   | 'payment_confirmed'
   | 'payment_failed'

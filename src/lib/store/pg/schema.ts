@@ -185,6 +185,10 @@ export const offers = pgTable(
     status: text('status').notNull(),
     createdAt: stamp('created_at').notNull(),
     respondedAt: stamp('responded_at'),
+    /** سومُ البائع على هذا العرض — `NULL` لما لم يُسَم عليه */
+    counterAmount: halalas('counter_amount'),
+    counterMessage: text('counter_message'),
+    counterAt: stamp('counter_at'),
   },
   (table) => [
     index('offers_listing_idx').on(table.listingId),

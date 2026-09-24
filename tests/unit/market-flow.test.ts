@@ -6,6 +6,7 @@ import { resetRateLimits } from '@/lib/server/rate-limit'
 import {
   buyNow,
   closeListing,
+  counterOffer,
   expireUnpaidOfferOrders,
   finalizeDueAuctions,
   getAccountBids,
@@ -15,6 +16,7 @@ import {
   getOffersReceivedByUser,
   placeBid,
   placeOffer,
+  respondToCounter,
   respondToOffer,
 } from '@/lib/server/market-service'
 import { getPurchases, getSales, updateOrderStatus } from '@/lib/server/order-service'
@@ -486,5 +488,228 @@ describe('انقضاء مهلة السداد في السوم', () => {
 
     await expireUnpaidOfferOrders(store)
     expect((await store.getOrder(auctionOrder.id))?.status).toBe('awaiting_settlement')
+  })
+})
+
+/**
+ * السوم — ردُّ البائع بمبلغٍ بدل القبول أو الرفض.
+ *
+ * وما يُختبر هنا ليس أنّ الحقول تُكتب، بل أنّ **الصفقة تقع على آخر ما تراضيا
+ * عليه**. فالعرضُ رقمٌ والسومُ رقمٌ آخر، وبينهما مسافةٌ يقع فيها الغلط: أن
+ * يُقبل السومُ وتُنشأ الصفقةُ بالرقم الأوّل — فيدفع المشتري ما لم يوافق عليه
+ * البائع، أو يقبض البائعُ دون ما اشترط.
+ */
+describe('السوم المقابل', () => {
+  /** إعلانُ سومٍ نشط مع مشترٍ ليس صاحبه. */
+  function offersListing() {
+    const listing = findBy((l) => l.saleType === 'offers' && l.status === 'active')
+    const buyer = db.users.find((u) => u.id !== listing.sellerId)!
+    return { listing, buyer }
+  }
+
+  it('يُنشئ الصفقة بمبلغ البائع لا بمبلغ المشتري الأوّل', async () => {
+    const { listing, buyer } = offersListing()
+    const offered = halalasToRiyals(listing.minimumOffer) + 1_000
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: offered,
+    })
+
+    const countered = await counterOffer({
+      offerId: offer.id,
+      sellerId: listing.sellerId,
+      amount: riyalsToHalalas(offered + 5_000),
+      message: null,
+    })
+    expect(countered.status).toBe('countered')
+    expect(countered.counterAmount).toBe(riyalsToHalalas(offered + 5_000))
+
+    const result = await respondToCounter({
+      offerId: offer.id,
+      buyerId: buyer.id,
+      decision: 'accept',
+    })
+
+    // الرقمُ الفارق: صفقةٌ بمبلغ السوم، لا بالعرض الذي بدأ منه
+    expect(result.order?.amount).toBe(riyalsToHalalas(offered + 5_000))
+    expect(result.order?.amount).not.toBe(offer.amount)
+  })
+
+  it('يرفض سومًا لا يزيد على ما عُرض عليه', async () => {
+    const { listing, buyer } = offersListing()
+    const offered = halalasToRiyals(listing.minimumOffer) + 1_000
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: offered,
+    })
+
+    // مساويًا: ليس سومًا، وإنّما قبولٌ في ثوب ردّ
+    await expect(
+      counterOffer({
+        offerId: offer.id,
+        sellerId: listing.sellerId,
+        amount: offer.amount,
+        message: null,
+      }),
+    ).rejects.toThrow(/يزيد/)
+
+    // وأدنى: يقرأ المشتري «ردَّ البائع» فيجد رقمًا دون رقمه
+    await expect(
+      counterOffer({
+        offerId: offer.id,
+        sellerId: listing.sellerId,
+        amount: offer.amount - 1,
+        message: null,
+      }),
+    ).rejects.toThrow(/يزيد/)
+
+    expect((await store.getOffer(offer.id))?.status).toBe('pending')
+  })
+
+  it('يمنع غير البائع من السوم، وغير المشتري من الردّ عليه', async () => {
+    const { listing, buyer } = offersListing()
+    const stranger = db.users.find((u) => u.id !== listing.sellerId && u.id !== buyer.id)!
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+
+    await expect(
+      counterOffer({
+        offerId: offer.id,
+        sellerId: stranger.id,
+        amount: offer.amount + 100_00,
+        message: null,
+      }),
+    ).rejects.toThrow(/صلاحية/)
+
+    await counterOffer({
+      offerId: offer.id,
+      sellerId: listing.sellerId,
+      amount: offer.amount + 100_00,
+      message: null,
+    })
+
+    // والسومُ يُردّ عليه صاحبُ العرض وحده — لا البائع نفسه ولا غريب
+    await expect(
+      respondToCounter({ offerId: offer.id, buyerId: stranger.id, decision: 'accept' }),
+    ).rejects.toThrow(/صلاحية/)
+    await expect(
+      respondToCounter({ offerId: offer.id, buyerId: listing.sellerId, decision: 'accept' }),
+    ).rejects.toThrow(/صلاحية/)
+  })
+
+  it('لا يُسام على عرضٍ سِيم عليه مرّتين', async () => {
+    const { listing, buyer } = offersListing()
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+    await counterOffer({
+      offerId: offer.id,
+      sellerId: listing.sellerId,
+      amount: offer.amount + 100_00,
+      message: null,
+    })
+
+    /*
+     * ولو جاز لَرفع البائعُ سومَه بعد أن قرأه المشتري، فيقبل المشتري رقمًا
+     * ويجد نفسه ملزَمًا بأعلى منه.
+     */
+    await expect(
+      counterOffer({
+        offerId: offer.id,
+        sellerId: listing.sellerId,
+        amount: offer.amount + 200_00,
+        message: null,
+      }),
+    ).rejects.toThrow(/مسبقًا/)
+  })
+
+  it('رفضُ السوم يُنهي العرض ولا يُغلق الإعلان', async () => {
+    const { listing, buyer } = offersListing()
+    const offer = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+    await counterOffer({
+      offerId: offer.id,
+      sellerId: listing.sellerId,
+      amount: offer.amount + 100_00,
+      message: null,
+    })
+
+    const result = await respondToCounter({
+      offerId: offer.id,
+      buyerId: buyer.id,
+      decision: 'decline',
+    })
+    expect(result.offer.status).toBe('declined')
+    expect(result.order).toBeNull()
+    expect((await store.getListing(listing.id))?.status).toBe('active')
+  })
+
+  it('لا يُقبل سومٌ على لوحةٍ عليها صفقةٌ تنتظر سدادها', async () => {
+    const { listing } = offersListing()
+    const buyers = db.users.filter((u) => u.id !== listing.sellerId)
+    const first = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[0].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 1_000,
+    })
+    const second = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[1].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 500,
+    })
+    await counterOffer({
+      offerId: second.id,
+      sellerId: listing.sellerId,
+      amount: second.amount + 100_00,
+      message: null,
+    })
+
+    // قُبل الأوّل وصار له وعدُ سداد
+    await respondToOffer({ offerId: first.id, sellerId: listing.sellerId, decision: 'accept' })
+
+    // فلا يصير للوحةٍ واحدةٍ مشتريان يسدّدان
+    await expect(
+      respondToCounter({ offerId: second.id, buyerId: buyers[1].id, decision: 'accept' }),
+    ).rejects.toThrow(/ينتظر سداده/)
+  })
+
+  it('«الأعلى» يُحسب بين العروض القائمة وحدها', async () => {
+    const { listing } = offersListing()
+    const buyers = db.users.filter((u) => u.id !== listing.sellerId)
+    const low = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[0].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 500,
+    })
+    const high = await placeOffer({
+      listingId: listing.id,
+      buyerId: buyers[1].id,
+      amountRiyals: halalasToRiyals(listing.minimumOffer) + 5_000,
+    })
+
+    const before = await getOffersReceivedByUser(listing.sellerId)
+    expect(before.find((o) => o.id === high.id)?.isHighest).toBe(true)
+    expect(before.find((o) => o.id === low.id)?.isHighest).toBe(false)
+
+    /*
+     * ورُفض الأعلى. فلو بقي «الأعلى» محسوبًا على المرفوض لَرأى البائعُ عرضًا
+     * انتهى متوَّجًا، وأدناه — وهو الوحيد الذي يملك قبوله — بلا علامة.
+     */
+    await respondToOffer({ offerId: high.id, sellerId: listing.sellerId, decision: 'decline' })
+
+    const after = await getOffersReceivedByUser(listing.sellerId)
+    expect(after.find((o) => o.id === high.id)?.isHighest).toBe(false)
+    expect(after.find((o) => o.id === low.id)?.isHighest).toBe(true)
+    expect(after.find((o) => o.id === low.id)?.listingAsk).toBe(listing.price || listing.minimumOffer)
   })
 })
