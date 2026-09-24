@@ -11,11 +11,12 @@
     "**/*.tsx",
     ".next-build-test/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
+    ".next-headers/types/**/*.ts",
     ".next-imp/types/**/*.ts",
     ".next-live/types/**/*.ts",
     ".next-probe/types/**/*.ts",
     "next-env.d.ts",
-    ".next-headers/types/**/*.ts"
+    ".next-probe2/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

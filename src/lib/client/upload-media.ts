@@ -39,12 +39,21 @@ async function postJson(
   body: unknown,
   ms: number,
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: timeout(ms),
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: timeout(ms),
+    })
+  } catch (error) {
+    /* ساقٌ إلى خادمنا — فالفشلُ هنا فشلُ اتّصالٍ به حقًّا */
+    if ((error as { name?: string })?.name === 'TimeoutError') {
+      throw new UploadError('انقضت مهلة انتظار الخادم — أعد المحاولة')
+    }
+    throw new UploadError('تعذّر الاتّصال بالخادم')
+  }
   const data = await readJson(response)
   if (!response.ok) {
     const message = (data?.error as { message?: string } | undefined)?.message
@@ -126,15 +135,38 @@ export async function uploadMedia(file: File, purpose: UploadPurpose): Promise<U
     return viaServer(file, purpose)
   }
 
-  const put = await fetch(signed.url as string, {
-    method: 'PUT',
-    /* النوع موقَّعٌ في الرابط — فمخالفتُه هنا تُردّ من المخزن نفسه */
-    headers: { 'content-type': mime },
-    body: file,
-    signal: timeout(DIRECT_TIMEOUT_MS),
-  })
+  /*
+   * **ساقٌ عابرةُ أصل — وفشلُها لا يُقرأ كفشل الخادم.**
+   *
+   * طلبٌ تحجبه CORS **يُرفض في المتصفّح قبل أن يغادر**: لا حالةَ ولا جسم،
+   * و`fetch` يرمي `TypeError` مجرَّدًا. ولو تُرك يقع في الحارس العامّ لقيل
+   * «تعذّر الاتّصال بالخادم» — والخادمُ لم يُسأل أصلًا، وقاعدةُ CORS على
+   * الحاوية هي المانع. فتُسمّى العلّةُ هنا بموضعها.
+   */
+  let put: Response
+  try {
+    put = await fetch(signed.url as string, {
+      method: 'PUT',
+      /* النوع موقَّعٌ في الرابط — فمخالفتُه هنا تُردّ من المخزن نفسه */
+      headers: { 'content-type': mime },
+      body: file,
+      signal: timeout(DIRECT_TIMEOUT_MS),
+    })
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'TimeoutError') {
+      throw new UploadError('انقضت مهلة الرفع إلى المخزن — الشبكة بطيئة، أعد المحاولة')
+    }
+    throw new UploadError(
+      'لم يُبلَغ المخزن من المتصفّح — الأرجحُ أنّ قاعدة CORS على الحاوية الخاصّة ' +
+        'لا تسمح بـPUT من هذا النطاق. افتح F12 ← Console لترى الرسالة الصريحة.',
+    )
+  }
   if (!put.ok) {
-    throw new UploadError(`تعذّر الرفع إلى المخزن (${put.status}) — أعد المحاولة`)
+    throw new UploadError(
+      put.status === 403
+        ? 'رفض المخزن الرفع (403) — الرمز لا يشمل الحاوية، أو انقضى الرابط الموقَّع'
+        : `تعذّر الرفع إلى المخزن (${put.status}) — أعد المحاولة`,
+    )
   }
 
   const confirmed = await postJson(
