@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
-import { ProgressiveList } from '@/components/market/progressive-list'
+import { ListingFilters } from './listing-filters'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/market/plate-row'
 import { MyListingCard } from './listing-card'
@@ -53,11 +53,22 @@ export default async function MyListingsPage() {
           }
         />
       ) : (
-        <ProgressiveList>
+        /*
+         * الترشيحُ في المتصفّح، والبطاقاتُ مصيَّرةٌ في الخادم كما هي.
+         *
+         * فلا يُعاد بناءُ لوحةٍ في العميل، ولا تنتظر ضغطةُ شريحةٍ رحلةً إلى
+         * الخادم — وكلُّ صفحةٍ هنا `force-dynamic`، فالرحلةُ ليست رخيصة.
+         */
+        <ListingFilters
+          facets={listings.map((listing) => ({
+            saleType: listing.saleType,
+            status: listing.status,
+          }))}
+        >
           {listings.map((listing) => (
             <MyListingCard key={listing.id} listing={listing} serverTime={serverTime} />
           ))}
-        </ProgressiveList>
+        </ListingFilters>
       )}
     </div>
   )

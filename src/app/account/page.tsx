@@ -22,6 +22,7 @@ import { formatAmount } from '@/lib/domain/money'
 import { isClosedListing, type Plate } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import { ReferenceChip } from '@/components/market/reference-chip'
+import { ActivityGroups } from '@/components/account/activity-groups'
 import { isOverdue } from '@/lib/domain/wallet'
 import {
   getAccountBids,
@@ -314,8 +315,135 @@ export default async function AccountOverviewPage() {
         </section>
       )}
 
-      {/* الأرقام */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/*
+        * **على الجوّال: نشاطٌ مجموعٌ يُفتح — وعلى الحاسوب: أرقامٌ متجاورة.**
+        *
+        * والشاشةُ الضيّقة لا تسع أربعةَ مربّعاتٍ متجاورة، فتنزل تحت بعضها
+        * فتطول الصفحة بلا أن تزيد خبرًا. والمجموعُ يقول أكثر في مساحةٍ أقلّ:
+        * «ستُّ مزايدات» لا تُتصرَّف بها، و«اثنتان تجاوزك فيهما غيرُك» تُتصرَّف.
+        */}
+      <div className="lg:hidden">
+        <ActivityGroups
+          groups={[
+            {
+              title: 'أشتري',
+              hint: 'نشاطك كمشترٍ',
+              rows: [
+                {
+                  href: '/account/bids',
+                  label: 'مزايداتي',
+                  Icon: Gavel,
+                  segments: [
+                    { label: 'أنت الأعلى', count: leadingBids.length, tone: 'success' },
+                    { label: 'تجاوزك غيرك', count: outbid.length, tone: 'danger' },
+                    {
+                      label: 'انتهت',
+                      count: bids.filter((bid) => isClosedListing(bid.listingStatus)).length,
+                      tone: 'muted',
+                    },
+                  ],
+                },
+                {
+                  href: '/account/purchases',
+                  label: 'مشترياتي',
+                  Icon: ShoppingBag,
+                  segments: [
+                    {
+                      label: 'بانتظار سدادك',
+                      count: purchases.filter((o) => o.status === 'awaiting_settlement').length,
+                      tone: 'gold',
+                    },
+                    {
+                      label: 'جارية',
+                      count: purchases.filter((o) =>
+                        ['escrow_held', 'ownership_transferred', 'disputed'].includes(o.status),
+                      ).length,
+                      tone: 'success',
+                    },
+                    {
+                      label: 'اكتملت',
+                      count: purchases.filter((o) => o.status === 'completed').length,
+                      tone: 'muted',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              title: 'أبيع',
+              hint: 'نشاطك كبائع',
+              rows: [
+                {
+                  href: '/account/listings',
+                  label: 'لوحاتي المعروضة',
+                  Icon: LayoutList,
+                  segments: [
+                    {
+                      label: 'معروضة',
+                      count: listings.filter((l) => l.status === 'active').length,
+                      tone: 'success',
+                    },
+                    { label: 'مسودّة', count: drafts.length, tone: 'gold' },
+                    {
+                      label: 'أُغلقت',
+                      count: listings.filter((l) => isClosedListing(l.status)).length,
+                      tone: 'muted',
+                    },
+                  ],
+                },
+                {
+                  href: '/account/sales',
+                  label: 'مبيعاتي',
+                  Icon: Store,
+                  segments: [
+                    {
+                      label: 'بانتظار ردّك',
+                      count: awaitingMyTransfer.length,
+                      tone: 'danger',
+                    },
+                    {
+                      label: 'تحت الإجراء',
+                      count: sales.filter((o) =>
+                        ['awaiting_settlement', 'ownership_transferred', 'disputed'].includes(
+                          o.status,
+                        ),
+                      ).length,
+                      tone: 'gold',
+                    },
+                    {
+                      label: 'اكتملت',
+                      count: sales.filter((o) => o.status === 'completed').length,
+                      tone: 'muted',
+                    },
+                  ],
+                },
+                {
+                  href: '/account/offers',
+                  label: 'عروضٌ وصلتني',
+                  Icon: HandCoins,
+                  segments: [
+                    { label: 'بانتظار ردّك', count: pendingOffers.length, tone: 'danger' },
+                    {
+                      label: 'قُبلت',
+                      count: offers.filter((o) => o.status === 'accepted').length,
+                      tone: 'success',
+                    },
+                    {
+                      label: 'رُفضت أو سُحبت',
+                      count: offers.filter((o) => ['declined', 'withdrawn'].includes(o.status))
+                        .length,
+                      tone: 'muted',
+                    },
+                  ],
+                },
+              ],
+            },
+          ]}
+        />
+      </div>
+
+      {/* الأرقام — للحاسوب */}
+      <div className="hidden gap-3 sm:grid-cols-2 lg:grid xl:grid-cols-4">
         <StatCard
           href="/account/listings"
           icon={LayoutList}
