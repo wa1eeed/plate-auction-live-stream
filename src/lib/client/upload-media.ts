@@ -51,6 +51,7 @@ export async function uploadMedia(file: File, purpose: UploadPurpose): Promise<U
   form.append('file', file)
   form.append('purpose', purpose)
 
+  const started = Date.now()
   let response: Response
   try {
     response = await fetch('/api/admin/media', {
@@ -59,10 +60,27 @@ export async function uploadMedia(file: File, purpose: UploadPurpose): Promise<U
       signal: timeout(UPLOAD_TIMEOUT_MS),
     })
   } catch (error) {
+    /*
+     * **الرقمان اللذان يفرّقان بين ثلاثة أعطالٍ تحت رسالةٍ واحدة.**
+     *
+     * وصلةٌ تموت لا تُخلّف حالةً ولا جسمًا: المتصفّح يرمي `TypeError` مجرَّدًا
+     * لكلّ سبب — قطعٌ من وكيلٍ عكسيّ، أو شبكةٌ انقطعت، أو خادمٌ مات. ولا
+     * يُعرف أيُّها إلّا بالزمن: ثانيةٌ تعني رفضًا فوريًّا، وستّون تعني مهلةَ
+     * بوّابة، وستُّمئة تعني أنّ الملفّ أكبر من أن يصعد في المدّة المتاحة.
+     *
+     * فيُذكران في الرسالة نفسها. ورقمان في يد من يقرأ أنفعُ من سجلٍّ يُطلب
+     * منه أن يفتحه — وقد كلّف غيابُهما يومًا.
+     */
+    const seconds = Math.round((Date.now() - started) / 1000)
+    const megabytes = (file.size / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
     if ((error as { name?: string })?.name === 'TimeoutError') {
-      throw new UploadError('انقضت مهلة الرفع — الشبكة بطيئة، أعد المحاولة')
+      throw new UploadError(
+        `انقضت مهلة الرفع بعد ${seconds} ثانية (${megabytes} ميغابايت) — الشبكة بطيئة`,
+      )
     }
-    throw new UploadError('تعذّر الاتّصال بالخادم')
+    throw new UploadError(
+      `تعذّر الاتّصال بالخادم — انقطع بعد ${seconds} ثانية من رفع ${megabytes} ميغابايت`,
+    )
   }
 
   const data = await readJson(response)

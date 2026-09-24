@@ -50,13 +50,24 @@ describe('رفعُ الوسائط من المتصفّح', () => {
     expect(message).not.toContain('تعذّر الاتّصال بالخادم')
   })
 
-  it('وسقوطُ الشبكة وحدَه يُقال اتّصالًا', async () => {
+  /*
+   * **وصلةٌ تموت لا تُخلّف حالةً ولا جسمًا** — والمتصفّح يرمي `TypeError`
+   * مجرَّدًا لكلّ سبب. فالزمنُ والحجمُ هما ما يفرّق: ثانيةٌ رفضٌ فوريّ،
+   * وستّون مهلةُ بوّابة، وستُّمئة ملفٌّ أكبر من أن يصعد.
+   */
+  it('وسقوطُ الشبكة يُقال اتّصالًا — ومعه الزمنُ والحجم', async () => {
     globalThis.fetch = (async () => {
       throw new TypeError('Failed to fetch')
     }) as typeof fetch
-    await expect(uploadMedia(file(1024, 'image/png'), 'banner')).rejects.toThrow(
-      /تعذّر الاتّصال بالخادم/,
-    )
+
+    let message = ''
+    await uploadMedia(file(3 * 1024 * 1024, 'image/png'), 'banner').catch((e: Error) => {
+      message = e.message
+    })
+
+    expect(message).toContain('تعذّر الاتّصال بالخادم')
+    expect(message).toMatch(/\d+ ثانية/)
+    expect(message).toContain('3 ميغابايت')
   })
 
   /*
