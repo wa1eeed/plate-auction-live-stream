@@ -103,12 +103,50 @@ jobs:
           docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest \
             detect --source . --config /repo/.gitleaks.toml --no-banner --redact
 
+  # ----------------------------------------------------------------------
+  # الصورة تُبنى هنا وتُدفع — والخادم يسحب ولا يبني.
+  #
+  # وكان الخادم يبنيها بنفسه، فسقطت نشرةُ ٢٥ سبتمبر عند `pnpm build` ببانرِ
+  # Next ثمّ صمتٍ بلا سطر خطأ — وهي صورةُ عمليةٍ تُقتل لضيق المورد. والبناءُ
+  # نفسه على عُقدة البوّابة نجح، فالعلّة في بيئة الخادم لا فيما يُبنى.
+  #
+  # فبناءٌ واحدٌ في مكانٍ واسع، وسحبٌ على الخادم. ويبقى الغرضُ الأوّل قائمًا:
+  # أن ينكسر البناءُ هنا لا هناك — فالوظيفةُ تبني في طلبات الدمج أيضًا ولا
+  # تدفع إلّا من `main`.
+  # ----------------------------------------------------------------------
   image:
     needs: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      # نبنيها ولا ندفعها: الغرض أن ينكسر البناء هنا لا على الخادم
-      - name: بناء صورة الإنتاج
-        run: docker build -t plate-auction:ci .
+
+      - uses: docker/setup-buildx-action@v3
+
+      # لا سرَّ يُضبط: `GITHUB_TOKEN` يكفي لسجلّ المستودع نفسه
+      - name: الدخول إلى سجلّ GitHub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: بناء صورة الإنتاج ودفعها
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          # `latest` لما يسحبه الخادم، والبصمةُ لتثبيت نشرةٍ بعينها أو الرجوع
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          # ‏`NEXT_PUBLIC_*` يُحقن في حزمة المتصفّح وقت البناء لا وقت التشغيل،
+          # فلا يُترك لكوليفاي يضبطه بعدُ — يُخبز هنا أو خرج خاطئًا.
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.nx.sa' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
