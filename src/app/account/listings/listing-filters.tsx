@@ -9,15 +9,21 @@ export type ListingFacet = { saleType: SaleType; status: ListingStatus }
 /** حالٌ مجموعة — والسبعُ الأصلية لا تسع شريطًا على عرض ٣٦٠. */
 type Bucket = 'all' | 'active' | 'draft' | 'closed'
 
+/*
+ * «كلّ الحالات» و«كلّ الطرق» لا «الكل» مرّتين.
+ *
+ * فالصفّان مرشّحان مستقلّان، وكان أوّلُ كلٍّ منهما «الكل» مضيئًا — شارتان
+ * متطابقتان فوق بعض، فلا يُعرف أيُّهما يُلغي ماذا.
+ */
 const BUCKETS: { key: Bucket; label: string }[] = [
-  { key: 'all', label: 'الكل' },
+  { key: 'all', label: 'كلّ الحالات' },
   { key: 'active', label: 'معروضة' },
   { key: 'draft', label: 'مسودّة' },
   { key: 'closed', label: 'أُغلقت' },
 ]
 
 const SALES: { key: SaleType | 'all'; label: string }[] = [
-  { key: 'all', label: 'الكل' },
+  { key: 'all', label: 'كلّ الطرق' },
   { key: 'auction', label: 'مزاد' },
   { key: 'fixed', label: 'مباشر' },
   { key: 'offers', label: 'تفاوض' },
