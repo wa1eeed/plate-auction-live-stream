@@ -50,3 +50,41 @@ describe('مسار المعرض', () => {
     expect(showcasePath('usr_17c8063b77a146f1a137')).toBe('/u/usr_17c8063b77a146f1a137')
   })
 })
+
+/**
+ * **الفافيكون لا يصير أيقونةَ التطبيق.**
+ *
+ * وهما عهدان مختلفان: الفافيكون يجلس في شريط تبويب فيجوز أن يكون شفّافًا
+ * وغيرَ مربّع وصغيرًا، وأيقونةُ الشاشة الرئيسية يضع النظامُ عليها قناعًا
+ * مستديرًا فتلزمها مربّعةً معتمةً إلى أطرافها.
+ *
+ * وكان المرفوعُ يحكمهما معًا، فظهرت على الجوّال أيقونةٌ ٣٠١×٣٠١ بزوايا
+ * `rgb(237,246,244)` — زوايا بيضاء داخل استدارة القناع — بينما
+ * `app-icon.png` المصمَّمة لهذا معتمةٌ إلى أطرافها ولم تُستعمل.
+ */
+describe('أيقونةُ التثبيت لا تتبع المرفوع', () => {
+  const bytes = Buffer.from('لا صورة')
+  const uploaded = {
+    data: bytes.toString('base64'),
+    mime: 'image/png',
+    fileName: 'favicon.png',
+    bytes: bytes.byteLength,
+    updatedAt: new Date().toISOString(),
+  }
+
+  it('البيانُ يعلن المرسومة وحدها ولو رُفع فافيكون', async () => {
+    const { resetStoreForTests, createSeededMemoryStore, getStore } = await import('@/lib/store')
+    resetStoreForTests(createSeededMemoryStore())
+    await getStore().updateBrandSettings({ icon: uploaded })
+
+    const manifest = (await import('@/app/manifest')).default
+    const { icons } = await manifest()
+    const sources = (icons ?? []).map((row) => row.src)
+
+    expect(sources).toContain('/app-icon.png')
+    // ولا أثر للمرفوع: لا مسارَ `/brand/` بينها
+    expect(sources.some((src) => src.includes('/brand/'))).toBe(false)
+
+    resetStoreForTests()
+  })
+})

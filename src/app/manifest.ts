@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { assetUrl, getBrand } from '@/lib/server/brand-service'
+import { getBrand } from '@/lib/server/brand-service'
 
 /*
  * السجلّ مصدر الهويّة، فالبيان يُولَّد لا يُكتب.
@@ -12,7 +12,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const brand = await getBrand()
-  const icon = assetUrl('icon', brand.icon)
 
   return {
     name: brand.name,
@@ -36,20 +35,15 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     categories: ['shopping', 'business'],
     icons: [
       /*
-       * المرفوعة أوّلًا، والمرسومة تبقى خلفها لا بدلًا منها.
+       * **المرفوعُ فافيكون، ولا يُثبَّت.**
        *
-       * التثبيت يشترط أيقونةً صالحة، فنسخةٌ لم يُرفع لها شعار لا تُثبَّت أصلًا
-       * ولا يُقال لصاحبها لماذا. والمرفوعة قد تكون شفّافةً أو غير مربّعة،
-       * فتُعلَن `any` وحدها؛ و`maskable` للمرسومة لأنّ حشوها معلوم.
-       */
-      ...(icon && brand.icon
-        ? [{ src: icon, sizes: 'any', type: brand.icon.mime, purpose: 'any' as const }]
-        : []),
-      /*
-       * أيقونةُ التطبيق نقطيّةً قبل المرسومة — وهي المصمَّمة فعلًا.
+       * كان يُوضع هنا أوّلًا بحجّةِ أنّ نسخةً لم تُرفع لها هويّة لا تُثبَّت —
+       * وهي حجّةٌ لا تقوم: `app-icon.png` في `public/` دائمًا. وأثرُه أنّ
+       * حقلًا اسمُه «أيقونة التبويب (Favicon)» صار يحكم أيقونةَ الشاشة
+       * الرئيسية، فيضع النظامُ قناعَه المستدير على صورةٍ لم تُعدّ له.
        *
-       * ولا تُعلَن `maskable`: حشوُها غيرُ معلوم واللوحةُ تمتدّ إلى أطرافها،
-       * فقناعُ النظام يقصّها. والمرسومة تبقى للقناع لأنّ حشوها مضمون.
+       * والقياس: المرفوعة ٣٠١×٣٠١ وزواياها `rgb(237,246,244)`، وهذه ٥١٢×٥١٢
+       * وزواياها `rgb(3,46,24)`. انظر `layout.tsx` لوجه الفرق بين العهدين.
        */
       { src: '/app-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
