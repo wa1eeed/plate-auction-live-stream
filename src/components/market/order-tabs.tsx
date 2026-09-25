@@ -21,6 +21,9 @@ import { cn } from '@/lib/utils'
  * والصفقة التي «خلصت» تُعرض **مختصرة**: لا نداء ولا سكّة، فما عاد فيها ما
  * يُفعل. وبذلك تقصر الصفحة إلى ثلثها ويبقى المهمّ في أعلاها.
  */
+/** ما تبقى من «حديثِ» الاكتمال — يومٌ واحد، ثمّ تنصرف البشارة. */
+const FRESH_WIN_MS = 24 * 60 * 60 * 1000
+
 const TABS: { key: OrderBucket; label: string; hint: string }[] = [
   { key: 'you', label: 'بانتظار ردّك', hint: 'معاملات تنتظر تصرّفًا منك الآن' },
   { key: 'running', label: 'تحت الإجراء', hint: 'معاملات جارية، الدور فيها على الطرف الآخر أو الإدارة' },
@@ -91,8 +94,24 @@ export function OrderTabs({
     window.history.replaceState(null, '', url)
   }
   const shown = groups[active]
-  // أحدث المكتملة — تُرتَّب البذرة والخادم بالأحدث أوّلًا
-  const latestWin = groups.done.find((order) => order.status === 'completed') ?? null
+
+  /*
+   * البشارةُ تُعلَن في حينها ثمّ تنصرف.
+   *
+   * وكانت تُقاس بـ«أحدثِ مكتملة» مطلقًا، فتبقى فوق الصفحة أبدًا: بطاقةٌ
+   * تملأ نصف الشاشة على كلّ تابٍ تفتحه، تدفع ما يحتاج تصرّفَك تحتها —
+   * والتعليقُ فوقها يقول «تُعلَن مرّة»، ولا شيء في الكود يُنفّذه.
+   *
+   * ولا سجلَّ لما رآه صاحبُه، فالحدُّ بالقرب: يومٌ واحد. ومن اكتملت صفقته
+   * قبل أسبوع لا يحتاج أن يُهنَّأ بها كلّما فتح مبيعاته.
+   */
+  const latestWin =
+    groups.done.find(
+      (order) =>
+        order.status === 'completed' &&
+        order.completedAt !== null &&
+        Date.parse(serverTime) - Date.parse(order.completedAt) < FRESH_WIN_MS,
+    ) ?? null
 
   if (orders.length === 0) {
     return <EmptyState title={emptyTitle} hint={emptyHint} action={emptyAction} />
@@ -178,12 +197,8 @@ export function OrderTabs({
               : 'لا توجد معاملات مكتملة بعد.'}
         </p>
       ) : (
-        <OrderList
-          orders={shown}
-          side={side}
-          serverTime={serverTime}
-          compact={active === 'done'}
-        />
+        /* ولا `compact` بعدُ: الصفُّ نفسُه مضغوطٌ لكلّ حال، والتفصيل في صفحته */
+        <OrderList orders={shown} side={side} serverTime={serverTime} />
       )}
       </div>
     </div>

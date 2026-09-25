@@ -280,17 +280,22 @@ test.describe('مسار الصفقة وتفصيلها', () => {
     const first = page.locator('li[data-row^="S"]').first()
     await expect(first).toBeVisible()
 
+    /* والتفصيلُ انتقل من الصفّ إلى صفحة الصفقة — فيُتبع إلى حيث صار */
+    const href = await first.locator('a[href^="/account/orders/"]').first().getAttribute('href')
+    expect(href, 'الصفّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
+    await page.goto(href!)
+
     // الطرح ظاهر: قيمة الصفقة، ثم العربون، ثم المطلوب
-    await expect(first.getByText('قيمة الصفقة', { exact: true })).toBeVisible()
-    await expect(first.getByText(/^(المطلوب سداده|سُدّد المتبقّي)$/)).toBeVisible()
+    await expect(page.getByText('قيمة الصفقة', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText(/^(المطلوب سداده|سُدّد المتبقّي)$/)).toBeVisible()
 
     // والمسار سكّة بخمس محطّات ثابتة من النشأة إلى استقرار المال
-    const rail = first.locator('ol').first()
+    const rail = page.locator('ol').first()
     await expect(rail.locator('> li')).toHaveCount(5)
     // باسم كلمةٍ لكل محطّة — فالجملة لا تُقرأ تحت خمس نقاط على عرض الجوال
     await expect(rail.locator('> li').first()).toContainText('طلب')
     // والتفصيل موجود مطويًّا لمن أراده
-    await expect(first.getByText('تفاصيل المسار')).toBeVisible()
+    await expect(page.getByText('تفاصيل المسار')).toBeVisible()
   })
 
   test('التواريخ رقمية بشرطات مائلة بلا اسم شهر', async ({ page }) => {
@@ -321,6 +326,21 @@ test.describe('حراسة الأفعال التي لا رجعة فيها', () =>
     const tab = page.getByRole('tab', { name: /تحت الإجراء/ })
     await tab.click()
     await expect(tab).toHaveAttribute('aria-selected', 'true')
+
+    /*
+     * والفعلُ انتقل من الصفّ إلى صفحة الصفقة — فيُتبع إلى حيث صار.
+     *
+     * والصفُّ يُنتقى بحاله لا بموضعه: الإلغاءُ لا يكون إلّا قبل السداد،
+     * وما قبله من اختبارات قد يُبدّل حال الأولى — فيُقاس صفٌّ لا إلغاء فيه.
+     */
+    const row = page
+      .locator('li[data-row]')
+      .filter({ hasText: 'بانتظار السداد' })
+      .first()
+    await expect(row).toBeVisible()
+    const href = await row.locator('a[href^="/account/orders/"]').first().getAttribute('href')
+    expect(href, 'الصفّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
+    await page.goto(href!)
 
     const cancel = page.getByRole('button', { name: 'إلغاء الصفقة' }).first()
     await expect(cancel).toBeVisible()

@@ -11,6 +11,7 @@ import {
   finalizeDueAuctions,
   getAccountBids,
   getAccountListings,
+  getAccountOrder,
   getListingDetail,
   getMarketListings,
   getOffersReceivedByUser,
@@ -711,5 +712,51 @@ describe('السوم المقابل', () => {
     expect(after.find((o) => o.id === high.id)?.isHighest).toBe(false)
     expect(after.find((o) => o.id === low.id)?.isHighest).toBe(true)
     expect(after.find((o) => o.id === low.id)?.listingAsk).toBe(listing.price || listing.minimumOffer)
+  })
+})
+
+/**
+ * صفحةُ الصفقة واحدةٌ لطرفيها — **ومن ليس طرفًا لا يجدها**.
+ *
+ * والمبلغُ ومراحلُه واسمُ الطرف الآخر كلُّها في هذه الصفحة. فلو رُدّت لغير
+ * أصحابها لَقرأ الغريبُ ما لا يخصّه بمعرفة المعرّف وحده. و«غير موجودة» لا
+ * «ممنوعة»: الثانيةُ تُثبت أنّ الصفقة قائمة، وهو ما لا يُقال لغير أهلها.
+ */
+describe('صفقةٌ واحدة لصاحبها', () => {
+  let seq = 0
+  async function anOrder() {
+    const listing = findBy((l) => l.saleType === 'fixed' && l.status === 'active')
+    const buyer = db.users.find((u) => u.id !== listing.sellerId)!
+    const { order } = await buyNow({
+      listingId: listing.id,
+      buyerId: buyer.id,
+      clientRequestId: `order-page-${(seq += 1)}`,
+    })
+    return { order, buyerId: buyer.id, sellerId: listing.sellerId }
+  }
+
+  it('يجدها البائع والمشتري، ولكلٍّ طرفُه', async () => {
+    const { order, buyerId, sellerId } = await anOrder()
+
+    const asBuyer = await getAccountOrder(order.id, buyerId)
+    expect(asBuyer?.side).toBe('buyer')
+    expect(asBuyer?.order.amount).toBe(order.amount)
+
+    const asSeller = await getAccountOrder(order.id, sellerId)
+    expect(asSeller?.side).toBe('seller')
+    // واسمُ الطرف الآخر يتبدّل بتبدّل القارئ — لا يقرأ أحدٌ اسمَ نفسه
+    expect(asSeller?.order.counterpartName).not.toBe(asBuyer?.order.counterpartName)
+  })
+
+  it('ولا يجدها غريبٌ عنها', async () => {
+    const { order, buyerId, sellerId } = await anOrder()
+    const stranger = db.users.find((u) => u.id !== buyerId && u.id !== sellerId)!
+
+    expect(await getAccountOrder(order.id, stranger.id)).toBeNull()
+  })
+
+  it('ولا تُختلق صفقةٌ بمعرّفٍ لا وجود له', async () => {
+    const { buyerId } = await anOrder()
+    expect(await getAccountOrder('ord_لا-وجود-له', buyerId)).toBeNull()
   })
 })

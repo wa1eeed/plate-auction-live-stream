@@ -1,33 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-import { CreditCard, Loader2, X } from 'lucide-react'
-import { ReferenceChip } from './reference-chip'
+import { ChevronLeft, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 import { ProgressiveList } from './progressive-list'
 import { formatAmount } from '@/lib/domain/money'
-import { ORDER_STATUS_LABELS, PLATE_TYPE_LABELS, type AccountOrder } from '@/lib/domain/types'
+import { ORDER_STATUS_LABELS, type AccountOrder } from '@/lib/domain/types'
 import { CardTag, type CardTagTone } from './card-tag'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
-import { cn, formatTimestamp } from '@/lib/utils'
-import { OrderSettlementCard } from './order-timeline'
+import { cn, formatDate } from '@/lib/utils'
 import { OverdueTag } from './overdue-tag'
-import { OrderJourney, OrderStageCallout } from './order-journey'
-import { OrderEscrowActions } from './order-actions'
-import { currentOrderStage, orderDeadline, orderMoneyMarker } from '@/lib/domain/order-timeline'
+import { currentOrderStage, orderDeadline } from '@/lib/domain/order-timeline'
 
 const SOURCE_LABELS: Record<AccountOrder['source'], string> = {
   auction: 'رست بمزاد',
@@ -59,276 +42,151 @@ const STATUS_TONE: Record<AccountOrder['status'], CardTagTone> = {
   defaulted: 'danger',
 }
 
-/** قائمة الصفقات — يستخدمها «مشترياتي» و«مبيعاتي». */
+/**
+ * **قائمة الصفقات — صفوفٌ تُمسح بنظرة، لا بطاقاتٌ تُقرأ واحدةً واحدة.**
+ *
+ * وكان كلُّ صفٍّ يحمل نداءَ المرحلة وأزرارَه والسكّةَ والتسوية، فلا تسع
+ * الشاشةُ إلا صفقةً ونصفًا — ومن يفتح «مبيعاتي» يسأل «كم عندي وما حالها»
+ * لا «ما تفصيل الثالثة». فانتقل التفصيل إلى صفحة الصفقة، وبقي في الصفّ ما
+ * يُقرّر به: مَن وكم وما حالها، وزرٌّ واحدٌ حين يكون الدور عليه.
+ */
 export function OrderList({
   orders,
   side,
   serverTime,
-  compact = false,
 }: {
   orders: AccountOrder[]
   side: 'buyer' | 'seller'
   /** مرجع وقت الخادم لعدّادات المهل */
   serverTime: string
-  /**
-   * صفقة استقرّ مالها لا نداء فيها ولا سكّة.
-   *
-   * عرض المسار كاملًا لصفقةٍ خلصت يُطيل الصفحة بلا فائدة ويدفن ما يحتاج
-   * تصرّفًا تحته. ومن أراد مسارها فتح «تفاصيل المسار» بنفسه.
-   */
-  compact?: boolean
 }) {
-  const router = useRouter()
-  const [busy, setBusy] = useState<string | null>(null)
-
-  /*
-   * لم يبقَ للبائع إلا الإلغاء.
-   *
-   * «تمّت الصفقة» كان زرًّا يرفضه الخادم بـ`USE_TRANSFER_FLOW` منذ صار الإتمام
-   * إفراجًا — فحُذف: زرٌّ لا يفعل إلا أن يُظهر خطأً أسوأ من غيابه.
-   */
-  const cancel = async (orderId: string) => {
-    setBusy(orderId + 'cancelled')
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' }),
-      })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        toast.error(data?.error?.message ?? 'تعذّر إلغاء الصفقة')
-        return
-      }
-      toast.success('أُلغيت الصفقة، وعادت اللوحة إليك')
-      router.refresh()
-    } finally {
-      setBusy(null)
-    }
-  }
-
   return (
     <ProgressiveList>
       {orders.map((order) => (
-        <OrderCard
-          key={order.id}
-          order={order}
-          side={side}
-          serverTime={serverTime}
-          compact={compact}
-          busy={busy === order.id + 'cancelled'}
-          disabled={busy !== null}
-          onCancel={() => cancel(order.id)}
-        />
+        <OrderRow key={order.id} order={order} side={side} serverTime={serverTime} />
       ))}
     </ProgressiveList>
   )
 }
 
 /**
- * بطاقة صفقة ممتدّة — بنية «صفقات الإدارة» نفسها بصوت صاحب الصفقة.
+ * الفعلُ المطلوب في كلمتين — **أمرٌ لا اسمُ محطّة**.
  *
- * كانت الصفقة صفًّا عامًّا (`PlateRow`) يضع اللوحة في عمود والباقي في عمود،
- * فيتراكم في الطول: شارات، ثم سطر طرف، ثم أزرار، ثم نداء المرحلة، ثم السكّة،
- * ثم التسوية — ستّ طبقات لا يقول ترتيبها ما المهمّ.
- *
- * والبطاقة تقرأ في ثلاث نظرات: **مَن وكم** في شريط الهوية، ثم **ما المطلوب
- * الآن** وأزراره في طرفه، ثم **أين وصلت** في السكّة. وما لا يُقرأ كل مرّة —
- * تفصيل التسوية — يبقى مطويًّا تحتها.
+ * وكان الزرّ يحمل `step.short` وهو اسمُ المحطّة تحت نقطتها: «نقل»، «سداد».
+ * فيُقرأ اسمًا لا أمرًا، ولا يقول لصاحبه ما يصنع. وهذه هي المواضعُ التي
+ * يملك فيها فعلًا — وما عداها فالدورُ على غيره أو على الإدارة.
  */
-function OrderCard({
+function rowAction(
+  order: AccountOrder,
+  side: 'buyer' | 'seller',
+): { label: string; href: string } | null {
+  if (side === 'buyer' && order.status === 'awaiting_settlement') {
+    /* السدادُ وحده يقفز إلى مقصده رأسًا — وبقيّةُ الأفعال في صفحة الصفقة */
+    return { label: 'أكمل السداد', href: `/checkout/${order.id}` }
+  }
+  if (order.disputedAt !== null) return null
+
+  const detail = `/account/orders/${order.id}`
+  /* ويُختصر في الصفّ ويُبسط في الصفحة: «أكّد نقل الملكية» يزيح شاراتِ الحال */
+  if (side === 'seller' && order.status === 'escrow_held') {
+    return { label: 'أكّد النقل', href: detail }
+  }
+  const transferLate =
+    side === 'buyer' &&
+    order.status === 'escrow_held' &&
+    order.transferDueAt !== null &&
+    Date.parse(order.transferDueAt) <= Date.now()
+  if (transferLate) return { label: 'اطلب الاسترداد', href: detail }
+
+  return null
+}
+
+function OrderRow({
   order,
   side,
   serverTime,
-  compact,
-  busy,
-  disabled,
-  onCancel,
 }: {
   order: AccountOrder
   side: 'buyer' | 'seller'
   serverTime: string
-  compact: boolean
-  busy: boolean
-  disabled: boolean
-  onCancel: () => void
 }) {
   const stage = currentOrderStage(order.timeline, order, side)
   const yours = stage.audience === 'you' && stage.step.state !== 'done'
+  const action = rowAction(order, side)
 
   return (
     <li
       data-row={order.reference}
       className={cn(
-        'surface overflow-hidden rounded-2xl transition-colors',
+        'surface overflow-hidden rounded-2xl transition-colors hover:border-gold-600/50',
         yours && 'border-gold-600/40',
       )}
     >
-      {/*
-        * شريط الهويّة: اللوحة ووسومها تحتها، ثم طرفها، ثم مالها في طرفه.
-        *
-        * الوسوم تحت اللوحة كما في بطاقات السوق: الفراغ حولها يُستغلّ، وتُقرأ
-        * مع ما تصفه. ووسمان بتصميمين لمعنًى واحد يجعلان الصفحتين تبدوان من
-        * منصّتين.
-        */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-3.5 sm:p-4">
-        <div className="flex shrink-0 flex-col items-center gap-2">
-          <Link
-            href={`/market/${order.listingId}`}
-            className="rounded-lg border border-transparent transition-colors hover:border-gold-600/60"
-            aria-label={`اللوحة ${order.plate.arabicLetters} ${order.plate.plateNumbers}`}
-          >
-            <SaudiLicensePlate
-              {...order.plate}
-              size="thumbnail"
-              showReflection={false}
-              className="w-[136px] sm:w-[176px]"
-            />
-          </Link>
+      <Link href={`/account/orders/${order.id}`} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-3.5">
+        <SaudiLicensePlate
+          {...order.plate}
+          size="thumbnail"
+          showReflection={false}
+          className="w-[104px] shrink-0 sm:w-[132px]"
+        />
 
-          <div className="flex flex-wrap items-center justify-center gap-1">
-            <CardTag tone={STATUS_TONE[order.status]} dot>
-              {ORDER_STATUS_LABELS[order.status]}
-            </CardTag>
-            <CardTag tone={SOURCE_TONE[order.source]}>{SOURCE_LABELS[order.source]}</CardTag>
-            <CardTag tone="muted">{PLATE_TYPE_LABELS[order.plate.plateType]}</CardTag>
-            {/* التأخّر وسمٌ تحت اللوحة كبقيّة وسومها — يُرى مع البطاقة لا داخلها */}
-            <OverdueTag deadline={orderDeadline(order)} serverTime={serverTime} />
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1 basis-48 space-y-1.5">
-          <ReferenceChip reference={order.reference} kind="order" />
-          <p className="text-xs text-muted">
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* الرقمُ وتاريخُه في سطر — «متى» يُقرأ مع «أيّها» في المسح السريع */}
+          <p className="text-[11px] text-muted">
+            {order.reference} · {formatDate(order.createdAt)}
+          </p>
+          <p className="truncate text-sm font-bold">
+            {order.plate.arabicLetters} {order.plate.plateNumbers}
+          </p>
+          <p className="truncate text-[11px] text-muted">
             {side === 'buyer' ? 'البائع' : 'المشتري'}:{' '}
             <span className="font-semibold text-paper">{order.counterpartName}</span>
-            {' · '}
-            {formatTimestamp(order.createdAt)}
           </p>
         </div>
 
-        {/* المال في طرف الشريط — يُقرأ ولا يُبحث عنه */}
         <div className="shrink-0 text-end">
-          <p className="text-[11px] text-muted">المبلغ</p>
-          <p className="text-lg font-extrabold tabular-nums text-gold-500">
+          <p className="text-[10px] text-muted">
+            {side === 'seller' ? 'قيمة الصفقة' : 'المبلغ'}
+          </p>
+          <p className="text-base font-extrabold tabular-nums text-gold-500 sm:text-lg">
             {formatAmount(order.amount)}
-            <span className="ms-1 text-[11px] font-semibold text-muted">ريال</span>
           </p>
         </div>
+
+        <ChevronLeft className="size-4 shrink-0 text-muted" />
+      </Link>
+
+      {/*
+        * شريطُ الحال — الحالُ وموعدُها في طرف، والفعلُ في الطرف الآخر.
+        *
+        * وهو ما يجعل الصفَّ يُقرأ بلا فتحه: «بانتظار ردّك · متأخّر ٣ أيام»
+        * أنفعُ من شارةِ حالةٍ وحدها.
+        */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-ink-600/70 px-3 py-2.5 sm:px-3.5">
+        <CardTag tone={STATUS_TONE[order.status]} dot>
+          {ORDER_STATUS_LABELS[order.status]}
+        </CardTag>
+        <CardTag tone={SOURCE_TONE[order.source]}>{SOURCE_LABELS[order.source]}</CardTag>
+        <OverdueTag deadline={orderDeadline(order)} serverTime={serverTime} />
+
+        <span className="ms-auto shrink-0">
+          {action ? (
+            <Button asChild size="sm">
+              <Link href={action.href}>
+                {action.href.startsWith('/checkout/') && <CreditCard className="size-4" />}
+                {action.label}
+              </Link>
+            </Button>
+          ) : (
+            <Link
+              href={`/account/orders/${order.id}`}
+              className="text-[11px] font-bold text-muted transition-colors hover:text-gold-500"
+            >
+              التفاصيل
+            </Link>
+          )}
+        </span>
       </div>
-
-      {compact ? (
-        <div className="border-t border-ink-600/70 p-3.5 sm:p-4">
-          <OrderSettlementCard
-            settlement={order.settlement}
-            status={order.status}
-          />
-        </div>
-      ) : (
-        <>
-          {/* ما المطلوب الآن — وأزراره في طرفه لا في سطر تحته */}
-          <div
-            className={cn(
-              'border-t px-3.5 py-3.5 sm:px-4',
-              stage.step.state === 'failed'
-                ? 'border-danger/30 bg-danger/[0.05]'
-                : yours
-                  ? 'border-gold-600/35 bg-gold-500/[0.06]'
-                  : 'border-ink-600/70 bg-ink-900/40',
-            )}
-          >
-            <OrderStageCallout
-              {...stage}
-              serverTime={serverTime}
-              bare
-              action={
-                <>
-                  {/* المشتري يُكمل سداده من هنا — وإلا بقيت الصفقة معلّقة بلا مخرج */}
-                  {side === 'buyer' && order.status === 'awaiting_settlement' && (
-                    <Button asChild size="sm">
-                      <Link href={`/checkout/${order.id}`}>
-                        <CreditCard className="size-4" />
-                        أكمل السداد
-                      </Link>
-                    </Button>
-                  )}
-                  <OrderEscrowActions order={order} side={side} />
-                  {/*
-                   * لم يبقَ للبائع إلا الإلغاء: «تمّت الصفقة» كان زرًّا يرفضه
-                   * الخادم بـ`USE_TRANSFER_FLOW` منذ صار الإتمام تحويلًا.
-                   */}
-                  {side === 'seller' && order.status === 'awaiting_settlement' && (
-                    <CancelOrderButton
-                      busy={busy}
-                      disabled={disabled}
-                      hasDeposit={order.settlement.deposit > 0}
-                      onConfirm={onCancel}
-                    />
-                  )}
-                </>
-              }
-            />
-          </div>
-
-          {/* أين وصلت — السكّة على عرض البطاقة كاملًا */}
-          <div className="border-t border-ink-600/70 px-3.5 pb-3.5 pt-4 sm:px-4">
-            <OrderJourney steps={order.timeline} money={orderMoneyMarker(order, side)} />
-          </div>
-
-          <div className="border-t border-ink-600/70 bg-ink-900/40 p-3.5 sm:p-4">
-            <OrderSettlementCard
-              settlement={order.settlement}
-              status={order.status}
-              bare
-            />
-          </div>
-        </>
-      )}
     </li>
-  )
-}
-
-/**
- * إلغاء الصفقة — فعلٌ لا رجعة فيه يمسّ مال طرفٍ ثانٍ.
- *
- * كان بضغطة واحدة بلا سؤال: يُغلق صفقةً نهائيًّا، ويُحرّك عربونًا محجوزًا
- * للمشتري، وتعود اللوحة إلى البائع. وكل فعل مدمّر آخر في المنصّة محروس بحوار
- * يقول ما يقع — فلا يكون أخطرها أسهلها.
- */
-function CancelOrderButton({
-  busy,
-  disabled,
-  hasDeposit,
-  onConfirm,
-}: {
-  busy: boolean
-  disabled: boolean
-  /** هل للمشتري عربون محجوز على هذه الصفقة؟ */
-  hasDeposit: boolean
-  onConfirm: () => void
-}) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button size="sm" variant="outline" disabled={disabled}>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />}
-          إلغاء الصفقة
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogTitle>إلغاء الصفقة؟</AlertDialogTitle>
-        <AlertDialogDescription>
-          تُغلق الصفقة <b className="text-paper">نهائيًّا ولا رجعة فيها</b>، وتعود اللوحة
-          إليك مسودّةً تعرضها متى شئت.
-          {hasDeposit
-            ? ' ويعود عربون المشتري المحجوز إلى رصيده — فلا مصادرة في إلغاءٍ منك.'
-            : ' ولا مبلغ محجوزًا على هذه الصفقة.'}
-        </AlertDialogDescription>
-        <AlertDialogFooter>
-          <AlertDialogCancel>تراجع</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>نعم، ألغِ الصفقة</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   )
 }

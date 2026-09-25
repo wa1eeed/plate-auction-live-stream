@@ -231,6 +231,33 @@ test.describe('سوق تداول اللوحات', () => {
     await sellerContext.close()
   })
 
+  /**
+   * مبيعاتي صفوفٌ تُمسح، والتفصيلُ في صفحته.
+   *
+   * والمقصود إثباتُ **أنّ التفصيل لم يضع** حين خرج من الصفّ: السكّةُ
+   * والتسويةُ وفعلُ المرحلة كانت في القائمة، فصارت خلف ضغطة — فإن لم تُفتح
+   * فقد المستخدمُ ما كان بين يديه.
+   */
+  test('صفُّ المبيعات يُفضي إلى صفحة الصفقة بتفصيلها', async ({ page }) => {
+    await login(page, USERS.waleed)
+    await page.goto('/account/sales')
+
+    const row = page.locator('li[data-row]').first()
+    await expect(row).toBeVisible({ timeout: 15_000 })
+
+    // الصفُّ نفسُه مختصر: لا سكّةَ فيه ولا تسوية
+    await expect(page.getByText('تفاصيل المسار')).toHaveCount(0)
+
+    const detail = await row.locator('a[href^="/account/orders/"]').first().getAttribute('href')
+    expect(detail, 'الصفُّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
+
+    await page.goto(detail!)
+    await expect(page.getByRole('heading', { name: /صفقة (بيع|شراء)/ })).toBeVisible()
+    // وما خرج من الصفّ يوجد هنا: السكّة والتسوية
+    await expect(page.getByText('تفاصيل المسار')).toBeVisible()
+    await expect(page.getByText(/قيمة الصفقة|ما يصلك/).first()).toBeVisible()
+  })
+
   test('إضافة لوحة ونشرها في السوق', async ({ page }) => {
     await login(page, USERS.waleed)
     await page.goto('/account/listings/new')

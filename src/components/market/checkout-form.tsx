@@ -157,7 +157,21 @@ export function CheckoutForm({
               {formatAmount(due)}
             </b>
           </span>
-          <Button type="submit" size="lg" className="flex-1" disabled={busy || !selected}>
+          {/*
+            * أخضرُ لا ذهبيّ — **قاعدةٌ لا استثناء**.
+            *
+            * الذهبيُّ لونُ الفعل في المنصّة، والأخضرُ خُصّ بما يُلزم مالًا
+            * مضمونًا: قبولُ العرض والسوم يخضرّان أصلًا. والسدادُ من جنسهما،
+            * والصفحةُ كلُّها تقول «أمانة» بالأخضر — خطُّ المراحل والملاحظة.
+            * فزرٌّ ذهبيٌّ بينها يُقرأ إجراءً آخر لا خاتمةَ ما قبله.
+            */}
+          <Button
+            type="submit"
+            size="lg"
+            variant="success"
+            className="flex-1"
+            disabled={busy || !selected}
+          >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
             {selected === 'wallet' ? 'ادفع من رصيدي' : 'ادفع عبر الضمان'}
           </Button>

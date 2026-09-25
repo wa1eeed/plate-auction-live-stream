@@ -83,16 +83,31 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
-        {/* الفعل فوق الطيّة على الجوال: مهمّة الصفحة السداد لا تأمّل اللوحة */}
+        {/*
+          * **الرقمُ قبل الوسيلة، واللوحةُ صغيرةٌ لا تتصدّر.**
+          *
+          * وكان الفعلُ فوق الطيّة بحجّةٍ صحيحة: مهمّةُ الصفحة السدادُ لا
+          * تأمّلُ اللوحة — فلا تُصدَّر بلوحةٍ ملءَ الشاشة. لكنّ تفصيلَ
+          * المبلغ ليس تأمّلًا، هو **الرقمُ الذي يُدفع**: من أين جاء ٣٤٬٠٠٠،
+          * وكم خُصم من عربونه. فكان يُقرأ بعد اختيار الوسيلة، والترتيبُ
+          * الطبيعيّ: ما أشتري، بكم، ثمّ كيف أدفع.
+          *
+          * فصغُرت اللوحةُ على الجوّال وصعد التفصيلُ فوق النموذج، وبقيت
+          * الحجّةُ الأولى قائمة: لا شيءَ كبيرٌ يسبق العمل.
+          */}
         <div className="grid gap-5 pb-28 lg:grid-cols-[1fr_1.1fr] lg:items-start lg:pb-0">
-          <div className="order-2 space-y-4 lg:order-none">
-            <div className="rounded-2xl border border-ink-600 bg-ink-700/45 p-5">
-              <SaudiLicensePlate {...order.plate} size="fullscreen" />
+          <div className="order-1 space-y-4 lg:order-none">
+            <div className="rounded-2xl border border-ink-600 bg-ink-700/45 p-3.5 lg:p-5">
+              <SaudiLicensePlate
+                {...order.plate}
+                size="fullscreen"
+                className="mx-auto w-[190px] lg:w-full"
+              />
             </div>
             <OrderSettlementCard settlement={order.settlement} status={order.status} />
           </div>
 
-          <div className="order-1 space-y-4 lg:order-none">
+          <div className="order-2 space-y-4 lg:order-none">
             {done ? (
               <div className="rounded-2xl border border-success/50 bg-success-soft p-5 text-center">
                 <ShieldCheck className="mx-auto mb-2 size-9 text-success" />

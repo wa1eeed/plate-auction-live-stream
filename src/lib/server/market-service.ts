@@ -1331,6 +1331,29 @@ export async function listAccountOrders(
   return decorateOrders(store, await store.listOrders(query), role)
 }
 
+/**
+ * صفقةٌ واحدة لصاحبها — **بأيّ الطرفين كان**.
+ *
+ * وصفحةُ الصفقة واحدةٌ للبائع والمشتري، والدورُ فيها يتبدّل بينهما. فبدل
+ * مسارين يتفرّعان بالنيّة، يُقال هنا: أطرفٌ أنت؟ وأيُّ طرف؟ ومن ليس طرفًا
+ * لا يرى مبلغًا ولا مرحلة — لا يُقال له «ممنوع»، بل لا يجد صفحةً أصلًا،
+ * فلا يُستدلّ بوجود الصفحة على وجود الصفقة.
+ */
+export async function getAccountOrder(
+  orderId: string,
+  userId: string,
+): Promise<{ order: AccountOrder; side: 'buyer' | 'seller' } | null> {
+  const store = getStore()
+  const order = await store.getOrder(orderId)
+  if (!order) return null
+
+  const side = order.sellerId === userId ? 'seller' : order.buyerId === userId ? 'buyer' : null
+  if (!side) return null
+
+  const [decorated] = await decorateOrders(store, [order], side)
+  return decorated ? { order: decorated, side } : null
+}
+
 export async function requireOwnedListing(
   store: AuctionStore,
   listingId: string,

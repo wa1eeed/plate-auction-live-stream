@@ -120,6 +120,21 @@ async function fundedOrder(
  * وننتظر `aria-selected` بعد النقر لا نكتفي به: النقر قبل تمام الترطيب يقع
  * على زرّ لم يُربط بعد فيضيع بلا أثر، ثم يفشل التأكيد بعده لسببٍ غير سببه.
  */
+/**
+ * يفتح صفحة الصفقة من صفّها.
+ *
+ * والتفصيلُ — السكّةُ والتسويةُ وفعلُ المرحلة — انتقل من الصفّ إلى صفحته،
+ * فصار الصفُّ يُمسح بنظرة. والاختبارُ يتبعه إلى حيث صار.
+ */
+async function openOrder(page: Page, reference: string) {
+  const href = await page
+    .locator(`li[data-row="${reference}"] a[href^="/account/orders/"]`)
+    .first()
+    .getAttribute('href')
+  expect(href, 'الصفّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
+  await page.goto(href!)
+}
+
 async function openStage(page: Page, label: string) {
   const tab = page.getByRole('tab', { name: new RegExp(label) })
   await expect(tab).toBeVisible()
@@ -152,22 +167,25 @@ test.describe('مسار الصفقة في الواجهة', () => {
     await openStage(buyerPage, 'تحت الإجراء')
     const purchase = buyerPage.locator(`li[data-row="${order.reference}"]`)
     await expect(purchase.getByText(/المبلغ محجوز/).first()).toBeVisible()
+
+    await openOrder(buyerPage, order.reference)
     // الشريط خمس محطّات باسم كلمةٍ لكلٍّ — لا خمس جمل تحت خمس نقاط
-    const rail = purchase.locator('ol').first()
+    const rail = buyerPage.locator('ol').first()
     await expect(rail.locator('> li')).toHaveCount(5)
     await expect(rail.locator('> li')).toContainText(['طلب', 'سداد', 'نقل', 'تحقّق', 'تحويل'])
     // وموضع المال معلن **جملةً مرئية** لا كلمةً في رقاقة: محجوز لا عند أحد الطرفين
-    await expect(purchase.locator('[data-money="held"]')).toHaveText(
+    await expect(buyerPage.locator('[data-money="held"]')).toHaveText(
       'المبلغ محجوز أمانةً لدى المنصّة',
     )
     // ولا يُطالَب بفعل — لكنّ باب السؤال مفتوح
-    await expect(purchase.getByRole('button', { name: 'أكّد الاستلام' })).toHaveCount(0)
-    await expect(purchase.getByRole('button', { name: 'استفسار أو اعتراض' })).toBeVisible()
+    await expect(buyerPage.getByRole('button', { name: 'أكّد الاستلام' })).toHaveCount(0)
+    await expect(buyerPage.getByRole('button', { name: 'استفسار أو اعتراض' })).toBeVisible()
 
     // الدور على البائع — ويقرأ صفحته بصوته لا بصوت المشتري
     await sellerPage.goto('/account/sales')
     await openStage(sellerPage, 'بانتظار ردّك')
-    const sale = sellerPage.locator(`li[data-row="${order.reference}"]`)
+    await openOrder(sellerPage, order.reference)
+    const sale = sellerPage.locator('main')
     await sale.locator('details').first().evaluate((el: HTMLDetailsElement) => (el.open = true))
     await expect(sale).toContainText('وصل مبلغ المشتري وحُجز أمانةً')
     await expect(sale).not.toContainText('اشتريت اللوحة')
@@ -188,9 +206,10 @@ test.describe('مسار الصفقة في الواجهة', () => {
     // ثم الدور على الإدارة: لا مطلوب من المشتري وباب سؤاله مفتوح
     await buyerPage.goto('/account/purchases')
     await openStage(buyerPage, 'تحت الإجراء')
-    await expect(purchase.getByText('تحقّق الإدارة من النقل').first()).toBeVisible()
-    await expect(purchase.getByText('لا مطلوب منك').first()).toBeVisible()
-    await expect(purchase.getByRole('button', { name: 'استفسار أو اعتراض' })).toBeVisible()
+    await openOrder(buyerPage, order.reference)
+    await expect(buyerPage.getByText('تحقّق الإدارة من النقل').first()).toBeVisible()
+    await expect(buyerPage.getByText('لا مطلوب منك').first()).toBeVisible()
+    await expect(buyerPage.getByRole('button', { name: 'استفسار أو اعتراض' })).toBeVisible()
 
     // والإدارة تجدها في «بانتظار قرارك» بما يُفعل لا بحالتها وحدها
     await adminPage.goto('/admin/orders')
@@ -207,6 +226,7 @@ test.describe('مسار الصفقة في الواجهة', () => {
     await buyerPage.goto('/account/purchases')
     await openStage(buyerPage, 'معاملة مكتملة')
     await expect(purchase.getByText('اكتملت — وصل المبلغ للبائع')).toBeVisible()
+    await openOrder(buyerPage, order.reference)
 
     /*
      * والسطر المالي يقول ما وقع لا ما كان.
@@ -214,8 +234,10 @@ test.describe('مسار الصفقة في الواجهة', () => {
      * كان يُقرأ بجملة الحجز — «محجوز أمانةً حتى تُنقل الملكية» — على صفقةٍ
      * خرج مالها من زمن، فيبحث صاحبها عن مالٍ ذهب إلى البائع.
      */
-    await expect(purchase).toContainText('ذهب المبلغ إلى البائع واللوحة باسمك')
-    await expect(purchase).not.toContainText('حتى تتحقّق الإدارة من نقل الملكية')
+    await expect(buyerPage.locator('main')).toContainText('ذهب المبلغ إلى البائع واللوحة باسمك')
+    await expect(buyerPage.locator('main')).not.toContainText(
+      'حتى تتحقّق الإدارة من نقل الملكية',
+    )
 
     await adminContext.close()
     await buyerContext.close()
