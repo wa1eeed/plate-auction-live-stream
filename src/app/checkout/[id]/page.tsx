@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { PageShell } from '@/components/layout/page-shell'
 import { SiteHeader } from '@/components/layout/site-header'
-import { SiteFooter } from '@/components/layout/site-footer'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { CheckoutForm } from '@/components/market/checkout-form'
 import { formatAmount } from '@/lib/domain/money'
@@ -123,7 +122,13 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
       </main>
-      <SiteFooter />
+      {/*
+        * ولا تذييلَ هنا.
+        *
+        * صفحةُ السداد مهمّةٌ واحدة، وتذييلُ الموقع يعرض «من نحن» و«تسجيل
+        * الدخول» و«الأسئلة الشائعة» تحت زرِّ الدفع — روابطُ خروجٍ في أضيق
+        * موضعٍ يحتمل الخروج. وهي في المرجع صفحةٌ مغلقة، وكذلك تكون.
+        */}
     </PageShell>
   )
 }
