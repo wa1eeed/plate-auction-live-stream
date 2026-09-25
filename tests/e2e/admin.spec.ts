@@ -1,5 +1,6 @@
 import { forgetAdminSession, loginAdmin, loginUser, USERS } from './support/session'
-import { expect, test, type Cookie, type Page } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type Cookie, type Page } from '@playwright/test'
 
 const ADMIN = { email: 'admin@demo.sa', password: 'admin1234' }
 const USER = USERS.waleed

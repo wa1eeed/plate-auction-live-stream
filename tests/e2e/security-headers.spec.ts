@@ -1,4 +1,5 @@
-import { expect, test, type ConsoleMessage } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type ConsoleMessage } from '@playwright/test'
 import { loginUser, USERS } from './support/session'
 
 /**

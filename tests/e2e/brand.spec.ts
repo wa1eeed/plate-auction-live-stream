@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type Page } from '@playwright/test'
 import { loginAdmin, USERS } from './support/session'
 
 /** الهويّة الافتراضية — تُعاد بعد كل اختبار فلا يرث غيره اسمًا مبدَّلًا. */

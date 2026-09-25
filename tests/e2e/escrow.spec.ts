@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type Page } from '@playwright/test'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 const SELLER = USERS.waleed

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './support/hydrated'
 import { loginAdmin, loginUser, USERS } from './support/session'
 
 /** لوحة مزاد عليها مزايدات ويملكها هذا البائع. */

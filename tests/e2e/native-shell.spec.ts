@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './support/hydrated'
 import { stableCount } from '../support/ui'
 import { loginUser, USERS } from './support/session'
 

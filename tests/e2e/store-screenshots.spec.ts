@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './support/hydrated'
 import { mkdirSync } from 'node:fs'
 import { loginUser, USERS } from './support/session'
 

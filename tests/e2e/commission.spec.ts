@@ -1,5 +1,6 @@
 import { loginAdmin, loginUser, USERS } from './support/session'
-import { expect, test, type Cookie, type Page } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type Cookie, type Page } from '@playwright/test'
 
 const BUYER = { email: 'majed@demo.sa', password: 'demo1234' }
 const SELLER = { email: 'waleed@demo.sa', password: 'demo1234' }

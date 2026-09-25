@@ -1,5 +1,6 @@
 import { loginAdmin, loginUser, USERS } from './support/session'
-import { expect, test, type Cookie, type Page } from '@playwright/test'
+import { expect, test } from './support/hydrated'
+import { type Cookie, type Page } from '@playwright/test'
 
 const USER = USERS.waleed
 
