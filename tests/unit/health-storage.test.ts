@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -49,7 +49,16 @@ describe('فحصُ التخزين', () => {
    * فيُطارَد العطل في الشبكة وهو في الصلاحيات.
    */
   it('وقرصٌ لا يُكتب فيه يردّ 503 برمز العطل — لا 200', async () => {
-    process.env.MEDIA_DIR = '/proc/غير-موجود/لا-يُكتب'
+    /*
+     * مجلَّدٌ أبوه ملفّ — فـ`ENOTDIR` في كلّ نظام بوسيكس، حالًا وبلا انتظار.
+     *
+     * وكان المسار `/proc/…`: على ماك لا وجود لـ`/proc` فيفشل سريعًا، وعلى
+     * لينكس في التكامل المستمرّ **عُلِّقت الكتابة** فانتهت مهلةُ الاختبار
+     * ولم يُقَس شيء. فبقيت البوّابة حمراء ثلاث دفعات.
+     */
+    const file = join(root, 'ملفّ-لا-مجلَّد')
+    await writeFile(file, 'x')
+    process.env.MEDIA_DIR = join(file, 'تحته')
     resetMediaForTests()
 
     const response = await GET()
@@ -64,5 +73,25 @@ describe('فحصُ التخزين', () => {
     const body = JSON.stringify(await (await GET()).json())
     expect(body).not.toContain(root)
     expect(body).not.toContain('SESSION')
+  })
+
+  /*
+   * **ولا يُفشي المسار في العطل خاصّة** — وهناك كان يُفشيه.
+   *
+   * فنصُّ خطأ العقدة يحمل المسار كاملًا: `ENOENT: … open '/app/data/…'`.
+   * وكان يُرسل في `message` على بابٍ بلا جلسة، فيقرأ المتطفّل بنية الخادم
+   * من فحصِ صحّةٍ مفتوح. والحالةُ السويّة لا تكشف شيئًا، فلا يُمسك إلّا
+   * بقياس العطل نفسه.
+   */
+  it('ولا في العطل — لا مسارَ ولا نصَّ خطأ', async () => {
+    const file = join(root, 'ملفّ-لا-مجلَّد')
+    await writeFile(file, 'x')
+    process.env.MEDIA_DIR = join(file, 'تحته')
+    resetMediaForTests()
+
+    const body = (await (await GET()).json()) as Record<string, unknown>
+    expect(body.write).toBe(false)
+    expect(JSON.stringify(body)).not.toContain(root)
+    expect(body.message, 'نصُّ الخطأ يحمل المسار — لا يُرسل').toBeUndefined()
   })
 })

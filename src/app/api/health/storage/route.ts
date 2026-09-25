@@ -6,6 +6,39 @@ export const dynamic = 'force-dynamic'
 /** مفتاحٌ ثابت — يُكتب ويُقرأ ويُمحى، فلا يتراكم شيء. */
 const PROBE_KEY = 'platform/files/health-probe.txt'
 
+/** مهلةُ الفحص — بعدها يُقال «معلَّق» ولا يُنتظر أكثر. */
+const PROBE_TIMEOUT_MS = 3_000
+
+/**
+ * حدٌّ زمنيٌّ للفحص — **وفحصُ صحّةٍ يعلّق ليس فحصًا**.
+ *
+ * وكتابةُ القرص ليست دائمًا سريعةَ الفشل: حجمٌ عبر الشبكة ينقطع، أو قرصٌ
+ * يتوقّف، فتبقى `writeFile` معلَّقةً بلا ردّ — فلا يردّ المسار شيئًا في
+ * اللحظة التي يُسأل فيها لأنّ التخزين تعطّل. وهو المقصودُ منه بعينه.
+ *
+ * وليس فرضًا: عُلِّق فعلًا في التكامل المستمرّ على لينكس بمسارٍ تحت `/proc`،
+ * فبقي الاختبار ينتظر حتى انتهت مهلته.
+ *
+ * والعمليةُ تمضي في الخلفية بعد المهلة — لا سبيل لقطع `writeFile` — لكنّ
+ * الردّ لا ينتظرها.
+ */
+async function withDeadline(work: () => Promise<void>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      work(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(Object.assign(new Error('تعذّر الفحص في المهلة'), { code: 'TIMEOUT' })),
+          PROBE_TIMEOUT_MS,
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 /**
  * فحصُ التخزين — **يقيس ما لا يُقاس من خارج الخادم**.
  *
@@ -15,7 +48,9 @@ const PROBE_KEY = 'platform/files/health-probe.txt'
  * بايتات ويقرؤها ويمحوها، ويقول ما وقع.
  *
  * وما يُفشى منه محدودٌ عمدًا: أنجح أم لا، ورمزُ الخطأ (`EACCES`, `ENOSPC`)،
- * وأمربوطٌ المجلَّد بحجمٍ دائم. ولا يُذكر مسارٌ ولا سرٌّ ولا محتوى.
+ * وأمربوطٌ المجلَّد بحجمٍ دائم. ولا يُذكر مسارٌ ولا سرٌّ ولا محتوى — ونصُّ
+ * الخطأ نفسُه يحمل المسار كاملًا (`ENOENT: … open '/app/data/…'`)، فلا
+ * يُرسل. والمسارُ وحده يدلّ المتطفّل على بنية الخادم، والبابُ بلا جلسة.
  */
 export async function GET() {
   const started = Date.now()
@@ -36,17 +71,17 @@ export async function GET() {
 
   try {
     const bytes = new TextEncoder().encode('probe')
-    await media.put(PROBE_KEY, bytes, 'text/plain')
-    const read = await media.read(PROBE_KEY)
-    await media.remove(PROBE_KEY)
-
+    await withDeadline(async () => {
+      await media.put(PROBE_KEY, bytes, 'text/plain')
+      const read = await media.read(PROBE_KEY)
+      await media.remove(PROBE_KEY)
+      result.readBack = read?.bytes.byteLength === bytes.byteLength
+    })
     result.write = true
-    result.readBack = read?.bytes.byteLength === bytes.byteLength
   } catch (error) {
-    const named = error as { code?: string; message?: string }
+    const named = error as { code?: string }
     result.write = false
     result.code = named?.code ?? 'UNKNOWN'
-    result.message = named?.message ?? String(error)
   }
 
   result.ms = Date.now() - started
