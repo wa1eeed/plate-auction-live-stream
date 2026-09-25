@@ -150,3 +150,31 @@ jobs:
             NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.nx.sa' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # --------------------------------------------------------------
+      # ثمّ يُنادى كوليفاي ليسحب ما دُفع.
+      #
+      # وموضعُه **بعد** الدفع لا قبله: نداءٌ سابقٌ له يجعل الخادم يسحب الصورة
+      # التي قبلها، فتُنشر نشرةٌ قديمةٌ باسم الجديدة — وهو أسوأ من ألّا يُنشر.
+      #
+      # ولا يسقط البناءُ إن لم يُضبط السرّان: المستودعُ يبقى قابلًا للدفع
+      # قبل ربط الخطّاف، والنشرُ يدويٌّ حتى يُربط. وما يسقط: خطّافٌ مضبوطٌ
+      # يردّ خطأً — فذاك عطبٌ يُعرف، لا صمت.
+      # --------------------------------------------------------------
+      - name: إيقاظ كوليفاي ليسحب الصورة
+        if: github.ref == 'refs/heads/main'
+        env:
+          HOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          if [ -z "$HOOK" ] || [ -z "$TOKEN" ]; then
+            echo "::notice::لا خطّاف مضبوط — تُنشر الصورة ويبقى النشر بضغطة في كوليفاي"
+            exit 0
+          fi
+          # ‏`--fail-with-body` ليُقرأ نصُّ الخطأ لا رمزُه وحده
+          curl --silent --show-error --fail-with-body \
+            --header "Authorization: Bearer $TOKEN" \
+            --max-time 60 \
+            "$HOOK"
+          echo
+          echo "::notice::نُودي كوليفاي — يتابَع في لوحته"
