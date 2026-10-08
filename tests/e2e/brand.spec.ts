@@ -232,7 +232,20 @@ test.describe('أقسام الإعدادات', () => {
 
     // وعناوين المجالات باقية في المنتقي — لا يضيع التصنيف
     await expect(picker.locator('optgroup')).toHaveCount(3)
-    await expect(picker.locator('option')).toHaveCount(6)
+
+    /*
+     * والمنتقي يعرض ما يعرضه العمود — عددًا لا يُكتب هنا.
+     *
+     * كان الرقم `6` مثبَّتًا، فلمّا زاد تبويبٌ سقط الاختبارُ على غير علّة:
+     * المقيسُ أنّ الجوّال لا يُخفي تبويبًا تراه الشاشةُ الواسعة، لا كم هي.
+     */
+    const inPicker = await picker.locator('option').count()
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await expect(page.locator('[role="tablist"]')).toBeVisible()
+    const inColumn = await page.locator('[role="tablist"] [role="tab"]').count()
+    expect(inPicker, 'المنتقي يُخفي تبويبًا تراه الشاشةُ الواسعة').toBe(inColumn)
+
+    await page.setViewportSize({ width: 375, height: 812 })
 
     // ولا تمرير أفقي، وأوّل حقل قريبٌ لا خلف ستّة أزرار
     const overflow = await page.evaluate(

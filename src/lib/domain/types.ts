@@ -1503,6 +1503,74 @@ export type PushTemplate = {
  */
 export const PUSH_TEMPLATE_VARIABLES = ['{{plate}}'] as const
 
+/** أيقوناتُ شرائح التعريف — مجموعةٌ ثابتة، والاختيار منها لا رفعٌ حرّ. */
+export const ONBOARDING_ICONS = ['gavel', 'tag', 'handshake', 'shield', 'wallet', 'plate'] as const
+
+export type OnboardingIcon = (typeof ONBOARDING_ICONS)[number]
+
+/** شريحةُ تعريفٍ واحدة. */
+export type OnboardingSlide = {
+  id: string
+  title: string
+  body: string
+  icon: OnboardingIcon
+}
+
+/** خمسٌ حدٌّ أعلى — ومن يحتاج سادسةً لم يختصر. */
+export const MAX_ONBOARDING_SLIDES = 5
+
+/**
+ * **شاشاتُ التعريف وشاشةُ الهويّة — تُضبط من اللوحة بلا مسّ الكود.**
+ *
+ * و**لماذا أيقوناتٌ لا صورٌ تُرفع؟** الإعداداتُ كلُّها تُقرأ من ملفٍّ واحد
+ * في كلّ طلب، والصورةُ المرفوعة تُخزَّن فيه بترميز base64 — فخمسُ صورٍ
+ * بحجم شعار المنصّة تزيد الملفَّ نحو ميغابايت، يُقرأ ويُحلَّل مع كلّ قراءة
+ * إعدادات. والأيقونةُ تُرسم من المكتبة نفسها، فتتّسق مع بقيّة المنصّة
+ * وتَظهر في اللحظة بلا شبكة.
+ *
+ * **وشاشةُ الهويّة ليست سبلاشَ النظام.** سبلاشُ النظام يُعرض قبل أن يعمل
+ * أيُّ كودِ ويب، فهو مخبوزٌ في ملفّ التطبيق بالضرورة ولا يُضبط من لوحة.
+ * وهذه تخلفه فور إخفائه، فيرى صاحبُ الجهاز لحظةً واحدةً متّصلة — والمضبوطُ
+ * منها من اللوحة.
+ */
+export type OnboardingSettings = {
+  /** أتُعرض الشرائح لمن يفتح التطبيق أوّل مرّة؟ */
+  enabled: boolean
+  slides: OnboardingSlide[]
+  /** جملةٌ تحت الشعار في شاشة الهويّة — وفارغةٌ تعني الشعار وحده */
+  splashTagline: string
+  updatedAt: string
+  updatedByAdminId: string | null
+}
+
+export const DEFAULT_ONBOARDING_SETTINGS: Omit<
+  OnboardingSettings,
+  'updatedAt' | 'updatedByAdminId'
+> = {
+  enabled: true,
+  splashTagline: 'سوق تداول لوحات المركبات',
+  slides: [
+    {
+      id: 'ob-auction',
+      icon: 'gavel',
+      title: 'زايد على ما تريد',
+      body: 'مزاداتٌ بمدّةٍ محدّدة وتمديدٍ تلقائيّ — فلا تُخطف اللوحة في الثانية الأخيرة.',
+    },
+    {
+      id: 'ob-sell',
+      icon: 'tag',
+      title: 'بِع كما يناسبك',
+      body: 'سعرٌ مباشر، أو مزاد، أو استقبال عروضٍ تساوم عليها — بحسابٍ واحد يبيع ويشتري.',
+    },
+    {
+      id: 'ob-escrow',
+      icon: 'shield',
+      title: 'مالُك محجوزٌ أمانة',
+      body: 'يبقى المبلغ لدى المنصّة حتى تُنقل الملكية وتتحقّق الإدارة منها، ثمّ يُحوَّل للبائع.',
+    },
+  ],
+}
+
 export type MobileSettings = {
   pushTypes: Record<string, PushTemplate>
   /**

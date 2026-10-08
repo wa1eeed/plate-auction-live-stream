@@ -26,6 +26,7 @@ import type {
   Notification,
   UserDevice,
   MobileSettings,
+  OnboardingSettings,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -40,6 +41,7 @@ import type {
 import {
   DEFAULT_AUCTION_SETTINGS,
   DEFAULT_MOBILE_SETTINGS,
+  DEFAULT_ONBOARDING_SETTINGS,
   DEFAULT_COMMISSION_SETTINGS,
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_TAX_SETTINGS,
@@ -88,6 +90,7 @@ export type MemoryDatabase = {
   paymentSettings: PaymentSettings
   auctionSettings: AuctionSettings
   mobileSettings: MobileSettings
+  onboardingSettings: OnboardingSettings
   commissionSettings: CommissionSettings
   /** إيرادات المنصّة: عمولات وضرائب وعرابين مُصادَرة */
   platformEntries: PlatformEntry[]
@@ -151,6 +154,11 @@ export function emptyDatabase(): MemoryDatabase {
     },
     mobileSettings: {
       ...DEFAULT_MOBILE_SETTINGS,
+      updatedAt: new Date(0).toISOString(),
+      updatedByAdminId: null,
+    },
+    onboardingSettings: {
+      ...DEFAULT_ONBOARDING_SETTINGS,
       updatedAt: new Date(0).toISOString(),
       updatedByAdminId: null,
     },
@@ -742,6 +750,24 @@ export class MemoryStore implements AuctionStore {
   }
 
   // ------------------------------------------------------------ إعدادات التطبيق
+
+  async getOnboardingSettings(): Promise<OnboardingSettings> {
+    return clone(this.db.onboardingSettings)
+  }
+
+  async updateOnboardingSettings(
+    patch: Partial<Omit<OnboardingSettings, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ): Promise<OnboardingSettings> {
+    this.db.onboardingSettings = {
+      ...this.db.onboardingSettings,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+      updatedByAdminId: adminId,
+    }
+    this.persist(this.db)
+    return clone(this.db.onboardingSettings)
+  }
 
   async getMobileSettings(): Promise<MobileSettings> {
     return clone(this.db.mobileSettings)

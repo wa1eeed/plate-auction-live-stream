@@ -1,6 +1,6 @@
 import { expect, test } from './support/hydrated'
 import { stableCount } from '../support/ui'
-import { loginUser, USERS } from './support/session'
+import { loginUser, USERS, loginAdmin } from './support/session'
 
 /**
  * صقل الغلاف الأصيل — ما يُقاس منه في المتصفّح.
@@ -468,5 +468,72 @@ test.describe('مفاتيح الإعدادات', () => {
     const moved = await thumbStart()
     await row.getByText('أصوات المنصّة').click()
     await expect.poll(thumbStart).not.toBe(moved)
+  })
+})
+
+/**
+ * **مقدّمةُ التطبيق — ما يُضبط في اللوحة يُرى في الجهاز.**
+ *
+ * وشاشاتُ التعريف أوّلُ ما يراه صاحبُ الجهاز، فلو بقيت في الكود لَلزم بناءٌ
+ * ورفعٌ للمتجر لتبديل جملة. والمقيس هنا الحلقةُ كاملة: تُحرَّر، فتُقرأ،
+ * فتُطوى ولا تعود.
+ */
+test.describe('مقدّمةُ التطبيق', () => {
+  const asApp = async (page: import('@playwright/test').Page) => {
+    await page.addInitScript(() => {
+      ;(window as unknown as { Capacitor: unknown }).Capacitor = {
+        isNativePlatform: () => true,
+        getPlatform: () => 'ios',
+      }
+    })
+  }
+
+  test('ما تكتبه الإدارة يُقرأ في التطبيق، ويُطوى فلا يعود', async ({ browser }) => {
+    const title = `زايد بثقة ${Date.now().toString().slice(-5)}`
+
+    const adminContext = await browser.newContext()
+    const adminPage = await adminContext.newPage()
+    await loginAdmin(adminPage)
+    const saved = await adminPage.evaluate(async (heading) => {
+      const response = await fetch('/api/admin/settings/onboarding', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          enabled: true,
+          splashTagline: 'سوقُ اللوحات',
+          slides: [{ id: 'e2e-1', title: heading, body: 'نصُّ الشريحة', icon: 'gavel' }],
+        }),
+      })
+      return response.ok
+    }, title)
+    expect(saved, 'لم تُحفظ المقدّمة').toBe(true)
+
+    const appContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
+    const app = await appContext.newPage()
+    await asApp(app)
+    await app.goto('/')
+
+    await expect(app.getByRole('dialog', { name: 'تعريفٌ بالمنصّة' })).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(app.getByText(title)).toBeVisible()
+
+    // شريحةٌ واحدة، فالزرّ يُنهي لا يُقدّم
+    await app.getByRole('button', { name: 'ابدأ' }).click()
+    await expect(app.getByRole('dialog', { name: 'تعريفٌ بالمنصّة' })).toHaveCount(0)
+
+    /* والطيُّ يبقى بعد إعادة الفتح — وإلّا رآها صاحبُها كلَّ مرّة */
+    await app.reload()
+    await app.waitForTimeout(1_200)
+    await expect(app.getByRole('dialog', { name: 'تعريفٌ بالمنصّة' })).toHaveCount(0)
+
+    await adminContext.close()
+    await appContext.close()
+  })
+
+  test('ولا تُعرض على الويب — من فتح المتصفّح جاء ليرى لوحات', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForTimeout(1_200)
+    await expect(page.locator('[data-app-intro]')).toHaveCount(0)
   })
 })

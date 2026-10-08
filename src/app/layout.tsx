@@ -8,6 +8,7 @@ import { getStore } from '@/lib/store'
 import { NativeShell } from '@/components/layout/native-shell'
 import { RouteProgress } from '@/components/layout/route-progress'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import { AppIntro } from '@/components/layout/app-intro'
 import { NetworkBanner } from '@/components/layout/network-banner'
 import { PullToRefresh } from '@/components/layout/pull-to-refresh'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker'
@@ -131,6 +132,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const brand = await getBrand()
+  const onboarding = await getStore().getOnboardingSettings()
   const colors = brandColorCss(brand.primaryColor)
   /*
    * قرارُ الإدارة في الصوت والاهتزاز — سمةٌ على الجذر لا خاصيّةٌ تُمرَّر.
@@ -209,6 +211,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           */}
         <PullToRefresh />
         <BottomNav signedIn={Boolean(sessionUser)} />
+        {/*
+          * مقدّمةُ التطبيق — فوق كلّ شيء، وعلى الغلاف والمثبَّت وحدهما.
+          * وتقع بعد المحتوى في الشجرة فلا تُؤخّر رسمَه، وتعلوه بالطبقة.
+          */}
+        <AppIntro
+          settings={onboarding}
+          brandName={brand.name}
+          logoUrl={assetUrl('logo', brand.logo) ?? assetUrl('icon', brand.icon)}
+        />
         <Toaster />
         <ServiceWorkerRegistrar />
         <NativeShell />

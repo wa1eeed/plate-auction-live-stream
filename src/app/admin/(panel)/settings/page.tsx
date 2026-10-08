@@ -6,6 +6,7 @@ import { CommissionSettingsForm } from '@/components/admin/commission-settings-f
 import { TaxSettingsForm } from '@/components/admin/tax-settings-form'
 import { BrandSettingsForm } from '@/components/admin/brand-settings-form'
 import { SeoSettingsForm } from '@/components/admin/seo-settings-form'
+import { OnboardingSettingsForm } from '@/components/admin/onboarding-settings-form'
 import { SettingsTabs } from '@/components/admin/settings-tabs'
 import { getPaymentSettings, tapConfiguration } from '@/lib/server/payment-service'
 import { requireAdminId } from '@/lib/server/require-admin'
@@ -30,6 +31,7 @@ const GROUPS = [
     tabs: [
       { key: 'brand', label: 'الهويّة', hint: 'الاسم واللون والشعار ونصّ الواجهة' },
       { key: 'seo', label: 'الأرشفة', hint: 'نتيجة البحث والبيانات المنظَّمة والموضع' },
+      { key: 'onboarding', label: 'مقدّمة التطبيق', hint: 'شاشة الهويّة وشرائح التعريف' },
     ],
   },
   {
@@ -53,12 +55,13 @@ const GROUPS = [
 export default async function AdminSettingsPage() {
   await requireAdminId()
   const store = getStore()
-  const [payment, auction, commission, tax, brand] = await Promise.all([
+  const [payment, auction, commission, tax, brand, onboarding] = await Promise.all([
     getPaymentSettings(),
     store.getAuctionSettings(),
     store.getCommissionSettings(),
     store.getTaxSettings(),
     store.getBrandSettings(),
+    store.getOnboardingSettings(),
   ])
 
   return (
@@ -94,6 +97,7 @@ export default async function AdminSettingsPage() {
         {{
           brand: <BrandSettingsForm settings={brand} />,
           seo: <SeoSettingsForm settings={brand} />,
+          onboarding: <OnboardingSettingsForm settings={onboarding} />,
           auction: <AuctionSettingsForm settings={auction} />,
           commission: <CommissionSettingsForm settings={commission} />,
           payments: <PaymentSettingsForm settings={payment} tap={tapConfiguration()} />,
