@@ -47,6 +47,19 @@ describe('إعدادُ الغلاف الأصيل', () => {
     )
   })
 
+  /*
+   * **ولا نطاقَ إنتاجٍ في الكود.**
+   *
+   * كتابةُ نطاقٍ حقيقيٍّ افتراضًا تُخرج — عند نسيان المتغيّر — تطبيقًا يقرأ
+   * من نطاقٍ قديم بلا أن يشكو أحد، وهو ما وقع في `v1.0.3`. و`localhost`
+   * يصرخ في أوّل فتحة، والصارخُ خيرٌ من الصامت.
+   */
+  it('وبلا متغيّرٍ يقع على التطوير لا على نطاقٍ حقيقيّ', async () => {
+    const config = await loadConfig({ NEXT_PUBLIC_APP_URL: undefined })
+
+    expect(config.server?.url).toMatch(/^http:\/\/localhost/)
+  })
+
   it('ولا يُكرّر مضيفًا أُدرج مرّتين', async () => {
     const config = await loadConfig({
       NEXT_PUBLIC_APP_URL: 'https://same.test',

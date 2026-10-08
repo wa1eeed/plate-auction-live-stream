@@ -73,9 +73,22 @@ jobs:
       # يبقى مقبولًا للتنقّل داخل الغلاف، فينتقل التطبيقُ إلى نطاقٍ جديد
       # بتحويلٍ من القديم **بلا بناءٍ ثانٍ**.
       # --------------------------------------------------------------
+      # العنوانُ شرطٌ لا افتراض: بناءٌ يُرفع إلى متجرٍ بعنوانٍ مظنون أسوأ
+      # من بناءٍ لا يقع. ويُضبط في **متغيّرات المستودع** لا في الكود:
+      # Settings ← Secrets and variables ← Actions ← Variables.
+      - name: التحقّق من عنوان التطبيق
+        env:
+          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::error::متغيّرُ المستودع NEXT_PUBLIC_APP_URL غير مضبوط — لا يُبنى تطبيقٌ بعنوانٍ مظنون"
+            exit 1
+          fi
+          echo "::notice::عنوانُ التطبيق $APP_URL"
+
       - name: مزامنة الغلاف
         env:
-          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.payone.one' }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           CAPACITOR_ALLOWED_HOSTS: ${{ vars.CAPACITOR_ALLOWED_HOSTS }}
         run: npx cap sync ios
 
