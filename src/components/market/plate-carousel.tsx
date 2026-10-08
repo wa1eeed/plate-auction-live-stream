@@ -94,8 +94,15 @@ export function PlateCarousel({
 
   return (
     <section aria-labelledby={`carousel-${accent}`} className="py-2">
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
+      {/*
+        * العنوانُ و«عرض الكل» في صفٍّ واحد — ولا التفاف.
+        *
+        * كان `flex-wrap`، فينزل الزرُّ سطرًا مستقلًّا على الجوّال: قِيس فكان
+        * أربعةً وتسعين بكسلًا تحت العنوان، ورأسُ القسم مئةً وستّةً وعشرين —
+        * أي ثلثَ الشاشة قبل أوّل بطاقة. فصارا متقابلين، والوصفُ تحتهما.
+        */}
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h2
             id={`carousel-${accent}`}
             className="flex items-center gap-2.5 text-lg font-extrabold sm:text-xl"
@@ -115,10 +122,10 @@ export function PlateCarousel({
               </span>
             )}
           </h2>
-          <p className="mt-1.5 text-sm text-muted">{description}</p>
+          <p className="mt-1 text-[0.8rem] leading-relaxed text-muted sm:text-sm">{description}</p>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* الأسهم لمستخدمي الفأرة — مخفية عن قارئ الشاشة لأن القائمة تُتصفّح بالتمرير */}
           <div className="hidden gap-1 sm:flex" aria-hidden>
             <ArrowButton

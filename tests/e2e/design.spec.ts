@@ -1029,3 +1029,69 @@ test.describe('تنبيهُ المنصّة', () => {
     expect(shape.icon, 'الأيقونة نقطةٌ لا شارة').toBeGreaterThanOrEqual(32)
   })
 })
+
+
+/**
+ * **كاروسيلاتُ الرئيسية: لوحاتٌ بحجمها، ورأسٌ لا يأكل الشاشة.**
+ *
+ * و`size="fill"` يعني `h-full` على الـSVG، فيُحسب من أبيه. وكان الأبُ بلا
+ * ارتفاعٍ دون `sm` — فيُحسب من ابنه، دورٌ ينهار. وقِيست ثلاثُ بطاقاتٍ على
+ * عرض ٣٩٠ فخرجت لوحاتُها **٧٤ و٣٢ و٤١**: كلُّ واحدةٍ بما أعطاها الاتّفاق.
+ *
+ * و«عرض الكل» كان ينزل سطرًا مستقلًّا بـ`flex-wrap` — أربعةً وتسعين بكسلًا
+ * تحت العنوان، ورأسُ القسم مئةً وستّةً وعشرين، أي ثلثَ الشاشة قبل أوّل بطاقة.
+ */
+test.describe('كاروسيلاتُ الرئيسية على الجوّال', () => {
+  test('اللوحاتُ بعرضٍ واحد، و«عرض الكل» بمحاذاة العنوان', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+
+    const sections = page.locator('section[aria-labelledby^="carousel-"]')
+    await expect(sections.first()).toBeVisible()
+
+    const measured = await sections.evaluateAll((list) =>
+      list.map((section) => {
+        const heading = section.querySelector('h2')!.getBoundingClientRect()
+        const all = [...section.querySelectorAll('a')]
+        const more = all.find((node) => node.textContent?.includes('عرض الكل'))
+        /*
+         * **الارتفاعُ هو ما ينهار، لا العرض.**
+         *
+         * فالعرضُ من `w-full` على الصندوق: يبقى ١٤٧ سليمًا كان أم منهارًا.
+         * والارتفاعُ يتبع الأب — وقِيس بالعطب: `private/long` **٣٢** بينما
+         * `private/standard` ٧٤ في القسم نفسه، وبعد الإصلاح كلاهما ٧٨.
+         *
+         * ولا يُجمَع بالنوع والإصدار: ذلك يُخفي الفرقَ بعينه، فكلُّ مجموعةٍ
+         * منهارةٍ متّسقةٌ مع نفسها. والصندوقُ واحدٌ لكلّ البطاقات و`meet`
+         * يحتوي، فلوحاتُ القسم تتقارب ارتفاعًا — والمنهارةُ تشذّ.
+         */
+        const heights = [...section.querySelectorAll('li')]
+          .map((li) => li.querySelector<SVGElement>('svg[data-plate-type]'))
+          .filter((svg): svg is SVGElement => Boolean(svg))
+          .map((svg) => Math.round(svg.getBoundingClientRect().height))
+        return {
+          drop: more ? Math.round(more.getBoundingClientRect().top - heading.top) : null,
+          shortest: heights.length > 0 ? Math.min(...heights) : 0,
+          tallest: heights.length > 0 ? Math.max(...heights) : 0,
+          count: heights.length,
+        }
+      }),
+    )
+
+    expect(measured.length, 'لا كاروسيل في الصفحة').toBeGreaterThan(0)
+    for (const section of measured) {
+      expect(section.count, 'كاروسيلٌ بلا لوحات').toBeGreaterThan(0)
+      /*
+       * أقصرُ لوحةٍ لا تنزل عن ثلثَي أطولها.
+       *
+       * والنسبُ تختلف بحقّ — `transport/sport` أعرضُ فيُحتوى أقصر: قِيس
+       * ٥٦ من ٧٨، أي ٧٢٪. والمنهارُ ٣٢ من ٧٤، أي ٤٣٪.
+       */
+      expect(
+        section.shortest / section.tallest,
+        'لوحةٌ تشذّ قصرًا عن أخواتها — صندوقٌ انهار',
+      ).toBeGreaterThan(0.6)
+      expect(section.drop, '«عرض الكل» نزل سطرًا تحت العنوان').toBeLessThan(40)
+    }
+  })
+})

@@ -542,6 +542,8 @@ export function SaudiLicensePlate({
         aria-label={label}
         preserveAspectRatio="xMidYMid meet"
         data-plate-type={plateType}
+        /* الإصدارُ بجانب النوع: نسبتاهما تختلفان، فلا يُقاسان معًا */
+        data-plate-format={plateFormat}
         data-plate-letters={arabicLetters}
         data-plate-numbers={western}
       >
