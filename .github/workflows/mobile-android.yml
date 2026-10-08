@@ -44,8 +44,12 @@ jobs:
       - name: تثبيت الاعتماديات
         run: pnpm install --frozen-lockfile
 
+      # عنوانُ التطبيق ونطاقاتُه يُمرَّران — انظر `mobile-ios.yml` لوجه ذلك
       - name: مزامنة الغلاف
         # يَنسخ `capacitor/www` ويُحدّث الإضافات في مشروع Gradle
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.payone.one' }}
+          CAPACITOR_ALLOWED_HOSTS: ${{ vars.CAPACITOR_ALLOWED_HOSTS }}
         run: npx cap sync android
 
       # ----------------------------------------------------------- التوقيع
