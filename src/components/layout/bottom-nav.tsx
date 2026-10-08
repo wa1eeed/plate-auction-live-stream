@@ -28,6 +28,30 @@ const TABS: readonly TabDef[] = [
   { href: '/account', label: 'ملفّي', icon: User, exact: true },
 ]
 
+/**
+ * أين لا ملاحةَ — **قاعدةٌ واحدة تُقرأ هنا وتُعلَن للحاوية**.
+ *
+ * فالصفحاتُ التي تُخفيها تحمل شريطَ فعلٍ لاصقًا في قاعها، وشريطان أحدهما
+ * فوق الآخر يزاحمان الإبهام. والحاويةُ تحتاج أن تعرف كي تُسقط حشوتَها
+ * وتُنزل الشريطَ إلى القاع — وإلّا بقي معلّقًا فوق فراغ، فبدا في منتصف
+ * الصفحة لا في أسفلها.
+ */
+function hiddenOn(pathname: string): boolean {
+  /*
+   * صفحةُ اللوحة: فيها شريط مزايدةٍ ثابت، وهو الفعل المقصود فيها. وأسوأ
+   * لحظةٍ لمزاحمة الإبهام هي الثواني الأخيرة من المزاد.
+   */
+  if (/^\/market\/[^/]+$/.test(pathname)) return true
+
+  /* مسارُ السداد: مهمّةٌ لها بدايةٌ ونهاية لا تصفّحٌ بين أقسام */
+  if (pathname.startsWith('/checkout/')) return true
+
+  /* معالجُ إضافة اللوحة وتعديلها: زرُّ «التالي» لاصقٌ في قاعه */
+  if (/^\/account\/listings\/(new|[^/]+)$/.test(pathname)) return true
+
+  return false
+}
+
 export function BottomNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname()
   /*
@@ -37,27 +61,17 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
   const [native, setNative] = useState(false)
   useEffect(() => setNative(isNativeShell()), [])
 
-  if (!native) return null
+  const hidden = hiddenOn(pathname)
 
-  /*
-   * **لا ملاحةَ في صفحة اللوحة.**
-   *
-   * فيها شريط مزايدةٍ ثابتٌ أسفل الشاشة — وهو الفعل المقصود في تلك الصفحة.
-   * وشريطان أحدهما فوق الآخر يزاحمان الإبهام على المبلغ والزرّ في الثواني
-   * الأخيرة من المزاد، وهي أسوأ لحظةٍ لمزاحمة.
-   *
-   * والخروج من الصفحة له زرُّ رجوعٍ في الهيدر وزرُّ الجهاز في أندرويد.
-   */
-  if (/^\/market\/[^/]+$/.test(pathname)) return null
+  /* تُعلَن للحاوية، فتُسقط حشوتَها ويعود شريطُ الفعل إلى القاع */
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>('[data-app-scroll]')
+    if (!scroller) return
+    if (native && hidden) scroller.setAttribute('data-no-bottom-nav', '')
+    else scroller.removeAttribute('data-no-bottom-nav')
+  }, [native, hidden, pathname])
 
-  /*
-   * **ولا في مسار السداد** — وهو مهمّةٌ لها بدايةٌ ونهاية لا تصفّحٌ بين أقسام.
-   *
-   * وفيه شريطُ دفعٍ لاصقٌ يحمل المستحقَّ والزرّ، فشريطان أحدهما فوق الآخر
-   * يزاحمان الإبهام على مبلغٍ بعشرات الآلاف. والتطبيقاتُ الأصيلة تُخفي شريطَ
-   * أقسامها في الدفع للسبب نفسه: لا يُغادَر ما بدأ إلّا بإتمامه أو بردّ.
-   */
-  if (pathname.startsWith('/checkout/')) return null
+  if (!native || hidden) return null
 
   const active = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)

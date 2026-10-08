@@ -260,8 +260,19 @@
     z-index: 30;
   }
 
+  /*
+   * ويُرفع بقدر الملاحة **حيث توجد وحدها**.
+   *
+   * وصفحةُ المعالج تُخفيها (انظر `bottom-nav.tsx`)، فرفعُ الشريط فيها يتركه
+   * معلّقًا فوق فراغٍ بأربعة أركان — وهو ما يجعله يبدو في منتصف الصفحة.
+   * و`[data-no-bottom-nav]` تُعلم الحاويةَ أن لا ملاحة، فيعود الشريط للقاع.
+   */
   :root[data-native] .action-bar {
     bottom: calc(4rem + var(--safe-bottom));
+  }
+
+  :root[data-native] [data-app-scroll][data-no-bottom-nav] .action-bar {
+    bottom: var(--safe-bottom);
   }
 
   /* مساحة لمس لا تقلّ عن 44px للأزرار الصغيرة على الأجهزة اللمسية */

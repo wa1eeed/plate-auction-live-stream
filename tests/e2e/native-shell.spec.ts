@@ -537,3 +537,42 @@ test.describe('مقدّمةُ التطبيق', () => {
     await expect(page.locator('[data-app-intro]')).toHaveCount(0)
   })
 })
+
+
+/**
+ * **شريطُ الفعل في القاع، ولا ملاحةَ تزاحمه.**
+ *
+ * ومعالجُ إضافة اللوحة له زرُّ «التالي» لاصق. وكانت الملاحةُ السفلية تحته،
+ * فيُرفع الشريطُ بقدرها — ثمّ أُخفيت الملاحةُ في هذه الصفحة فبقي الشريط
+ * مرفوعًا فوق فراغٍ بأربعة أركان، **فبدا في منتصف الصفحة**.
+ *
+ * والمقيس: أنّ الملاحة غائبة، وأنّ الشريط ملتصقٌ بالقاع لا معلّقًا فوقه.
+ */
+test.describe('معالجُ إضافة اللوحة في الغلاف', () => {
+  test('لا ملاحةَ سفلية، وزرُّ المرحلة لاصقٌ بالقاع', async ({ page }) => {
+    await page.addInitScript(() => {
+      ;(window as unknown as { Capacitor: unknown }).Capacitor = {
+        isNativePlatform: () => true,
+        getPlatform: () => 'ios',
+      }
+      try {
+        window.localStorage.setItem('app-intro-seen-v1', '1')
+      } catch {
+        /* نافذةٌ خاصّة — المقدّمة تظهر ولا يُكسر القياس */
+      }
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/listings/new')
+
+    await expect(page.getByRole('navigation', { name: 'التنقّل', exact: true })).toHaveCount(0)
+
+    const gap = await page.evaluate(() => {
+      const bar = document.querySelector('.action-bar')
+      if (!bar) return null
+      return Math.round(window.innerHeight - bar.getBoundingClientRect().bottom)
+    })
+    expect(gap, 'لا شريطَ فعلٍ في الصفحة').not.toBeNull()
+    expect(gap, 'الشريط معلّقٌ فوق القاع — يبدو في منتصف الصفحة').toBeLessThanOrEqual(2)
+  })
+})

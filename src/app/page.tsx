@@ -7,7 +7,7 @@ import { HomeHero } from '@/components/market/home-hero'
 import { StoryRail } from '@/components/home/story-rail'
 import { BannerSlider } from '@/components/home/banner-slider'
 import { EndingSoon } from '@/components/home/ending-soon'
-import { GuestPrompt, QuickActions } from '@/components/home/quick-actions'
+import { GuestPrompt } from '@/components/home/quick-actions'
 import { PlateCarousel } from '@/components/market/plate-carousel'
 import { Card, CardContent } from '@/components/ui/card'
 import { config, DEMO_PRIMARY_USER } from '@/lib/config'
@@ -79,7 +79,16 @@ export default async function HomePage() {
         <div className="space-y-4 pt-3 lg:hidden">
           <StoryRail stories={stories} />
           <BannerSlider banners={banners} />
-          {viewer ? <QuickActions /> : <GuestPrompt tagline={brand.metaDescription} />}
+          {/*
+            * ولا مداخلَ سريعة لمن دخل.
+            *
+            * كانت أربعةً — مزايداتي ومشترياتي والمحفظة وأضف لوحة — وكلُّها
+            * يبلغها الملاحةُ السفلية بضغطةٍ واحدة. فصفٌّ يكرّر ما تحته
+            * يأخذ من الشاشة ولا يُعطي، ويُبعد ما يُفتح لأجله: اللوحات.
+            *
+            * ويبقى نداءُ الزائر: مَن لم يدخل لا ملاحةَ له ولا حساب.
+            */}
+          {viewer ? null : <GuestPrompt tagline={brand.metaDescription} />}
           <EndingSoon cards={auctions} serverTime={serverTime} />
         </div>
 

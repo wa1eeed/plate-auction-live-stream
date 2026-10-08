@@ -17,15 +17,27 @@ const MB = 1024 * 1024
  * ومرّةً بعد فحصٍ يقيس بالنوع وحده — فمرّ نوعٌ مجهول بلا قياس.
  */
 describe('ما يُردّ قبل الإرسال', () => {
+  /*
+   * **والأرقامُ تُقرأ من المصدر لا تُكتب هنا.**
+   *
+   * كانت مثبَّتةً (`8` و`100`)، فرفعُ الحدّ لصور الهواتف أسقط أربعةَ فحوصٍ
+   * على غير علّة — والمقيسُ ليس كم الحدّ، بل أنّ ما دونه يمرّ وما فوقه
+   * يُردّ برقمين مقروءين.
+   */
+  const videoLimit = limitFor('video/mp4')!
+  const imageLimit = limitFor('image/png')!
+  const mb = (bytes: number) => Math.round(bytes / MB)
+
   it('ما دون الحدّ يمرّ', () => {
-    expect(uploadRejection('image/png', 8 * MB)).toBeNull()
+    expect(uploadRejection('image/png', imageLimit)).toBeNull()
     expect(uploadRejection('video/mp4', 1024)).toBeNull()
   })
 
   it('وما فوقه يُردّ برسالةٍ فيها الرقمان — بالميغابايت لا بالبايت', () => {
-    const message = uploadRejection('video/mp4', 150 * MB)
-    expect(message).toContain('150')
-    expect(message).toContain('100')
+    const over = videoLimit * 2
+    const message = uploadRejection('video/mp4', over)
+    expect(message).toContain(String(mb(over)))
+    expect(message).toContain(String(mb(videoLimit)))
     expect(message).not.toMatch(/\d{7,}/)
   })
 
@@ -35,12 +47,14 @@ describe('ما يُردّ قبل الإرسال', () => {
    */
   it('و`video/quicktime` مقبولٌ بحدّ الفدّيو — لا يُردّ بصيغته', () => {
     expect(limitFor('video/quicktime')).toBe(limitFor('video/mp4'))
-    expect(uploadRejection('video/quicktime', 90 * MB)).toBeNull()
-    expect(uploadRejection('video/quicktime', 150 * MB)).toMatch(/150/)
+    expect(uploadRejection('video/quicktime', videoLimit)).toBeNull()
+    expect(uploadRejection('video/quicktime', videoLimit * 2)).toMatch(
+      String(mb(videoLimit * 2)),
+    )
   })
 
   it('وبايتٌ واحدٌ فوق الحدّ تجاوزٌ — فالحدُّ حدٌّ', () => {
-    expect(uploadRejection('image/png', 8 * MB + 1)).not.toBeNull()
+    expect(uploadRejection('image/png', imageLimit + 1)).not.toBeNull()
   })
 
   /*
@@ -53,10 +67,11 @@ describe('ما يُردّ قبل الإرسال', () => {
    * ولو سقط هذا الفحص لعاد العطبُ نفسُه حرفًا.
    */
   it('ونوعٌ مجهولٌ **ضخم** يُردّ بالحجم — لا يمرّ بحجّة أنّا لا نعرف نوعه', () => {
-    const message = uploadRejection('video/x-matroska', 150 * MB)
+    const over = MAX_UPLOAD_BYTES * 2
+    const message = uploadRejection('video/x-matroska', over)
     expect(message).not.toBeNull()
-    expect(message).toContain('150')
-    expect(message).toContain('100')
+    expect(message).toContain(String(mb(over)))
+    expect(message).toContain(String(mb(MAX_UPLOAD_BYTES)))
   })
 
   it('ونوعٌ مجهولٌ صغيرٌ يُردّ بالصيغة — ولا يُرفع ليُقال له «غير مدعوم»', () => {
