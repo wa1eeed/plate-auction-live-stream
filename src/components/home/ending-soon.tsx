@@ -50,13 +50,33 @@ export function EndingSoon({
         * يفرّق الإحساسَ الأصيل عن قائمةِ ويب تنزلق كيفما اتّفق.
         */}
       <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/*
+          * عرضُ البطاقة يتبع الشاشة لا رقمًا ثابتًا.
+          *
+          * و`13.5rem` كانت ٢١٦ بكسلًا على كلّ جهاز: نصفُ شاشة الجوّال، فتبدو
+          * ضامرةً ويبقى بجانبها فراغٌ إن لم يكن بعدها غيرها. و`78vw` تملأ
+          * الشاشة إلّا طرفًا يُشير إلى أنّ وراءها المزيد — وهو ما يدعو إلى
+          * السحب. والحدُّ الأعلى يمنعها أن تتضخّم على الحواسيب.
+          */}
         {soonest.map((card) => (
-          <li key={card.id} className="w-[13.5rem] shrink-0 snap-start">
+          <li key={card.id} className="w-[78vw] max-w-[17rem] shrink-0 snap-start sm:w-[15rem]">
             <Link
               href={`/market/${card.id}`}
               className="surface block rounded-2xl p-2.5 transition-colors hover:border-gold-600/50"
             >
-              <div className="overflow-hidden rounded-xl">
+              {/*
+                * صندوقٌ بارتفاعٍ محدَّد — و`size="fill"` يشترطه.
+                *
+                * كان `div` بلا ارتفاع: فـ`h-full` على الـSVG يُحسب من أبٍ
+                * ارتفاعُه يُحسب من ابنه، فينهار إلى صفر — وهو ما يفعله سفاري
+                * (محرّكُ التطبيق على iOS) فتختفي اللوحة. وكرومُ يتسامح أحيانًا
+                * فيُنجيها، فتظهر العلّة في جهازٍ دون جهاز.
+                *
+                * و`aspect-[16/7]` هو ما تضعه بقيّةُ المواضع لهذا السبب نفسه،
+                * و`meet` في `preserveAspectRatio` يجعل كلّ إصدارٍ يُحتوى بلا
+                * تمديد — فالطويلةُ والرياضيةُ والاعتيادية تتّسق في صفٍّ واحد.
+                */}
+              <div className="flex aspect-[16/7] items-center justify-center overflow-hidden rounded-xl bg-ink-700/45 p-1.5">
                 <SaudiLicensePlate
                   plateType={card.plate.plateType}
                   plateFormat={card.plate.plateFormat}

@@ -147,7 +147,7 @@ jobs:
           # ‏`NEXT_PUBLIC_*` يُحقن في حزمة المتصفّح وقت البناء لا وقت التشغيل،
           # فلا يُترك لكوليفاي يضبطه بعدُ — يُخبز هنا أو خرج خاطئًا.
           build-args: |
-            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.nx.sa' }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://mazad.payone.one' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

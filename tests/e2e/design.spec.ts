@@ -271,6 +271,51 @@ test.describe('اللوحة داخل البطاقة', () => {
   })
 })
 
+test.describe('كاروسيل «ينتهي قريبًا»', () => {
+  /*
+   * **لوحةٌ لا ترتفع لا تُرى.**
+   *
+   * و`size="fill"` يعني `h-full` على الـSVG، فيُحسب ارتفاعُه من أبيه. وكان
+   * أبوه `div` بلا ارتفاع، فارتفاعُه يُحسب من ابنه — دورٌ ينهار إلى صفر.
+   * وسفاري يفعلها (وهو محرّك التطبيق على iOS) وكرومُ يتسامح، فتختفي اللوحةُ
+   * في جهازٍ وتظهر في آخر. ولهذا تضع بقيّةُ المواضع `aspect-[16/7]`.
+   *
+   * **ويُقاس العهدُ لا أثرُه.** فكروم يتسامح مع الدور ويرسمها بنسبتها
+   * الأصليّة، فقياسُ الارتفاع فيه يمرّ ولو عاد العطب — جُرّب: رُدّ الصندوقُ
+   * إلى `div` بلا ارتفاع فمرّ الاختبار. والمقيس هنا أنّ للصندوق نسبةً
+   * محدَّدة، وهو ما يشترطه `fill` ولا يتسامح فيه سفاري.
+   */
+  test('كلُّ لوحةٍ في الشريط لها ارتفاع، والبطاقةُ تتبع الشاشة', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+
+    const strip = page.locator('ul.snap-x').first()
+    await expect(strip).toBeVisible()
+
+    const cards = await strip.evaluate((ul: HTMLElement) =>
+      [...ul.querySelectorAll('li')].map((li) => {
+        const svg = li.querySelector('svg')
+        const box = svg?.getBoundingClientRect()
+        /* أبو الـSVG هو الصندوق الذي يجب أن يحمل الارتفاع */
+        const frame = svg?.parentElement?.parentElement
+        return {
+          height: box ? Math.round(box.height) : 0,
+          width: Math.round(li.getBoundingClientRect().width),
+          ratio: frame ? getComputedStyle(frame).aspectRatio : 'لا صندوق',
+        }
+      }),
+    )
+
+    expect(cards.length, 'لا بطاقات في الشريط').toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(card.ratio, 'صندوقُ اللوحة بلا نسبةٍ محدَّدة — ينهار في سفاري').not.toBe('auto')
+      expect(card.height, 'لوحةٌ بارتفاع صفر').toBeGreaterThan(40)
+      /* وعلى شاشة ٣٩٠ تُقارب ثلاثةَ أرباعها، فلا تبدو ضامرةً ولا تملأها */
+      expect(card.width, 'البطاقة أضيق من أن تُقرأ').toBeGreaterThan(230)
+    }
+  })
+})
+
 test.describe('مسار الصفقة وتفصيلها', () => {
   test('المشتري يرى المطلوب سداده بعد خصم العربون، ومسار صفقته', async ({ page }) => {
     // ماجد صاحب الصفقات المبذورة — مكتملة ومنتظِرة ومتخلّفة
