@@ -83,12 +83,11 @@ export function StoryRail({ stories }: { stories: StoryView[] }) {
                 <span
                   className={cn(
                     'relative grid size-[4.25rem] place-items-center rounded-full p-[3px] transition-colors',
-                    seen.has(story.id)
-                      ? 'bg-ink-600'
-                      : 'bg-[linear-gradient(135deg,var(--color-gold-400),var(--color-gold-600))]',
+                    /* المشاهَدُ يسكن ويبهت، والجديدُ تدور هالتُه — `globals.css` */
+                    seen.has(story.id) ? 'bg-ink-600' : 'story-halo',
                   )}
                 >
-                  <span className="grid size-full place-items-center overflow-hidden rounded-full bg-ink-950 p-[2px]">
+                  <span className="relative z-10 grid size-full place-items-center overflow-hidden rounded-full bg-ink-950 p-[2px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={story.posterUrl ?? story.mediaUrl}
@@ -101,7 +100,7 @@ export function StoryRail({ stories }: { stories: StoryView[] }) {
                   {story.mediaKind === 'video' && (
                     <span
                       aria-hidden
-                      className="absolute bottom-0 end-0 grid size-5 place-items-center rounded-full border border-ink-950 bg-gold-500 text-ink-950"
+                      className="absolute bottom-0 end-0 z-10 grid size-5 place-items-center rounded-full border border-ink-950 bg-gold-500 text-ink-950"
                     >
                       <Play className="size-2.5 fill-current" />
                     </span>

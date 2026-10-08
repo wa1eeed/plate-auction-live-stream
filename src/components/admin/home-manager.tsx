@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Clock, Eye, EyeOff, Image as ImageIcon, Pencil, Plus, Trash2, Video } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,16 @@ type WindowDraft = { published: boolean; startsAt: string; endsAt: string; sortO
 
 const EMPTY_WINDOW: WindowDraft = { published: true, startsAt: '', endsAt: '', sortOrder: 0 }
 
+/**
+ * **الظهور: دائمٌ أو مؤقّت — اختيارٌ قبل حقلين.**
+ *
+ * وكان الحقلان ظاهرين دائمًا، وتحتهما «اتركه فارغًا ليبقى بلا نهاية». فمن
+ * أراد ترويجًا دائمًا وجب أن يعرف أنّ **الفراغ** هو ما يعنيه — وهو معنًى
+ * يُستنتج لا يُقال. ومن ملأ أحدهما سهوًا اختفى ما نشره في موعدٍ لم يقصده.
+ *
+ * فصار القرارُ أوّلًا: دائمٌ فلا حقول، أو مؤقّتٌ فتظهر. والنموذجُ لم يتغيّر
+ * — `startsAt`/`endsAt` بـ`null` هو الدوام كما كان، انظر `LiveWindow`.
+ */
 function WindowFields({
   draft,
   onChange,
@@ -65,30 +76,56 @@ function WindowFields({
   draft: WindowDraft
   onChange: (patch: Partial<WindowDraft>) => void
 }) {
+  const timed = draft.startsAt !== '' || draft.endsAt !== ''
+
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="startsAt">يبدأ الظهور</Label>
-          <Input
-            id="startsAt"
-            type="datetime-local"
-            value={draft.startsAt}
-            onChange={(event) => onChange({ startsAt: event.target.value })}
+      <div className="space-y-2">
+        <Label>مدّة الظهور</Label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <WindowMode
+            active={!timed}
+            title="ظهورٌ دائم"
+            hint="يبقى ما دام منشورًا"
+            onSelect={() => onChange({ startsAt: '', endsAt: '' })}
           />
-          <p className="text-[11px] text-muted">اتركه فارغًا ليبدأ فور النشر</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="endsAt">ينتهي</Label>
-          <Input
-            id="endsAt"
-            type="datetime-local"
-            value={draft.endsAt}
-            onChange={(event) => onChange({ endsAt: event.target.value })}
+          <WindowMode
+            active={timed}
+            title="ظهورٌ مؤقّت"
+            hint="يبدأ وينتهي بموعد"
+            /*
+             * يُفتح بموعدٍ مبدئيّ لا بفراغ: حقلان فارغان يعنيان «دائم»،
+             * فيبقى الاختيارُ معلّقًا بين حالين ولا يستقرّ على المؤقّت.
+             */
+            onSelect={() => onChange({ startsAt: localNow(), endsAt: '' })}
           />
-          <p className="text-[11px] text-muted">اتركه فارغًا ليبقى بلا نهاية</p>
         </div>
       </div>
+
+      {timed && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="startsAt">يبدأ الظهور</Label>
+            <Input
+              id="startsAt"
+              type="datetime-local"
+              value={draft.startsAt}
+              onChange={(event) => onChange({ startsAt: event.target.value })}
+            />
+            <p className="text-[11px] text-muted">اتركه فارغًا ليبدأ فور النشر</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="endsAt">ينتهي</Label>
+            <Input
+              id="endsAt"
+              type="datetime-local"
+              value={draft.endsAt}
+              onChange={(event) => onChange({ endsAt: event.target.value })}
+            />
+            <p className="text-[11px] text-muted">اتركه فارغًا ليبقى بلا نهاية</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -114,6 +151,42 @@ function WindowFields({
         </div>
       </div>
     </>
+  )
+}
+
+/** «الآن» بصيغة `datetime-local` — محلّيًّا بلا منطقة، كما يقرؤه الحقل. */
+function localNow(): string {
+  const now = new Date()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+}
+
+function WindowMode({
+  active,
+  title,
+  hint,
+  onSelect,
+}: {
+  active: boolean
+  title: string
+  hint: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        'rounded-xl border p-3 text-start transition-colors',
+        active
+          ? 'border-gold-600/60 bg-gold-500/[0.08]'
+          : 'border-ink-600 bg-ink-900/40 hover:border-ink-500',
+      )}
+    >
+      <span className="block text-sm font-bold">{title}</span>
+      <span className="mt-0.5 block text-[11px] text-muted">{hint}</span>
+    </button>
   )
 }
 

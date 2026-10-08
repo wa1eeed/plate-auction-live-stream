@@ -301,6 +301,38 @@ test.describe('الرئيسية على الجوال', () => {
     await expect(page.getByRole('heading', { name: 'مزادات جارية' })).toBeVisible()
   })
 
+  /**
+   * **هالةُ الجديد تدور، والمشاهَدُ يسكن ويبهت.**
+   *
+   * واللونُ وحده لا ينادي: العينُ تلتقط الحركةَ قبل اللون، ولهذا تُدير
+   * تطبيقاتُ التواصل هالاتِها. والمقيسُ أنّ الجديد يحمل الهالةَ المتحرّكة،
+   * وأنّها **تُنزع بعد المشاهدة** فلا تبقى تنادي على ما رآه صاحبُها.
+   */
+  test('هالةُ الستوري الجديد تدور، وتُنزع بعد مشاهدته', async ({ page }) => {
+    await loginAdmin(page)
+    await makeStory(page, { title: 'هالة', alt: 'محتوى الهالة', sortOrder: 0, durationSeconds: 15 })
+
+    await page.setViewportSize(MOBILE)
+    await page.goto('/')
+
+    const rail = page.getByRole('region', { name: 'جديد المنصّة' })
+    const ring = rail.getByRole('button').filter({ hasText: 'هالة' }).locator('.story-halo')
+    await expect(ring, 'الستوري الجديد بلا هالة').toHaveCount(1)
+
+    /* وتدور فعلًا: الحركةُ على العنصر الزائف لا على العنصر نفسه */
+    const spin = await ring.evaluate((node) => {
+      const style = getComputedStyle(node, '::before')
+      return { name: style.animationName, duration: style.animationDuration }
+    })
+    expect(spin.name, 'الهالة ساكنة').not.toBe('none')
+    expect(spin.duration, 'الهالة بلا مدّة دوران').not.toBe('0s')
+
+    await rail.getByRole('button').filter({ hasText: 'هالة' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'إغلاق' }).click()
+
+    await expect(ring, 'الهالة باقيةٌ بعد المشاهدة').toHaveCount(0)
+  })
+
   test('الحلقة تفتح العارض، وينتقل بالضغط ويُغلق', async ({ page }) => {
     await loginAdmin(page)
     /*
