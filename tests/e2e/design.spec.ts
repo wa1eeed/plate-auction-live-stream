@@ -989,3 +989,43 @@ test('شعار اللوحة يُرسم في كل محرّك ولو خُفي أو
  * بإرجاع المتوسّط القديم **فمرّت**. والحساب نفسه هو ما يُحرَس، في
  * `tests/unit/plate-advance.test.ts`.
  */
+
+
+/**
+ * **تنبيهُ المنصّة بطاقةٌ تُقرأ، لا شريطٌ ضامر.**
+ *
+ * وكان بعرض `sonner` الافتراضيّ — ٣٥٦ بكسلًا — فيبدو على شاشةٍ عرضُها ٣٩٠
+ * بطاقةً صغيرةً تائهةً بهامشين غيرِ متساويين. وأيقونتُه ستّةَ عشرَ بكسلًا
+ * عائمةً بلا شارة.
+ *
+ * والمقيسُ ما يُرى: أن يملأ الشاشة إلّا هامشًا، وأن تكون أيقونتُه شارةً
+ * لا نقطة.
+ */
+test.describe('تنبيهُ المنصّة', () => {
+  test('يملأ عرضَ الجوّال، وأيقونتُه شارةٌ لا نقطة', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/login')
+
+    await page.getByLabel('البريد الإلكتروني').fill('waleed@demo.sa')
+    await page.getByLabel('كلمة المرور').fill('كلمةٌ-خاطئة')
+    await page.getByRole('button', { name: 'دخول', exact: true }).click()
+
+    const toast = page.locator('[data-sonner-toast]').first()
+    await expect(toast).toBeVisible({ timeout: 15_000 })
+
+    const shape = await toast.evaluate((node: HTMLElement) => {
+      const box = node.getBoundingClientRect()
+      const icon = node.querySelector('[data-icon]')?.getBoundingClientRect()
+      return {
+        width: Math.round(box.width),
+        icon: icon ? Math.round(icon.width) : 0,
+        kind: node.getAttribute('data-type'),
+      }
+    })
+
+    expect(shape.kind, 'خطأٌ لا يُعلن خطأً').toBe('error')
+    /* ٣٩٠ ناقص هامشين — وما دون ٣٤٠ يبدو بطاقةً تائهة */
+    expect(shape.width, 'التنبيه أضيق من أن يُقرأ بطاقةً').toBeGreaterThan(340)
+    expect(shape.icon, 'الأيقونة نقطةٌ لا شارة').toBeGreaterThanOrEqual(32)
+  })
+})
