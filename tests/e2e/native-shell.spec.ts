@@ -505,6 +505,17 @@ test.describe('مقدّمةُ التطبيق', () => {
     const adminContext = await browser.newContext()
     const adminPage = await adminContext.newPage()
     await loginAdmin(adminPage)
+
+    /*
+     * وموضعُها يُقاس أيضًا: انتقلت من «الإعدادات» إلى «إعدادات التطبيق».
+     * فلو عادت أو ضاعت لم يجدها من يضبطها، والمسارُ البرمجيّ وحده لا يدلّ.
+     */
+    await adminPage.goto('/admin/mobile')
+    await expect(
+      adminPage.getByRole('tab', { name: /مقدّمة التطبيق/ }),
+      'مقدّمةُ التطبيق ليست في إعدادات التطبيق',
+    ).toBeVisible()
+
     const saved = await adminPage.evaluate(async (heading) => {
       const response = await fetch('/api/admin/settings/onboarding', {
         method: 'PATCH',
