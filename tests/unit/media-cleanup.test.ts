@@ -2,7 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { deleteBanner, deleteStory, updateBanner } from '@/lib/server/home-media-service'
+import { deleteBanner, deleteStory, updateBanner,
+  updateStory,
+} from '@/lib/server/home-media-service'
 import { getMedia, resetMediaForTests } from '@/lib/server/media'
 import { getStore } from '@/lib/store'
 
@@ -54,7 +56,10 @@ describe('تنظيفُ الوسائط عند الحذف', () => {
     await getMedia().put(mediaKey, bytes, 'video/mp4')
     await getMedia().put(posterKey, bytes, 'image/png')
     const row = await getStore().createStory({
-      title: 'للحذف', mediaKey, mediaKind: 'video', posterKey, alt: 'حلقة', durationSeconds: 5,
+      title: 'للحذف',
+      slides: [
+        { id: 's1', mediaKey, mediaKind: 'video', posterKey, alt: 'حلقة', durationSeconds: 5 },
+      ],
       linkUrl: null, sortOrder: 0, published: true, startsAt: null, endsAt: null,
     })
 
@@ -62,6 +67,48 @@ describe('تنظيفُ الوسائط عند الحذف', () => {
 
     expect(await exists(mediaKey)).toBe(false)
     expect(await exists(posterKey)).toBe(false)
+  })
+
+  /*
+   * **وشريحةٌ خرجت من الستوري تُمحى، وما بقي يبقى.**
+   *
+   * ولا يُقاس بشريحةٍ شريحة: المحرّرُ قد يُعيد ترتيبَها أو يستبدل واحدةً في
+   * موضعها. فلو قِيس بالموضع لَمُحي ملفٌّ ما زال مستعملًا — وهو فقدٌ لا
+   * يُسترجع، إذ لا نسخةَ ثانية منه.
+   */
+  it('وحذفُ **الشريحة الأولى** يمحو ملفَّها لا ملفَّ التي بعدها', async () => {
+    const goes = 'platform/images/slide-goes.png'
+    const stays = 'platform/images/slide-stays.png'
+    await getMedia().put(stays, bytes, 'image/png')
+    await getMedia().put(goes, bytes, 'image/png')
+    const row = await getStore().createStory({
+      title: 'شريحتان',
+      slides: [
+        { id: 's1', mediaKey: goes, mediaKind: 'image', posterKey: null, alt: 'تخرج', durationSeconds: 5 },
+        { id: 's2', mediaKey: stays, mediaKind: 'image', posterKey: null, alt: 'تبقى', durationSeconds: 5 },
+      ],
+      linkUrl: null, sortOrder: 0, published: true, startsAt: null, endsAt: null,
+    })
+
+    /*
+     * تُحذف **الأولى** لا الأخيرة — وهنا يفترق القياسان.
+     *
+     * فتنظيفٌ بالموضع يرى أنّ الموضع الثاني شغر، فيمحو ملفَّ الشريحة التي
+     * كانت فيه — وهي الباقية. ويرى الأوّلَ مشغولًا فيُبقي ملفَّ الخارجة.
+     * فيُمحى المستعمَلُ ويبقى اليتيم، مقلوبًا تمامًا.
+     */
+    await updateStory(
+      row.id,
+      {
+        slides: [
+          { id: 's2', mediaKey: stays, mediaKind: 'image', posterKey: null, alt: 'تبقى', durationSeconds: 5 },
+        ],
+      },
+      ADMIN,
+    )
+
+    expect(await exists(goes), 'شريحةٌ خرجت وبقي ملفُّها').toBe(false)
+    expect(await exists(stays), 'مُحي ملفٌّ ما زال مستعملًا').toBe(true)
   })
 
   /*

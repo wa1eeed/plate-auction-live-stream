@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { HANDLE_PATTERN, PLATE_FORMATS, RESERVED_HANDLES, STORY_DURATION, type PlateFormat } from './types'
+import {
+  HANDLE_PATTERN,
+  MAX_STORY_SLIDES,
+  PLATE_FORMATS,
+  RESERVED_HANDLES,
+  STORY_DURATION,
+  type PlateFormat,
+} from './types'
 import { normalizeArabicLetters, normalizePlateNumbers } from '@/lib/saudi-plate-mapping'
 import {
   FAQ_CATEGORIES,
@@ -363,28 +370,31 @@ export const bannerInputSchema = z
   })
   .superRefine(orderedWindow)
 
-export const storyInputSchema = z
+/**
+ * شريحةُ ستوري — وسيطٌ وغلافٌ ووصفٌ ومدّة.
+ *
+ * والفحصُ على كلّ شريحةٍ لا على الستوري: فدّيو بلا غلافٍ في الشريحة الثالثة
+ * يُبقي الشاشةَ سوداء عندها، لا عند أوّلها.
+ */
+export const storySlideInputSchema = z
   .object({
-    title: z.string().trim().min(2, 'العنوان قصير جدًا').max(40),
+    id: z.string().trim().min(1).max(64),
     mediaKey: publicKeySchema,
     mediaKind: z.enum(['image', 'video']),
     posterKey: publicKeySchema.nullable().default(null),
     alt: z.string().trim().min(2, 'اكتب وصفًا لمن لا يرى المحتوى').max(160),
-    linkUrl: linkSchema.nullable().default(null),
     durationSeconds: z
       .number()
       .int()
       .min(STORY_DURATION.min, `أقلّ مدّة ${STORY_DURATION.min} ثوانٍ`)
       .max(STORY_DURATION.max, `أقصى مدّة ${STORY_DURATION.max} ثانية`)
       .default(STORY_DURATION.default),
-    ...liveWindowShape,
   })
   .superRefine((value, ctx) => {
-    orderedWindow(value, ctx)
     /*
      * الفدّيو يلزمه غلاف.
      *
-     * وبلاه تبقى الحلقة سوداء حتى ينزل أوّلُ إطار — وشريطُ الستوريز أوّلُ
+     * وبلاه تبقى الشريحة سوداء حتى ينزل أوّلُ إطار — وشريطُ الستوريز أوّلُ
      * ما يُرى في الصفحة، فحلقةٌ سوداء تُقرأ عطبًا لا تحميلًا.
      */
     if (value.mediaKind === 'video' && !value.posterKey) {
@@ -401,6 +411,18 @@ export const storyInputSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mediaKey'], message: 'المحتوى ليس فدّيو' })
     }
   })
+
+export const storyInputSchema = z
+  .object({
+    title: z.string().trim().min(2, 'العنوان قصير جدًا').max(40),
+    slides: z
+      .array(storySlideInputSchema)
+      .min(1, 'الستوري يحتاج شريحةً واحدة على الأقلّ')
+      .max(MAX_STORY_SLIDES, `أقصى عدد شرائح ${MAX_STORY_SLIDES}`),
+    linkUrl: linkSchema.nullable().default(null),
+    ...liveWindowShape,
+  })
+  .superRefine(orderedWindow)
 
 export type BannerInput = z.infer<typeof bannerInputSchema>
 export type StoryInput = z.infer<typeof storyInputSchema>

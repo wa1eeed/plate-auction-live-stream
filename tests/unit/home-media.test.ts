@@ -147,12 +147,26 @@ describe('الستوريز في المخزَن', () => {
     const store = new MemoryStore()
     const video = await store.createStory({
       title: 'جولة',
-      mediaKey: 'platform/videos/a.mp4',
-      mediaKind: 'video',
-      posterKey: 'platform/images/a.png',
-      alt: 'جولة في المنصّة',
+      slides: [
+        {
+          id: 's1',
+          mediaKey: 'platform/videos/a.mp4',
+          mediaKind: 'video',
+          posterKey: 'platform/images/a.png',
+          alt: 'جولة في المنصّة',
+          durationSeconds: 6,
+        },
+        /* وشريحةٌ ثانية: الستوري يحمل أكثر من وسيط */
+        {
+          id: 's2',
+          mediaKey: 'platform/images/c.png',
+          mediaKind: 'image',
+          posterKey: null,
+          alt: 'تتمّة الجولة',
+          durationSeconds: 8,
+        },
+      ],
       linkUrl: null,
-      durationSeconds: 6,
       sortOrder: 0,
       published: true,
       startsAt: null,
@@ -160,12 +174,17 @@ describe('الستوريز في المخزَن', () => {
     })
     await store.createStory({
       title: 'منتهٍ',
-      mediaKey: 'platform/images/b.png',
-      mediaKind: 'image',
-      posterKey: null,
-      alt: 'ب',
+      slides: [
+        {
+          id: 's1',
+          mediaKey: 'platform/images/b.png',
+          mediaKind: 'image',
+          posterKey: null,
+          alt: 'ب',
+          durationSeconds: 6,
+        },
+      ],
       linkUrl: null,
-      durationSeconds: 6,
       sortOrder: 0,
       published: true,
       startsAt: null,
@@ -175,6 +194,9 @@ describe('الستوريز في المخزَن', () => {
     const live = await store.listStories({ liveAt: AT })
     expect(live).toHaveLength(1)
     expect(live[0]!.id).toBe(video.id)
-    expect(live[0]!.posterKey).toBe('platform/images/a.png')
+    expect(live[0]!.slides).toHaveLength(2)
+    expect(live[0]!.slides[0]!.posterKey).toBe('platform/images/a.png')
+    /* وترتيبُها محفوظ: الثانيةُ تأتي بعد الأولى لا قبلها */
+    expect(live[0]!.slides[1]!.alt).toBe('تتمّة الجولة')
   })
 })

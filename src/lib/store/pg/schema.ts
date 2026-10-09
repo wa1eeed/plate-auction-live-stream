@@ -545,8 +545,19 @@ export const stories = pgTable(
   {
     id: text('id').primaryKey(),
     title: text('title').notNull(),
-    mediaKey: text('media_key').notNull(),
-    mediaKind: text('media_kind').notNull(),
+    /*
+     * الشرائحُ جملةً في `jsonb` لا جدولًا ثانيًا.
+     *
+     * فهي تُقرأ وتُكتب مع الستوري دائمًا ولا يُبحث فيها ولا يُنضمّ إليها —
+     * وهو بعينه ما يقوله `schema.ts` في صدره عن القيم المركّبة. وجدولٌ ثانٍ
+     * يعني انضمامًا في كلّ قراءةٍ لشريطٍ يُقرأ كاملًا على كلّ فتحةِ صفحة.
+     *
+     * والأعمدةُ المفردة باقيةٌ تحتها لا تُقرأ: الترحيلُ ملأ منها، وتركُها
+     * يُبقي الرجوعَ ممكنًا إلى نشرةٍ سابقة بلا فقد.
+     */
+    slides: jsonb('slides').notNull().default([]),
+    mediaKey: text('media_key'),
+    mediaKind: text('media_kind'),
     posterKey: text('poster_key'),
     alt: text('alt').notNull().default(''),
     linkUrl: text('link_url'),

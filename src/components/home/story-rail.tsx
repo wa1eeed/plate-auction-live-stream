@@ -90,14 +90,15 @@ export function StoryRail({ stories }: { stories: StoryView[] }) {
                   <span className="relative z-10 grid size-full place-items-center overflow-hidden rounded-full bg-ink-950 p-[2px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={story.posterUrl ?? story.mediaUrl}
-                      alt={story.alt}
+                      src={story.slides[0].posterUrl ?? story.slides[0].mediaUrl}
+                      alt={story.slides[0].alt}
                       loading="lazy"
                       decoding="async"
                       className="size-full rounded-full object-cover"
                     />
                   </span>
-                  {story.mediaKind === 'video' && (
+                  {/* شارةُ الفدّيو تتبع الشريحة الأولى — وهي غلافُ الحلقة */}
+                  {story.slides[0].mediaKind === 'video' && (
                     <span
                       aria-hidden
                       className="absolute bottom-0 end-0 z-10 grid size-5 place-items-center rounded-full border border-ink-950 bg-gold-500 text-ink-950"

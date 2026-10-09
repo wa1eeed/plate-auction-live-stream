@@ -131,16 +131,29 @@ export async function liveBanners(nowMs: number): Promise<BannerView[]> {
 export async function liveStories(nowMs: number): Promise<StoryView[]> {
   const media = getMedia()
   const rows = await getStore().listStories({ liveAt: nowMs })
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    alt: row.alt,
-    linkUrl: row.linkUrl,
-    mediaKind: row.mediaKind,
-    durationSeconds: row.durationSeconds,
-    mediaUrl: media.publicUrl(row.mediaKey),
-    posterUrl: row.posterKey ? media.publicUrl(row.posterKey) : null,
-  }))
+  return (
+    rows
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        linkUrl: row.linkUrl,
+        slides: row.slides.map((slide) => ({
+          id: slide.id,
+          alt: slide.alt,
+          mediaKind: slide.mediaKind,
+          durationSeconds: slide.durationSeconds,
+          mediaUrl: media.publicUrl(slide.mediaKey),
+          posterUrl: slide.posterKey ? media.publicUrl(slide.posterKey) : null,
+        })),
+      }))
+      /*
+       * ستوري بلا شرائح لا يُرسل.
+       *
+       * وقد يقع: صفٌّ كُتب بنشرةٍ أقدم، أو شرائحُ حُذفت وبقي الستوري. وحلقةٌ
+       * تُفتح على لا شيء أسوأ من حلقةٍ غائبة — فتُرشَّح هنا لا في المتصفّح.
+       */
+      .filter((story) => story.slides.length > 0)
+  )
 }
 
 /* --------------------------------------------------------------- الإدارة */
@@ -229,6 +242,16 @@ export async function deleteBanner(id: string, adminId: string): Promise<void> {
   })
 }
 
+/** كلُّ ما يشغله الستوري على القرص — وسائطُ شرائحه وأغلفتُها. */
+function mediaKeysOf(story: Story): string[] {
+  const keys: string[] = []
+  for (const slide of story.slides) {
+    keys.push(slide.mediaKey)
+    if (slide.posterKey) keys.push(slide.posterKey)
+  }
+  return keys
+}
+
 export async function createStory(input: NewStory & Audited): Promise<Story> {
   const { adminId, ...fields } = input
   const row = await getStore().createStory(fields)
@@ -238,7 +261,7 @@ export async function createStory(input: NewStory & Audited): Promise<Story> {
     entityType: 'story',
     entityId: row.id,
     before: null,
-    after: { title: row.title, kind: row.mediaKind, endsAt: row.endsAt },
+    after: { title: row.title, slides: row.slides.length, endsAt: row.endsAt },
   })
   return row
 }
@@ -253,12 +276,20 @@ export async function updateStory(
   if (!before) throw new ServiceError('الستوري غير موجود', 404, 'STORY_NOT_FOUND')
 
   const row = await store.updateStory(id, patch)
-  const media = getMedia()
-  if (patch.mediaKey && patch.mediaKey !== before.mediaKey) {
-    await media.remove(before.mediaKey).catch(() => undefined)
-  }
-  if (patch.posterKey !== undefined && before.posterKey && patch.posterKey !== before.posterKey) {
-    await media.remove(before.posterKey).catch(() => undefined)
+
+  /*
+   * ما خرج من الشرائح يُمحى من القرص.
+   *
+   * ولا يُقاس بشريحةٍ شريحة: المحرّرُ قد يُعيد ترتيبَها أو يستبدل واحدةً
+   * بأخرى في موضعها. فتُجمع مفاتيحُ ما كان ومفاتيحُ ما صار، ويُمحى الفرق —
+   * فلا يبقى ملفٌّ يتيمٌ على القرص ولا يُمحى ملفٌّ ما زال مستعملًا.
+   */
+  if (patch.slides) {
+    const media = getMedia()
+    const kept = new Set(mediaKeysOf(row))
+    for (const key of mediaKeysOf(before)) {
+      if (!kept.has(key)) await media.remove(key).catch(() => undefined)
+    }
   }
   await audit({
     adminId,
@@ -278,8 +309,9 @@ export async function deleteStory(id: string, adminId: string): Promise<void> {
 
   await store.deleteStory(id)
   const media = getMedia()
-  await media.remove(before.mediaKey).catch(() => undefined)
-  if (before.posterKey) await media.remove(before.posterKey).catch(() => undefined)
+  for (const key of mediaKeysOf(before)) {
+    await media.remove(key).catch(() => undefined)
+  }
   await audit({
     adminId,
     action: 'story.delete',

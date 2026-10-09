@@ -29,8 +29,11 @@ export default async function AdminHomePage() {
         <StoryManager
           items={stories.map((story) => ({
             ...story,
-            mediaUrl: media.publicUrl(story.mediaKey),
-            posterUrl: story.posterKey ? media.publicUrl(story.posterKey) : null,
+            slides: story.slides.map((slide) => ({
+              ...slide,
+              mediaUrl: media.publicUrl(slide.mediaKey),
+              posterUrl: slide.posterKey ? media.publicUrl(slide.posterKey) : null,
+            })),
           }))}
         />
         <BannerManager

@@ -27,7 +27,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { STORY_DURATION, type Banner, type Story } from '@/lib/domain/types'
+import { MAX_STORY_SLIDES, STORY_DURATION, type Banner, type Story,
+  type StorySlide,
+} from '@/lib/domain/types'
 import { MediaUploadField, type Uploaded } from './media-upload-field'
 
 /* ------------------------------------------------------------ أدواتٌ مشتركة */
@@ -497,35 +499,169 @@ export function BannerManager({ items }: { items: (Banner & { imageUrl: string }
 
 /* ---------------------------------------------------------------- الستوريز */
 
-type StoryDraft = WindowDraft & {
-  title: string
-  alt: string
-  linkUrl: string
+/** شريحةٌ في المحرّر — ومعها معاينتُها، فما رُفع يُرى قبل الحفظ. */
+type SlideDraft = {
+  id: string
   mediaKey: string | null
   mediaKind: 'image' | 'video'
   posterKey: string | null
+  alt: string
   durationSeconds: number
   mediaPreview: string | null
   posterPreview: string | null
 }
 
+function emptySlide(): SlideDraft {
+  return {
+    id: `slide-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    mediaKey: null,
+    mediaKind: 'image',
+    posterKey: null,
+    alt: '',
+    durationSeconds: STORY_DURATION.default,
+    mediaPreview: null,
+    posterPreview: null,
+  }
+}
+
+type StoryDraft = WindowDraft & {
+  title: string
+  linkUrl: string
+  slides: SlideDraft[]
+}
+
 const EMPTY_STORY: StoryDraft = {
   ...EMPTY_WINDOW,
   title: '',
-  alt: '',
   linkUrl: '',
-  mediaKey: null,
-  mediaKind: 'image',
-  posterKey: null,
-  durationSeconds: STORY_DURATION.default,
-  mediaPreview: null,
-  posterPreview: null,
+  slides: [emptySlide()],
+}
+
+/**
+ * محرّرُ شريحةٍ واحدة — نوعُها ووسيطُها وغلافُها ووصفُها ومدّتُها.
+ *
+ * والوصفُ على الشريحة لا على الستوري: من لا يرى يحتاج وصفَ **ما يُعرض
+ * الآن**، لا وصفَ الحلقة كلِّها. ومدّةُ الصورة كذلك — شريحةٌ فيها نصٌّ
+ * تحتاج وقتًا أطول من شريحةٍ فيها لوحة.
+ */
+function SlideEditor({
+  slide,
+  position,
+  removable,
+  onChange,
+  onRemove,
+}: {
+  slide: SlideDraft
+  position: number
+  removable: boolean
+  onChange: (change: Partial<SlideDraft>) => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-ink-600 bg-ink-900/50 p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-muted">الشريحة {position + 1}</span>
+        {removable && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-label={`احذف الشريحة ${position + 1}`}
+            onClick={onRemove}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+      </div>
+
+      <div
+        role="group"
+        aria-label={`نوع الشريحة ${position + 1}`}
+        className="grid grid-cols-2 gap-2"
+      >
+        {(['image', 'video'] as const).map((kind) => (
+          <button
+            key={kind}
+            type="button"
+            aria-pressed={slide.mediaKind === kind}
+            /* تبديلُ النوع يُسقط ما رُفع: صورةٌ لا تصلح فدّيو */
+            onClick={() => onChange({ mediaKind: kind, mediaKey: null, mediaPreview: null })}
+            className={
+              slide.mediaKind === kind
+                ? 'rounded-xl border border-gold-500 bg-gold-500/10 px-3 py-2 text-sm font-bold'
+                : 'rounded-xl border border-ink-600 bg-ink-900 px-3 py-2 text-sm font-bold text-muted'
+            }
+          >
+            {kind === 'image' ? 'صورة' : 'فدّيو'}
+          </button>
+        ))}
+      </div>
+
+      <MediaUploadField
+        label={slide.mediaKind === 'video' ? 'ملفّ الفدّيو' : 'الصورة'}
+        hint={slide.mediaKind === 'video' ? 'MP4 أو MOV حتى ٢٠٠ ميغابايت' : 'يُفضَّل ٩:١٦'}
+        accept={
+          slide.mediaKind === 'video'
+            ? 'video/mp4,video/quicktime'
+            : 'image/png,image/jpeg,image/webp'
+        }
+        purpose="story"
+        aspect="aspect-[9/16] max-h-56 mx-auto"
+        value={slide.mediaKey}
+        previewUrl={slide.mediaPreview}
+        onUploaded={(uploaded) => onChange({ mediaKey: uploaded.key })}
+        onCleared={() => onChange({ mediaKey: null, mediaPreview: null })}
+      />
+
+      {slide.mediaKind === 'video' && (
+        <MediaUploadField
+          label="صورة الغلاف"
+          hint="أوّلُ ما يُرى قبل تحميل الفدّيو"
+          accept="image/png,image/jpeg,image/webp"
+          purpose="poster"
+          aspect="aspect-[9/16] max-h-40 mx-auto"
+          value={slide.posterKey}
+          previewUrl={slide.posterPreview}
+          onUploaded={(uploaded) => onChange({ posterKey: uploaded.key })}
+          onCleared={() => onChange({ posterKey: null, posterPreview: null })}
+        />
+      )}
+
+      <Field
+        id={`slide-alt-${slide.id}`}
+        label="وصف المحتوى"
+        value={slide.alt}
+        placeholder="عرضٌ للوحات المميّزة هذا الأسبوع"
+        onChange={(alt) => onChange({ alt })}
+      />
+
+      {slide.mediaKind === 'image' && (
+        <div className="space-y-1.5">
+          <Label htmlFor={`slide-duration-${slide.id}`}>مدّة العرض (ثانية)</Label>
+          <Input
+            id={`slide-duration-${slide.id}`}
+            type="number"
+            min={STORY_DURATION.min}
+            max={STORY_DURATION.max}
+            value={slide.durationSeconds}
+            onChange={(event) =>
+              onChange({ durationSeconds: Number(event.target.value) || STORY_DURATION.default })
+            }
+          />
+          <p className="text-[11px] text-muted">الفدّيو يأخذ مدّته هو — وهذه للصورة وحدها</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function StoryManager({
   items,
 }: {
-  items: (Story & { mediaUrl: string; posterUrl: string | null })[]
+  /* الروابطُ تُشتقّ في الخادم لكلّ شريحة — المكوّن عميلٌ لا يعرف المحرّك */
+  items: (Omit<Story, 'slides'> & {
+    slides: (StorySlide & { mediaUrl: string; posterUrl: string | null })[]
+  })[]
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<{ id: string | null; draft: StoryDraft } | null>(null)
@@ -537,24 +673,37 @@ export function StoryManager({
   async function save() {
     if (!editing) return
     const { id, draft } = editing
-    if (!draft.mediaKey) {
-      toast.error('ارفع محتوى الستوري أوّلًا')
+    if (draft.slides.length === 0) {
+      toast.error('الستوري يحتاج شريحةً واحدة على الأقلّ')
       return
     }
-    if (draft.mediaKind === 'video' && !draft.posterKey) {
-      toast.error('الفدّيو يحتاج صورة غلاف')
-      return
+    for (const [position, slide] of draft.slides.entries()) {
+      if (!slide.mediaKey) {
+        toast.error(`الشريحة ${position + 1}: ارفع محتواها أوّلًا`)
+        return
+      }
+      if (slide.mediaKind === 'video' && !slide.posterKey) {
+        toast.error(`الشريحة ${position + 1}: الفدّيو يحتاج صورة غلاف`)
+        return
+      }
+      if (slide.alt.trim().length < 2) {
+        toast.error(`الشريحة ${position + 1}: اكتب وصفًا لمن لا يرى المحتوى`)
+        return
+      }
     }
     setBusy(true)
     try {
       const payload = {
         title: draft.title,
-        mediaKey: draft.mediaKey,
-        mediaKind: draft.mediaKind,
-        posterKey: draft.mediaKind === 'video' ? draft.posterKey : null,
-        alt: draft.alt,
+        slides: draft.slides.map((slide) => ({
+          id: slide.id,
+          mediaKey: slide.mediaKey,
+          mediaKind: slide.mediaKind,
+          posterKey: slide.mediaKind === 'video' ? slide.posterKey : null,
+          alt: slide.alt,
+          durationSeconds: slide.durationSeconds,
+        })),
         linkUrl: draft.linkUrl.trim() || null,
-        durationSeconds: draft.durationSeconds,
         published: draft.published,
         startsAt: toIso(draft.startsAt),
         endsAt: toIso(draft.endsAt),
@@ -601,20 +750,24 @@ export function StoryManager({
               <div className="aspect-[9/16] bg-ink-900">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={item.posterUrl ?? item.mediaUrl}
-                  alt={item.alt}
+                  src={item.slides[0]?.posterUrl ?? item.slides[0]?.mediaUrl}
+                  alt={item.slides[0]?.alt ?? item.title}
                   className="size-full object-cover"
                 />
               </div>
               <div className="p-3">
                 <WindowBadges item={item} />
                 <p className="flex items-center gap-1.5 font-bold">
-                  {item.mediaKind === 'video' ? (
+                  {item.slides[0]?.mediaKind === 'video' ? (
                     <Video className="size-3.5 shrink-0 text-muted" />
                   ) : (
                     <ImageIcon className="size-3.5 shrink-0 text-muted" />
                   )}
                   <span className="truncate">{item.title}</span>
+                </p>
+                {/* عددُ الشرائح يُقال: حلقةٌ بثلاثٍ تختلف عن حلقةٍ بواحدة */}
+                <p className="mt-0.5 text-[11px] text-muted">
+                  {item.slides.length === 1 ? 'شريحةٌ واحدة' : `${item.slides.length} شرائح`}
                 </p>
                 <div className="mt-2.5 flex gap-1.5">
                   <Button
@@ -625,14 +778,17 @@ export function StoryManager({
                         id: item.id,
                         draft: {
                           title: item.title,
-                          alt: item.alt,
                           linkUrl: item.linkUrl ?? '',
-                          mediaKey: item.mediaKey,
-                          mediaKind: item.mediaKind,
-                          posterKey: item.posterKey,
-                          durationSeconds: item.durationSeconds,
-                          mediaPreview: item.mediaUrl,
-                          posterPreview: item.posterUrl,
+                          slides: item.slides.map((slide) => ({
+                            id: slide.id,
+                            mediaKey: slide.mediaKey,
+                            mediaKind: slide.mediaKind,
+                            posterKey: slide.posterKey,
+                            alt: slide.alt,
+                            durationSeconds: slide.durationSeconds,
+                            mediaPreview: slide.mediaUrl,
+                            posterPreview: slide.posterUrl,
+                          })),
                           published: item.published,
                           startsAt: toLocal(item.startsAt),
                           endsAt: toLocal(item.endsAt),
@@ -676,59 +832,52 @@ export function StoryManager({
 
             {editing && (
               <>
-                <div className="space-y-1.5">
-                  <Label id="kind-label">النوع</Label>
-                  <div role="group" aria-labelledby="kind-label" className="grid grid-cols-2 gap-2">
-                    {(['image', 'video'] as const).map((kind) => (
-                      <button
-                        key={kind}
-                        type="button"
-                        aria-pressed={editing.draft.mediaKind === kind}
-                        onClick={() =>
-                          /* تبديلُ النوع يُسقط ما رُفع: صورةٌ لا تصلح فدّيو */
-                          patch({ mediaKind: kind, mediaKey: null, mediaPreview: null })
-                        }
-                        className={
-                          editing.draft.mediaKind === kind
-                            ? 'rounded-xl border border-gold-500 bg-gold-500/10 px-3 py-2.5 text-sm font-bold'
-                            : 'rounded-xl border border-ink-600 bg-ink-900 px-3 py-2.5 text-sm font-bold text-muted'
-                        }
-                      >
-                        {kind === 'image' ? 'صورة' : 'فدّيو'}
-                      </button>
-                    ))}
+                {/*
+                  * شرائحُ الستوري — تُضاف وتُحذف، ولكلٍّ وسيطُها ووصفُها.
+                  *
+                  * وكان الستوري وسيطًا واحدًا، فمن أراد ثلاثَ صورٍ أنشأ ثلاثَ
+                  * حلقات — فامتلأ الشريط بما هو موضوعٌ واحد.
+                  */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>الشرائح</Label>
+                    <span className="text-[11px] text-muted">
+                      تُعرض بالترتيب، وأوّلُها غلافُ الحلقة
+                    </span>
                   </div>
+
+                  {editing.draft.slides.map((slide, position) => (
+                    <SlideEditor
+                      key={slide.id}
+                      slide={slide}
+                      position={position}
+                      removable={editing.draft.slides.length > 1}
+                      onChange={(change) =>
+                        patch({
+                          slides: editing.draft.slides.map((row, index) =>
+                            index === position ? { ...row, ...change } : row,
+                          ),
+                        })
+                      }
+                      onRemove={() =>
+                        patch({
+                          slides: editing.draft.slides.filter((_, index) => index !== position),
+                        })
+                      }
+                    />
+                  ))}
+
+                  {editing.draft.slides.length < MAX_STORY_SLIDES && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => patch({ slides: [...editing.draft.slides, emptySlide()] })}
+                    >
+                      <Plus className="size-4" />
+                      أضف شريحة
+                    </Button>
+                  )}
                 </div>
-
-                <MediaUploadField
-                  label={editing.draft.mediaKind === 'video' ? 'ملفّ الفدّيو' : 'الصورة'}
-                  hint={editing.draft.mediaKind === 'video' ? 'MP4 أو MOV حتى ٢٠٠ ميغابايت' : 'يُفضَّل ٩:١٦'}
-                  accept={
-                    editing.draft.mediaKind === 'video'
-                      ? 'video/mp4,video/quicktime'
-                      : 'image/png,image/jpeg,image/webp'
-                  }
-                  purpose="story"
-                  aspect="aspect-[9/16] max-h-64 mx-auto"
-                  value={editing.draft.mediaKey}
-                  previewUrl={editing.draft.mediaPreview}
-                  onUploaded={(uploaded) => patch({ mediaKey: uploaded.key })}
-                  onCleared={() => patch({ mediaKey: null, mediaPreview: null })}
-                />
-
-                {editing.draft.mediaKind === 'video' && (
-                  <MediaUploadField
-                    label="صورة الغلاف"
-                    hint="أوّلُ ما يُرى في الحلقة قبل تحميل الفدّيو"
-                    accept="image/png,image/jpeg,image/webp"
-                    purpose="poster"
-                    aspect="aspect-[9/16] max-h-48 mx-auto"
-                    value={editing.draft.posterKey}
-                    previewUrl={editing.draft.posterPreview}
-                    onUploaded={(uploaded) => patch({ posterKey: uploaded.key })}
-                    onCleared={() => patch({ posterKey: null, posterPreview: null })}
-                  />
-                )}
 
                 <Field
                   id="story-title"
@@ -738,33 +887,7 @@ export function StoryManager({
                   hint="يظهر تحت الحلقة — كلمتان أو ثلاث"
                   onChange={(title) => patch({ title })}
                 />
-                <Field
-                  id="story-alt"
-                  label="وصف المحتوى"
-                  value={editing.draft.alt}
-                  placeholder="عرضٌ للوحات المميّزة هذا الأسبوع"
-                  onChange={(alt) => patch({ alt })}
-                />
                 <LinkField value={editing.draft.linkUrl} onChange={(linkUrl) => patch({ linkUrl })} />
-
-                {editing.draft.mediaKind === 'image' && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="duration">مدّة العرض (ثانية)</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      min={STORY_DURATION.min}
-                      max={STORY_DURATION.max}
-                      value={editing.draft.durationSeconds}
-                      onChange={(event) =>
-                        patch({ durationSeconds: Number(event.target.value) || STORY_DURATION.default })
-                      }
-                    />
-                    <p className="text-[11px] text-muted">
-                      الفدّيو يأخذ مدّته هو — وهذه للصورة وحدها
-                    </p>
-                  </div>
-                )}
 
                 <WindowFields draft={editing.draft} onChange={patch} />
               </>

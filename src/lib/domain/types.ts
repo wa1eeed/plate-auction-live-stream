@@ -1052,20 +1052,43 @@ export type StoryMediaKind = 'image' | 'video'
  * والفدّيو يلزمه غلاف: بلاه تبقى الحلقة سوداء حتى ينزل أوّلُ إطار، وشريطُ
  * الستوريز أوّلُ ما يُرى في الصفحة.
  */
-export type Story = {
+/**
+ * شريحةٌ في ستوري — صورةٌ أو فدّيو.
+ *
+ * والفدّيو يلزمه غلاف: بلاه تبقى الشريحةُ سوداء حتى ينزل أوّلُ إطار.
+ */
+export type StorySlide = {
   id: string
-  /** يظهر تحت الحلقة — كلمتان أو ثلاث */
-  title: string
   mediaKey: string
   mediaKind: StoryMediaKind
   /** غلافُ الفدّيو، و`null` للصورة (هي غلافُ نفسها) */
   posterKey: string | null
   alt: string
-  linkUrl: string | null
-  sortOrder: number
   /** مدّةُ عرض الصورة بالثواني — الفدّيو يأخذ مدّته هو */
   durationSeconds: number
+}
+
+/**
+ * ستوري — حلقةٌ في أعلى الرئيسية تُفتح ملءَ الشاشة.
+ *
+ * **وهو شرائحُ لا شريحة**: كان الستوري وسيطًا واحدًا، فمن أراد ثلاثَ صورٍ
+ * أنشأ ثلاثَ حلقات — فامتلأ الشريط بما هو موضوعٌ واحد، ولم يكن للمحتوى
+ * تسلسلٌ يُروى. وصار الستوري يحمل شرائحَه، فتتقدّم واحدةً بعد أخرى ثمّ
+ * ينتقل إلى الستوري التالي، كما في تطبيقات التواصل.
+ *
+ * وأوّلُ شريحةٍ هي غلافُ الحلقة.
+ */
+export type Story = {
+  id: string
+  /** يظهر تحت الحلقة — كلمتان أو ثلاث */
+  title: string
+  slides: StorySlide[]
+  linkUrl: string | null
+  sortOrder: number
 } & LiveWindow & { createdAt: string; updatedAt: string }
+
+/** حدُّ شرائح الستوري الواحد — وما زاد صار بثًّا لا ستوري. */
+export const MAX_STORY_SLIDES = 10
 
 /** حدُّ مدّة الصورة في العارض — أقصرُ يُربك، وأطولُ يُملّ. */
 export const STORY_DURATION = { min: 3, max: 15, default: 6 } as const
@@ -1080,12 +1103,16 @@ export type BannerView = Pick<Banner, 'id' | 'alt' | 'linkUrl' | 'width' | 'heig
   imageUrl: string
 }
 
-export type StoryView = Pick<
-  Story,
-  'id' | 'title' | 'alt' | 'linkUrl' | 'mediaKind' | 'durationSeconds'
+export type StorySlideView = Pick<
+  StorySlide,
+  'id' | 'alt' | 'mediaKind' | 'durationSeconds'
 > & {
   mediaUrl: string
   posterUrl: string | null
+}
+
+export type StoryView = Pick<Story, 'id' | 'title' | 'linkUrl'> & {
+  slides: StorySlideView[]
 }
 
 // ================================================================ الإدارة

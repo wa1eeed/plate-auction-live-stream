@@ -110,22 +110,37 @@ async function makeBanner(page: Page, fields: Record<string, unknown> = {}) {
   return created
 }
 
+/**
+ * ستوري للفحص — بشريحةٍ واحدة ما لم تُطلب شرائحُ بعينها.
+ *
+ * و`slides` تُمرَّر في `fields` لمن أراد أكثر: الستوري صار يحمل عدّةَ وسائط.
+ */
 async function makeStory(page: Page, fields: Record<string, unknown> = {}) {
-  const uploaded = await uploadFixture(page, 'square.png', 'story')
-  expect(uploaded.status).toBe(200)
-  const created = await api(page, '/api/admin/stories', {
-    method: 'POST',
-    body: {
+  const { slides, alt, durationSeconds, ...rest } = fields as Record<string, unknown>
+  let body: Record<string, unknown>
+  if (slides) {
+    body = { title: 'ستوري الفحص', published: true, sortOrder: 0, slides, ...rest }
+  } else {
+    const uploaded = await uploadFixture(page, 'square.png', 'story')
+    expect(uploaded.status).toBe(200)
+    body = {
       title: 'ستوري الفحص',
-      mediaKey: uploaded.body.key,
-      mediaKind: 'image',
-      alt: 'محتوى الفحص',
       published: true,
       sortOrder: 0,
-      durationSeconds: 3,
-      ...fields,
-    },
-  })
+      slides: [
+        {
+          id: 'slide-1',
+          mediaKey: uploaded.body.key,
+          mediaKind: 'image',
+          posterKey: null,
+          alt: alt ?? 'محتوى الفحص',
+          durationSeconds: durationSeconds ?? 3,
+        },
+      ],
+      ...rest,
+    }
+  }
+  const created = await api(page, '/api/admin/stories', { method: 'POST', body })
   track(page, 'stories', created.body)
   return created
 }
@@ -308,6 +323,67 @@ test.describe('الرئيسية على الجوال', () => {
    * تطبيقاتُ التواصل هالاتِها. والمقيسُ أنّ الجديد يحمل الهالةَ المتحرّكة،
    * وأنّها **تُنزع بعد المشاهدة** فلا تبقى تنادي على ما رآه صاحبُها.
    */
+  /**
+   * **الستوري شرائحُ لا شريحة.**
+   *
+   * وكان وسيطًا واحدًا، فمن أراد ثلاثَ صورٍ أنشأ ثلاثَ حلقات — فامتلأ
+   * الشريط بما هو موضوعٌ واحد. والمقيسُ هنا أنّ الحلقة الواحدة تتقدّم في
+   * شرائحها قبل أن تنتقل، وأنّ شريطَ التقدّم يعدّ شرائحَها لا الحلقات.
+   */
+  test('ستوري بشريحتين: يتقدّم فيهما ثمّ ينتقل', async ({ page }) => {
+    await loginAdmin(page)
+
+    const first = await uploadFixture(page, 'square.png', 'story')
+    const second = await uploadFixture(page, 'banner-2x1.png', 'story')
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+
+    await makeStory(page, {
+      title: 'شريحتان',
+      sortOrder: 0,
+      slides: [
+        {
+          id: 'a',
+          mediaKey: first.body.key,
+          mediaKind: 'image',
+          posterKey: null,
+          alt: 'الشريحة الأولى',
+          durationSeconds: 15,
+        },
+        {
+          id: 'b',
+          mediaKey: second.body.key,
+          mediaKind: 'image',
+          posterKey: null,
+          alt: 'الشريحة الثانية',
+          durationSeconds: 15,
+        },
+      ],
+    })
+
+    await page.setViewportSize(MOBILE)
+    await page.goto('/')
+
+    const rail = page.getByRole('region', { name: 'جديد المنصّة' })
+    await rail.getByRole('button').filter({ hasText: 'شريحتان' }).click()
+
+    const viewer = page.getByRole('dialog')
+    await expect(viewer).toBeVisible()
+    await expect(viewer.getByAltText('الشريحة الأولى')).toBeVisible()
+
+    /* شريطُ التقدّم يعدّ الشرائح — قطعتان لا حلقةً واحدة */
+    await expect(viewer.locator('div').first().locator('> span')).toHaveCount(2)
+
+    await viewer.getByRole('button', { name: 'التالي' }).click()
+    await expect(viewer.getByAltText('الشريحة الثانية')).toBeVisible()
+    /* ولم تُغلق ولم تنتقل: ما زالت الحلقة نفسها */
+    await expect(viewer).toHaveAttribute('aria-label', 'شريحتان')
+
+    /* والرجوعُ يعود إلى الشريحة الأولى لا إلى حلقةٍ أخرى */
+    await viewer.getByRole('button', { name: 'السابق' }).click()
+    await expect(viewer.getByAltText('الشريحة الأولى')).toBeVisible()
+  })
+
   test('هالةُ الستوري الجديد تدور، وتُنزع بعد مشاهدته', async ({ page }) => {
     await loginAdmin(page)
     await makeStory(page, { title: 'هالة', alt: 'محتوى الهالة', sortOrder: 0, durationSeconds: 15 })

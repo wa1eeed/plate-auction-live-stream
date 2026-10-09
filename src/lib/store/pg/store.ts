@@ -35,6 +35,7 @@ import type {
   FaqItem,
   MobileSettings,
   OnboardingSettings,
+  StorySlide,
   PageSettings,
   PaymentSettings,
   SaleType,
@@ -1534,12 +1535,15 @@ function storyFromRow(row: StoryRow): Story {
   return {
     id: row.id,
     title: row.title,
-    mediaKey: row.mediaKey,
-    mediaKind: row.mediaKind as Story['mediaKind'],
-    posterKey: row.posterKey,
-    alt: row.alt,
+    /*
+     * الشرائحُ من `slides`، وما قبل الترحيل من الأعمدة المفردة.
+     *
+     * والترحيلُ ملأها فعلًا (`0004`)، لكنّ القراءةَ لا تفترض أنّه جرى: صفٌّ
+     * كُتب بنشرةٍ أقدم بعد الترحيل — أو ترحيلٌ لم يُطبَّق لسببٍ ما — يُقرأ
+     * هنا بلا شرائح، فتختفي حلقتُه بلا خبر.
+     */
+    slides: readSlides(row),
     linkUrl: row.linkUrl,
-    durationSeconds: row.durationSeconds,
     sortOrder: row.sortOrder,
     published: row.published,
     startsAt: row.startsAt,
@@ -1547,6 +1551,23 @@ function storyFromRow(row: StoryRow): Story {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
+}
+
+/** شرائحُ الصفّ — من العمود، وإلّا فمن الأعمدة المفردة. */
+function readSlides(row: StoryRow): Story['slides'] {
+  const stored = row.slides as Story['slides'] | null
+  if (Array.isArray(stored) && stored.length > 0) return stored
+  if (!row.mediaKey || !row.mediaKind) return []
+  return [
+    {
+      id: `${row.id}-1`,
+      mediaKey: row.mediaKey,
+      mediaKind: row.mediaKind as StorySlide['mediaKind'],
+      posterKey: row.posterKey,
+      alt: row.alt,
+      durationSeconds: row.durationSeconds,
+    },
+  ]
 }
 
 function userFromRow(row: UserRow): User {
