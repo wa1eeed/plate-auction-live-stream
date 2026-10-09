@@ -1,4 +1,5 @@
 import { AdminHeader } from '@/components/admin/admin-ui'
+import { AppIconForm } from '@/components/admin/app-icon-form'
 import { BroadcastForm } from '@/components/admin/broadcast-form'
 import { MobileSettingsForm } from '@/components/admin/mobile-settings-form'
 import { OnboardingSettingsForm } from '@/components/admin/onboarding-settings-form'
@@ -26,9 +27,14 @@ export const metadata = { title: 'إعدادات التطبيق' }
  */
 const GROUPS = [
   {
-    title: 'أوّلُ ما يُرى',
-    hint: 'ما يستقبل به التطبيقُ من فتحه أوّل مرّة.',
+    title: 'هويّةُ التطبيق وأوّلُ ما يُرى',
+    hint: 'أيقونتُه وشاشةُ إقلاعه، وما يستقبل به من فتحه أوّل مرّة — وتسري على المنصّتين معًا.',
     tabs: [
+      {
+        key: 'icon',
+        label: 'الأيقونة وشاشة الإقلاع',
+        hint: 'تُخبز في حزمتَي iOS وأندرويد',
+      },
       {
         key: 'onboarding',
         label: 'مقدّمة التطبيق',
@@ -49,21 +55,23 @@ const GROUPS = [
 export default async function AdminMobilePage() {
   await requireAdminId()
   const store = getStore()
-  const [settings, devices, onboarding] = await Promise.all([
+  const [settings, devices, onboarding, brand] = await Promise.all([
     store.getMobileSettings(),
     store.countDevicesByPlatform(),
     store.getOnboardingSettings(),
+    store.getBrandSettings(),
   ])
 
   return (
     <>
       <AdminHeader
         title="إعدادات التطبيق"
-        description="ما يستقبل به التطبيقُ مستخدمَه، وما يُدفَع إلى جهازه ونصُّه، والأجهزة المسجَّلة."
+        description="إعداداتٌ موحَّدةٌ لتطبيق iOS وأندرويد معًا: ما يستقبل به مستخدمَه، وأيقونتُه وشاشةُ إقلاعه، وما يُدفَع إلى جهازه."
       />
 
       <SettingsTabs groups={GROUPS}>
         {{
+          icon: <AppIconForm asset={brand.appIcon} />,
           onboarding: <OnboardingSettingsForm settings={onboarding} />,
           push: (
             <MobileSettingsForm
