@@ -28,7 +28,25 @@ test.describe('الجوال وحسابات التواصل', () => {
     // يُقبل الرابط الكامل كما يُقبل الاسم — الناس تلصق ما تنسخه
     await userPage.getByLabel('تيك توك').fill(`https://www.tiktok.com/@${handle}`)
     await userPage.getByLabel('سناب شات').fill(`@${handle}`)
+    /*
+     * يُقرأ ردُّ الخادم نفسُه قبل الانتقال.
+     *
+     * وكان يُنتظر التنبيهُ وحده ثمّ يُعاد التحميل، فيسقط في البوّابة بقيمةٍ
+     * فارغة دون أن يُعرف: أكُتب الحقلُ ولم يُقرأ، أم لم يُكتب أصلًا؟
+     * فيُقاس الردّ: إن حمل المعرّف فالكتابةُ تمّت والعلّةُ في القراءة،
+     * وإن لم يحمله فالخادم لم يحفظ — وبينهما فرقٌ في التشخيص كلُّه.
+     */
+    const saved = userPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/account/profile') &&
+        response.request().method() === 'PATCH',
+    )
     await userPage.getByRole('button', { name: 'حفظ' }).click()
+
+    const body = (await (await saved).json()) as {
+      user?: { social?: { tiktok?: string | null } }
+    }
+    expect(body.user?.social?.tiktok, 'الخادم لم يحفظ المعرّف الذي أُرسل').toBe(handle)
     await expect(userPage.getByText('حُفظت بياناتك')).toBeVisible()
 
     // خُزّنت بلا @ وبلا رابط — شكل واحد لا شكلان للحساب نفسه
