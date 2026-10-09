@@ -833,7 +833,8 @@ export async function buyNow(input: { listingId: string; buyerId: string; client
       userId: result.listing.sellerId,
       type: 'listing_sold',
       title: 'بيعت لوحتك',
-      body: `«${result.listing.arabicLetters} ${result.listing.plateNumbers}» بـ${formatAmount(result.order.amount)} ريال.`,
+      /* ومهلةُ السداد تُذكر: بائعٌ يظنّ المال وصل قد ينقل اللوحة قبل أن يصل */
+      body: `«${result.listing.arabicLetters} ${result.listing.plateNumbers}» بـ${formatAmount(result.order.amount)} ريال — بانتظار سداد المشتري خلال ${result.listing.paymentWindowHours} ساعة.`,
       href: '/account/sales',
       listingId: result.listing.id,
     })

@@ -24,6 +24,7 @@ import {
 } from '@/lib/domain/types'
 import { cn, formatTimestamp } from '@/lib/utils'
 import { useSound } from '@/lib/hooks/use-sound'
+import { muteNextSoldToast } from '@/lib/sold-announcement'
 import { AuctionBidBox } from './auction-bid-box'
 import { CommissionNotice } from './commission-notice'
 import { AmountField } from './amount-field'
@@ -92,6 +93,8 @@ export function TradePanel({
         toast.error(data?.error?.message ?? 'تعذّر إتمام العملية')
         return
       }
+      /* البثُّ يصل هذا التبويبَ أيضًا — ولا يُخبَر المشتري ببيعٍ هو سببُه */
+      muteNextSoldToast(detail.id)
       router.push(`/checkout/${data.orderId}`)
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')

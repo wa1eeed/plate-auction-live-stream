@@ -1,10 +1,12 @@
 import { AdminHeader } from '@/components/admin/admin-ui'
 import { AppIconForm } from '@/components/admin/app-icon-form'
+import { AppReleasesPanel } from '@/components/admin/app-releases-panel'
 import { BroadcastForm } from '@/components/admin/broadcast-form'
 import { MobileSettingsForm } from '@/components/admin/mobile-settings-form'
 import { OnboardingSettingsForm } from '@/components/admin/onboarding-settings-form'
 import { SettingsTabs } from '@/components/admin/settings-tabs'
 import { apnsConfigured } from '@/lib/server/apns'
+import { buildReleaseViews, fetchAppStoreRelease } from '@/lib/server/app-release-service'
 import { fcmConfigured } from '@/lib/server/fcm'
 import { pushConfigured } from '@/lib/server/push-service'
 import { requireAdminId } from '@/lib/server/require-admin'
@@ -50,16 +52,30 @@ const GROUPS = [
       { key: 'broadcast', label: 'بثٌّ إداريّ', hint: 'رسالةٌ إلى كلّ الأجهزة' },
     ],
   },
+  {
+    title: 'حالةُ النشر',
+    hint: 'ما وصل المتجرين فعلًا — فيُعرف هل يلزم بناءٌ جديد قبل أن يُطلب.',
+    tabs: [{ key: 'releases', label: 'الإصدارات', hint: 'المنشورُ والمختبَر في المتجرين' }],
+  },
 ]
 
 export default async function AdminMobilePage() {
   await requireAdminId()
   const store = getStore()
-  const [settings, devices, onboarding, brand] = await Promise.all([
+  /*
+   * **وسؤالُ متجرِ أبل يمضي مع قراءات القاعدة لا بعدها.**
+   *
+   * فأربعُ ثوانٍ من مهلته تُضاف إلى زمن الصفحة لو تسلسلت، وهي تمضي في
+   * ظلِّها لو توازت. ولا يُسقط فشلُه الصفحةَ: الخدمةُ تردّ `ok: false`
+   * ويقول العرضُ إنّه تعذّر.
+   */
+  const [settings, devices, onboarding, brand, releases, appStore] = await Promise.all([
     store.getMobileSettings(),
     store.countDevicesByPlatform(),
     store.getOnboardingSettings(),
     store.getBrandSettings(),
+    store.getAppReleases(),
+    fetchAppStoreRelease(),
   ])
 
   return (
@@ -83,6 +99,7 @@ export default async function AdminMobilePage() {
             />
           ),
           broadcast: <BroadcastForm />,
+          releases: <AppReleasesPanel views={buildReleaseViews(releases, appStore)} />,
         }}
       </SettingsTabs>
     </>

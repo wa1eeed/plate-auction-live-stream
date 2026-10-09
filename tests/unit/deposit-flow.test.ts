@@ -4,7 +4,7 @@ import { seedDatabase } from '@/lib/store/seed'
 import { resetStoreForTests } from '@/lib/store'
 import { completeOrderForTest } from '../support/settle'
 import { resetRateLimits } from '@/lib/server/rate-limit'
-import { finalizeDueAuctions, placeBid } from '@/lib/server/market-service'
+import { closeListing, finalizeDueAuctions, placeBid, relistListing } from '@/lib/server/market-service'
 import { adjustBalance, forfeitDeposit, getWalletView, refundDeposit } from '@/lib/server/wallet-service'
 import { availableBalance, type Listing } from '@/lib/domain/types'
 import { halalasToRiyals, riyalsToHalalas } from '@/lib/domain/money'
@@ -349,5 +349,103 @@ describe('حركات الإدارة على المحفظة', () => {
         adminId: adminId(),
       }),
     ).rejects.toMatchObject({ code: 'USER_NOT_FOUND' })
+  })
+})
+
+/*
+ * **جولةٌ ثانيةٌ بعد إعادة العرض — وهنا وقع العطب.**
+ *
+ * فرادةُ القاعدة كانت على (الإعلان، المزايد) بلا شرطِ حالة. وإعادةُ العرض
+ * تفكّ العرابين إلى `released` ولا تحذف صفوفها — فمن زايد في الجولة الأولى
+ * يُدرَج له صفٌّ ثانٍ في الثانية فيصطدم بها، ويُردّ بخطأ قاعدةٍ خام **على
+ * شاشته**. ولا تُقبل منه مزايدةٌ أبدًا على تلك اللوحة.
+ *
+ * ولم يمسكه اختبارٌ واحد: الفرادةُ في بوستجرس وحدها، ومتجرُ الذاكرة يُدرج
+ * بلا سؤال — فكان الاختبارُ يقيس نموذجًا غير المنشور. فصار المتجرُ يحرس ما
+ * تحرسه القاعدة، وصار هذا الفحصُ ممكنًا أصلًا.
+ */
+describe('المزايدة في جولةٍ ثانية بعد إعادة العرض', () => {
+  it('من زايد في الأولى يزايد في الثانية — ولا يردّه عربونُها', async () => {
+    const listing = listingBy(
+      (l) => l.saleType === 'auction' && l.depositAmount > 0 && l.status === 'active',
+    )
+    const bidderId = pickBidder(listing)
+    clearDepositsOn(listing, bidderId)
+
+    const bid = async (tag: string) => {
+      const current = (await store.getListing(listing.id))!
+      const highest = db.bids
+        .filter((b) => b.listingId === listing.id && b.status === 'accepted')
+        .sort((a, b) => b.amount - a.amount)[0]
+      return placeBid({
+        listingId: listing.id,
+        bidderId,
+        amountRiyals: halalasToRiyals(
+          (highest?.amount ?? current.startingPrice) + current.minimumIncrement,
+        ),
+        isCustomAmount: false,
+        clientRequestId: tag,
+      })
+    }
+
+    await bid('round-1')
+    const first = db.deposits.filter((d) => d.listingId === listing.id && d.userId === bidderId)
+    expect(first).toHaveLength(1)
+    expect(first[0].status).toBe('held')
+
+    /* إلغاءٌ ثمّ إعادةُ عرضٍ — فيُفكّ العربون ويبقى صفُّه */
+    await closeListing(store, listing.id, 'cancelled', 'ألغى البائع')
+    await relistListing(store, (await store.getListing(listing.id))!)
+    expect(db.deposits.find((d) => d.id === first[0].id)!.status).toBe('released')
+
+    /* ثمّ تُنشر من جديد: جولةٌ ثانية */
+    await store.updateListing(listing.id, {
+      status: 'active',
+      startsAt: new Date(Date.now() - 1_000).toISOString(),
+      endsAt: new Date(Date.now() + 86_400_000).toISOString(),
+    })
+
+    await expect(bid('round-2'), 'رُدّت مزايدةُ الجولة الثانية').resolves.toBeDefined()
+
+    const all = db.deposits.filter((d) => d.listingId === listing.id && d.userId === bidderId)
+    /* صفٌّ لكلّ جولة: الأوّلُ مفكوكٌ شاهدًا، والثاني محجوزٌ عاملًا */
+    expect(all).toHaveLength(2)
+    expect(all.filter((d) => d.status === 'held')).toHaveLength(1)
+    expect(all.find((d) => d.id === first[0].id)!.status).toBe('released')
+    /* ومرجعان مختلفان: سجلُّ الجولة الأولى لا يُكتب فوقه */
+    expect(new Set(all.map((d) => d.reference)).size).toBe(2)
+  })
+
+  /*
+   * **والفرادةُ على المحجوز تبقى حارسةً لما بُنيت له.**
+   *
+   * فسباقُ طلبين في جولةٍ واحدة يُنتج حجزين لولاها — وتخفيفُها إلى
+   * «المحجوز وحده» لا يفتح ذلك الباب.
+   */
+  it('ولا عربونان محجوزان في جولةٍ واحدة', async () => {
+    const listing = listingBy(
+      (l) => l.saleType === 'auction' && l.depositAmount > 0 && l.status === 'active',
+    )
+    const bidderId = pickBidder(listing)
+    clearDepositsOn(listing, bidderId)
+
+    await store.createDeposit({
+      listingId: listing.id,
+      userId: bidderId,
+      amount: listing.depositAmount,
+      status: 'held',
+      forfeitedAmount: 0,
+      reason: null,
+    })
+    await expect(
+      store.createDeposit({
+        listingId: listing.id,
+        userId: bidderId,
+        amount: listing.depositAmount,
+        status: 'held',
+        forfeitedAmount: 0,
+        reason: null,
+      }),
+    ).rejects.toThrow()
   })
 })

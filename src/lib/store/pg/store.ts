@@ -35,6 +35,7 @@ import type {
   FaqItem,
   MobileSettings,
   OnboardingSettings,
+  AppReleases,
   StorySlide,
   PageSettings,
   PaymentSettings,
@@ -98,6 +99,7 @@ type SettingsKey =
   | 'taxSettings'
   | 'mobileSettings'
   | 'onboardingSettings'
+  | 'appReleases'
 
 export class PostgresStore implements AuctionStore {
   readonly kind = 'postgres' as const
@@ -203,6 +205,12 @@ export class PostgresStore implements AuctionStore {
   getTaxSettings = () => this.readSettings<TaxSettings>('taxSettings')
   updateTaxSettings = (patch: Partial<TaxSettings>) =>
     this.writeSettings<TaxSettings>('taxSettings', patch)
+
+  getAppReleases = () => this.readSettings<AppReleases>('appReleases')
+  updateAppReleases = (
+    patch: Partial<Omit<AppReleases, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ) => this.writeSettings<AppReleases>('appReleases', patch, adminId)
 
   getOnboardingSettings = () => this.readSettings<OnboardingSettings>('onboardingSettings')
   updateOnboardingSettings = (

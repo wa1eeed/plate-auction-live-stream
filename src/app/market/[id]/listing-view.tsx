@@ -334,7 +334,14 @@ function ClosedSummary({ detail }: { detail: ListingDetail }) {
     return (
       <div className="rounded-2xl border border-success/60 bg-success-soft p-5 text-center">
         <Award className="mx-auto mb-2 size-9 text-success" />
-        <p className="text-lg font-extrabold text-success">تمّت الصفقة</p>
+        {/*
+         * **«بِيعت» لا «تمّت الصفقة».**
+         *
+         * فحالةُ `sold` تقع لحظةَ الطلب: تخرج اللوحةُ من السوق ويبقى السداد
+         * في مهلته. و«تمّت الصفقة» تؤكّد انقضاءَ ما لم ينقضِ — ويقرؤها
+         * المشتري نفسُه قبل أن يدفع. وما يَهمّ المشاهدَ أنّها لم تعد متاحة.
+         */}
+        <p className="text-lg font-extrabold text-success">بِيعت اللوحة</p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums text-gold-500">
           {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>
         </p>

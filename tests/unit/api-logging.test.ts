@@ -64,6 +64,49 @@ describe('سجلُّ أخطاء الواجهة البرمجية', () => {
   })
 
   /*
+   * **ونصُّ القاعدة يبقى في السجلّ ولا يبلغ الشاشة.**
+   *
+   * وقد بلغها: مزايدٌ في الإنتاج ضغط «زايد» فظهرت فوق صفحة المزاد نافذةٌ
+   * فيها عبارةُ الإدراج بأسماء الجداول والأعمدة، ومعرّفاتُ الصفّ والمستخدم
+   * والإعلان، والمبلغُ بالهللات. خريطةُ المخطَّط لمن يقرؤها، ورعبٌ لمن لا
+   * يقرؤها. وتوثيقُ `handleError` كان يَعِد بغير ذلك.
+   */
+  it('نصُّ خطأ القاعدة يُسجَّل ولا يُرسَل', async () => {
+    const raw =
+      'Failed query: insert into "deposits" ("id", "reference", "listing_id", "user_id", ' +
+      '"amount", "status") values ($1, $2, $3, $4, $5, $6) params: dep_01aa94a99698, ' +
+      'D26-00015, lst_c5c65fa80d87, usr_39ffe6f4b261, 500000, held'
+
+    const response = handleError(new Error(raw))
+    const body = (await response.json()) as { error: { message: string; code: string } }
+
+    expect(response.status).toBe(500)
+    expect(body.error.code).toBe('INTERNAL')
+    for (const leak of ['deposits', 'insert into', 'params', 'usr_', 'lst_', 'dep_', '$1', '500000']) {
+      expect(body.error.message, `تسرّب «${leak}» إلى الشاشة`).not.toContain(leak)
+    }
+
+    /* ويبقى كاملًا في السجلّ — فالكتمُ عن المستخدم لا عن من يُصلح */
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('insert into "deposits"')
+  })
+
+  /*
+   * **ورمزٌ يصل الشاشةَ بالسجلّ.**
+   *
+   * فجملةٌ عامّةٌ وحدها تُعمي الدعم: «ما عمل معي» لا يُشخَّص. والرمزُ يُعرض
+   * ويُكتب معًا، فيُبحث عنه في السجلّ فيُقرأ العطبُ بعينه.
+   */
+  it('ورمزُ العطل في الرسالة هو نفسُه في السطر', async () => {
+    const response = handleError(new Error('انكسر شيءٌ في المحرّك'))
+    const body = (await response.json()) as { error: { message: string } }
+
+    const code = body.error.message.match(/\b([0-9a-f]{8})\b/)?.[1]
+    expect(code, 'لا رمزَ في الرسالة').toBeDefined()
+    expect(lines[0], 'الرمزُ ليس في السطر').toContain(code!)
+  })
+
+  /*
    * `ServiceError` و`ZodError` نتائجُ محكومة يقرؤها العميل في الردّ — و401
    * لكلّ زائرٍ غيرِ مسجَّل تُغرق السجلَّ بما لا يُصلَح.
    */

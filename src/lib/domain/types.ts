@@ -1598,6 +1598,57 @@ export const DEFAULT_ONBOARDING_SETTINGS: Omit<
   ],
 }
 
+/** منصّةُ التطبيق — واحدةٌ من اثنتين، ولا ثالثةَ لهما. */
+export type AppPlatform = 'ios' | 'android'
+
+/**
+ * قناةُ الإصدار.
+ *
+ * و`testing` تجمع TestFlight و«الاختبار الداخليّ» في Play: كلتاهما ما يصل
+ * المختبِرين قبل الناس. و`production` ما في المتجر لعامّة الناس.
+ */
+export type AppReleaseChannel = 'testing' | 'production'
+
+export type AppRelease = {
+  /** رقمُ الإصدار كما يراه الناس — `1.0.6` */
+  version: string
+  /**
+   * رقمُ البناء — يتصاعد ولا يتكرّر، وبه تُميّز أبل نسختين بالاسم نفسه.
+   *
+   * و`null` لما يُثبته الأدمن بيده: من يقرأ رقمَ النسخة في لوحة Play لا
+   * يُطالب برقم البناء كي يُسجّل ما نشره.
+   */
+  build: string | null
+  at: string
+  /** بصمةُ الدفعة التي بُني منها — به يُعرف ما فيه بالضبط */
+  commit: string | null
+}
+
+/**
+ * **ما نُشر من التطبيق — بقناتيه ومنصّتيه.**
+ *
+ * ومن يشغّل المنصّة يسأل سؤالين: ما الذي عند الناس الآن، وما الذي عند
+ * المختبِرين؟ وبلا جواب يفتح لوحتي أبل وجوجل ليقارن.
+ *
+ * **ويُسجَّل من السير لا بيد**: ما يُكتب يدويًّا يبلى في أوّل إصدارٍ يُنسى.
+ * والسيرُ يعرف الرقمَ والبناءَ واللحظة، فيُبلّغ عند تمام الرفع.
+ *
+ * > وما في متجر أبل يُقرأ منه مباشرةً — واجهتُها العلنيّة تعطي نسخةَ
+ * > الإنتاج وتاريخَها بلا مفتاح. وجوجل لا واجهةَ علنيّة لها، فيبقى
+ * > المسجَّلُ من السير هو الجواب فيها حتى يُضبط حسابُ خدمةٍ لمتجرها.
+ */
+export type AppReleases = {
+  ios: Record<AppReleaseChannel, AppRelease | null>
+  android: Record<AppReleaseChannel, AppRelease | null>
+  updatedAt: string
+  updatedByAdminId: string | null
+}
+
+export const DEFAULT_APP_RELEASES: Omit<AppReleases, 'updatedAt' | 'updatedByAdminId'> = {
+  ios: { testing: null, production: null },
+  android: { testing: null, production: null },
+}
+
 export type MobileSettings = {
   pushTypes: Record<string, PushTemplate>
   /**

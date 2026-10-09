@@ -51,6 +51,33 @@ describe('ثبات الإعدادات بين النشرات', () => {
     expect(fresh.commissionSettings.vatEnabled).toBe(true)
   })
 
+  /*
+   * **وأرقامُ الإصدارات معها — وإلّا نُسيت في أوّل نشرة.**
+   *
+   * وهي شريحةٌ يكتبها سيرُ البناء مرّةً عند كلّ رفع، لا الأدمن في كلّ يوم.
+   * فشريحةٌ تُضاف إلى القاعدة وتُنسى من `SLICES` تعمل في التطوير تمامًا —
+   * ولا يظهر عطبُها إلّا بعد نشرةٍ تمسح ما سُجّل، فيُقال «لم يُرفع شيء» عن
+   * نسخةٍ عند المختبِرين.
+   */
+  it('وأرقامُ ما نُشر في المتجرين تعود بعدها', async () => {
+    const store = new MemoryStore(db).onSettingsChange(writeSettingsFile)
+    await store.updateAppReleases(
+      {
+        ios: {
+          testing: { version: '1.0.6', build: '42', at: '2026-10-01T00:00:00.000Z', commit: null },
+          production: null,
+        },
+      },
+      null,
+    )
+
+    const fresh = emptyDatabase()
+    seedDatabase(fresh)
+    expect(applySettingsFile(fresh)).toBe(true)
+    expect(fresh.appReleases.ios.testing?.version).toBe('1.0.6')
+    expect(fresh.appReleases.ios.testing?.build).toBe('42')
+  })
+
   it('والأسئلة الشائعة معها — تُحرَّر من الإدارة كالإعدادات', async () => {
     const store = new MemoryStore(db).onSettingsChange(writeSettingsFile)
     await store.createFaq({

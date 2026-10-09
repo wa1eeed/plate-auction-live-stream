@@ -102,6 +102,28 @@ jobs:
             echo "signed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # ---------------------------------------------------- أرقام النسخة
+      #
+      # ويُشتقّان في خطوةٍ مستقلّةٍ ذاتِ مخرجات، لا في سطر البناء.
+      #
+      # فالرقمان يُقرآن مرّتين: يُبنيان بهما، ثمّ يُبلَّغ بهما اللوحةُ بعد
+      # الرفع. وحسابُهما في موضعين يعني رقمين يفترقان في أوّل تعديل.
+      #
+      # ورقمُ البناء من عدّاد التشغيل والنسخةُ من الوسم — انظر build.gradle.
+      - name: اشتقاق النسخة ورقم البناء
+        id: version
+        run: |
+          BUILD="${{ github.run_number }}"
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/v* ]]; then
+            MARKETING="${REF#refs/tags/v}"
+          else
+            MARKETING=""
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "marketing=$MARKETING" >> "$GITHUB_OUTPUT"
+          echo "::notice::رقم البناء $BUILD${MARKETING:+ · النسخة $MARKETING}"
+
       - name: بناء حزمة موقَّعة (AAB)
         if: steps.signing.outputs.signed == 'true'
         working-directory: android
@@ -111,12 +133,13 @@ jobs:
           ORG_GRADLE_PROJECT_MAZAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_MAZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_MAZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build }}
+          MARKETING_VERSION: ${{ steps.version.outputs.marketing }}
         run: |
-          # رقم البناء من عدّاد التشغيل، والنسخة من الوسم — انظر build.gradle
-          ARGS="-PmazadVersionCode=${{ github.run_number }}"
-          REF="${{ github.ref }}"
-          if [[ "$REF" == refs/tags/v* ]]; then
-            ARGS="$ARGS -PmazadVersionName=${REF#refs/tags/v}"
+          # ما لا يُوسَم يبقى على ما في `build.gradle` — فلا يُغيّر تحقّقٌ رقمَ إصدار
+          ARGS="-PmazadVersionCode=$BUILD_NUMBER"
+          if [ -n "$MARKETING_VERSION" ]; then
+            ARGS="$ARGS -PmazadVersionName=$MARKETING_VERSION"
           fi
           ./gradlew bundleRelease --no-daemon $ARGS
 
@@ -151,3 +174,35 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: internal
           status: draft
+
+      # ------------------------------------------- تبليغُ اللوحة بما رُفع
+      #
+      # وجوجل لا واجهةَ علنيّةَ لها تُقرأ منها نسخةٌ: صفحةُ التطبيق في Play
+      # لم تعد تذكر الرقم. فالمسجَّلُ هنا هو كلُّ ما تعرفه اللوحةُ عن أندرويد.
+      #
+      # **ومسارُ الاختبار الداخليّ لا الإنتاج**: ما رفعته الخطوةُ قبله يصل
+      # المختبِرين، ورفعُه إلى الإنتاج يقع في لوحة Play بيدٍ — فيُثبت هناك.
+      - name: تبليغُ اللوحة بالإصدار
+        if: >-
+          steps.signing.outputs.signed == 'true' &&
+          startsWith(github.ref, 'refs/tags/v') &&
+          env.PLAY_JSON != ''
+        continue-on-error: true
+        env:
+          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          REPORT_SECRET: ${{ secrets.RELEASE_REPORT_SECRET }}
+          VERSION: ${{ steps.version.outputs.marketing }}
+          BUILD: ${{ steps.version.outputs.build }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          if [ -z "$REPORT_SECRET" ]; then
+            echo "::notice::لا سرَّ تبليغٍ مضبوط — لا يُسجَّل الإصدار في اللوحة"
+            exit 0
+          fi
+          BODY=$(jq -n --arg v "$VERSION" --arg b "$BUILD" --arg c "$COMMIT" \
+            '{platform:"android",channel:"testing",version:$v,build:$b,commit:$c}')
+          curl -fsS --max-time 20 -X POST "$APP_URL/api/internal/app-release" \
+            -H 'content-type: application/json' \
+            -H "x-release-report: $REPORT_SECRET" \
+            -d "$BODY" > /dev/null
+          echo "::notice::سُجّل في اللوحة: $VERSION (بناء $BUILD)"

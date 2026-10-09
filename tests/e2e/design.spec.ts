@@ -1002,17 +1002,27 @@ test('شعار اللوحة يُرسم في كل محرّك ولو خُفي أو
 
 
 /**
- * **تنبيهُ المنصّة بطاقةٌ تُقرأ، لا شريطٌ ضامر.**
+ * **تنبيهُ المنصّة: بطاقةٌ تطفو تحت الترويسة، لا شريطٌ يركبها.**
  *
- * وكان بعرض `sonner` الافتراضيّ — ٣٥٦ بكسلًا — فيبدو على شاشةٍ عرضُها ٣٩٠
- * بطاقةً صغيرةً تائهةً بهامشين غيرِ متساويين. وأيقونتُه ستّةَ عشرَ بكسلًا
- * عائمةً بلا شارة.
+ * وثلاثةُ أعطابٍ وقعت فيه، وكلُّها رآها صاحبُ المنصّة قبل أن يراها فحص:
  *
- * والمقيسُ ما يُرى: أن يملأ الشاشة إلّا هامشًا، وأن تكون أيقونتُه شارةً
- * لا نقطة.
+ * **١. يركب الترويسة.** `offset` كان الشقَّ وحده، والترويسةُ `sticky top-0`
+ * ارتفاعُها `h-16` — فيحطّ التنبيهُ على الشعار والقائمة. «في أعلى الصفحة
+ * جدًّا» قالها، وهي كذلك.
+ *
+ * **٢. أضيقُ ممّا كُتب له.** `w-[calc(100vw-1.5rem)]` صنفٌ تغلبه صفحةُ أنماط
+ * `sonner` لأنّها تُحقن بعدها — فبقي ٢٢٣ بكسلًا والصنفُ مطبَّق. وحدُّ
+ * «أكبرَ من ٣٤٠» لم يكن يمسك ذلك: عرضُ `sonner` الافتراضيّ ٣٥٦ يمرّ به.
+ *
+ * **٣. منزاحٌ خارج الشاشة.** `offset` المفردة تُطبَّق على الجهات الأربع،
+ * وفي `dir="rtl"` يغلب `right` — فخرجت حافّتُه اليسرى إلى `-52`.
+ *
+ * فيُقاس الثلاثة: أن يكون تحت الترويسة، وأن يملأ العرضَ إلّا هامشين، وأن
+ * يتساوى هامشاه. والهامشان المتساويان هما ما يمسك الانزياح: عرضٌ صحيحٌ
+ * ومركزٌ مائلٌ يمرّ على القياسين الأوّلين وحدهما.
  */
 test.describe('تنبيهُ المنصّة', () => {
-  test('يملأ عرضَ الجوّال، وأيقونتُه شارةٌ لا نقطة', async ({ page }) => {
+  test('تحت الترويسة، بعرض الشاشة إلّا هامشين متساويين', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/login')
 
@@ -1023,19 +1033,47 @@ test.describe('تنبيهُ المنصّة', () => {
     const toast = page.locator('[data-sonner-toast]').first()
     await expect(toast).toBeVisible({ timeout: 15_000 })
 
-    const shape = await toast.evaluate((node: HTMLElement) => {
+    /*
+     * **ويُقاس بعد أن يستقرّ لا في أثناء دخوله.**
+     *
+     * فالتنبيهُ يهبط من فوق بـ`transform`، و`getBoundingClientRect` تقرأ
+     * المحوَّل — فقِيس عند أوّل ظهورٍ فخرج `top: 6` وهو في منتصف طريقه.
+     * فيُنتظر ثباتُ قراءتين متتاليتين: لا مهلةً مقدَّرةً تطول أو تقصر.
+     */
+    const shape = await toast.evaluate(async (node: HTMLElement) => {
+      let previous = Number.NaN
+      for (let i = 0; i < 40; i += 1) {
+        const top = node.getBoundingClientRect().top
+        if (top === previous) break
+        previous = top
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+
       const box = node.getBoundingClientRect()
       const icon = node.querySelector('[data-icon]')?.getBoundingClientRect()
+      const header = document.querySelector('header')?.getBoundingClientRect()
       return {
         width: Math.round(box.width),
+        left: Math.round(box.left),
+        right: Math.round(window.innerWidth - box.right),
+        top: Math.round(box.top),
+        headerBottom: Math.round(header?.bottom ?? 0),
+        radius: Math.round(Number.parseFloat(getComputedStyle(node).borderRadius)),
         icon: icon ? Math.round(icon.width) : 0,
         kind: node.getAttribute('data-type'),
       }
     })
 
     expect(shape.kind, 'خطأٌ لا يُعلن خطأً').toBe('error')
-    /* ٣٩٠ ناقص هامشين — وما دون ٣٤٠ يبدو بطاقةً تائهة */
-    expect(shape.width, 'التنبيه أضيق من أن يُقرأ بطاقةً').toBeGreaterThan(340)
+    expect(shape.headerBottom, 'لا ترويسةَ تُقاس عليها').toBeGreaterThan(0)
+    expect(shape.top, 'التنبيهُ يركب الترويسة').toBeGreaterThanOrEqual(shape.headerBottom)
+
+    /* ٣٩٠ ناقص هامشين من ١٢ — وعرضُ `sonner` الافتراضيّ ٣٥٦ يسقط دون هذا */
+    expect(shape.width, 'التنبيه أضيق من أن يُقرأ بطاقةً').toBeGreaterThan(360)
+    expect(Math.abs(shape.left - shape.right), 'التنبيه منزاحٌ عن المركز').toBeLessThanOrEqual(2)
+    expect(shape.left, 'التنبيه يلامس الحافّة').toBeGreaterThan(4)
+
+    expect(shape.radius, 'الزوايا أحدُّ ممّا كُتب لها').toBeGreaterThanOrEqual(14)
     expect(shape.icon, 'الأيقونة نقطةٌ لا شارة').toBeGreaterThanOrEqual(32)
   })
 })

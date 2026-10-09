@@ -290,3 +290,36 @@ jobs:
           cp "${{ steps.signing.outputs.key_path }}" ~/.private_keys/
           xcrun altool --upload-app -f "$RUNNER_TEMP"/export/*.ipa -t ios \
             --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+
+      # ------------------------------------------- تبليغُ اللوحة بما رُفع
+      #
+      # TestFlight لا واجهةَ علنيّةَ له، ومفتاحُ App Store Connect ليس عند
+      # الخادم — فلا يعلم الرقمَ إلّا من رفعه. فيُبلَّغ هنا، فتقرأ اللوحةُ
+      # ما عند المختبِرين بلا أن يُفتح موقعُ أبل.
+      #
+      # **وبعد الرفع لا قبله**: ما لم يصل لا يُسجَّل أنّه وصل.
+      #
+      # و`continue-on-error` مقصود: بناءٌ رُفع بنجاحٍ لا يُصبَغ أحمرَ لأنّ
+      # تسجيلَ رقمٍ تعذّر. ويُقرأ التحذيرُ ويُعاد التبليغُ بإثباتٍ في اللوحة.
+      - name: تبليغُ اللوحة بالإصدار
+        if: steps.signing.outputs.signed == 'true' && startsWith(github.ref, 'refs/tags/v')
+        continue-on-error: true
+        env:
+          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          REPORT_SECRET: ${{ secrets.RELEASE_REPORT_SECRET }}
+          VERSION: ${{ steps.version.outputs.marketing }}
+          BUILD: ${{ steps.version.outputs.build }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          if [ -z "$REPORT_SECRET" ]; then
+            echo "::notice::لا سرَّ تبليغٍ مضبوط — لا يُسجَّل الإصدار في اللوحة"
+            exit 0
+          fi
+          # بـ`jq` لا بتضمينٍ في نصّ: رقمٌ فيه محرفُ اقتباسٍ يكسر JSON المبنيّ بيد
+          BODY=$(jq -n --arg v "$VERSION" --arg b "$BUILD" --arg c "$COMMIT" \
+            '{platform:"ios",channel:"testing",version:$v,build:$b,commit:$c}')
+          curl -fsS --max-time 20 -X POST "$APP_URL/api/internal/app-release" \
+            -H 'content-type: application/json' \
+            -H "x-release-report: $REPORT_SECRET" \
+            -d "$BODY" > /dev/null
+          echo "::notice::سُجّل في اللوحة: $VERSION (بناء $BUILD)"

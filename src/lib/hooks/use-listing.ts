@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { formatAmount } from '@/lib/domain/money'
 import type { ListingDetail } from '@/lib/domain/types'
 import { useRealtime, type ConnectionStatus, type RealtimeEvent } from './use-realtime'
+import { shouldAnnounceSold } from '@/lib/sold-announcement'
 
 export type { ConnectionStatus }
 
@@ -28,23 +29,35 @@ export function useListing(listingId: string, initial: ListingDetail) {
     }
   }, [listingId])
 
-  const onEvent = useCallback((event: RealtimeEvent) => {
-    if (event.kind === 'bid_placed') {
-      const amount = typeof event.payload.amount === 'number' ? event.payload.amount : null
-      toast.info(amount ? `مزايدة جديدة — ${formatAmount(amount)} ريال` : 'مزايدة جديدة', {
-        duration: 2500,
-      })
-      return
-    }
-    if (event.kind === 'time_extended' && lastExtensionRef.current !== event.at) {
-      lastExtensionRef.current = event.at
-      const seconds = Number(event.payload.addedSeconds ?? 0)
-      toast.info(`تم تمديد المزاد ${Math.round(seconds / 60)} دقيقة`, { duration: 2500 })
-      return
-    }
-    if (event.kind === 'auction_ended') toast.info('انتهى المزاد')
-    if (event.kind === 'listing_sold') toast.info('تمّت الصفقة على هذه اللوحة')
-  }, [])
+  const onEvent = useCallback(
+    (event: RealtimeEvent) => {
+      if (event.kind === 'bid_placed') {
+        const amount = typeof event.payload.amount === 'number' ? event.payload.amount : null
+        toast.info(amount ? `مزايدة جديدة — ${formatAmount(amount)} ريال` : 'مزايدة جديدة', {
+          duration: 2500,
+        })
+        return
+      }
+      if (event.kind === 'time_extended' && lastExtensionRef.current !== event.at) {
+        lastExtensionRef.current = event.at
+        const seconds = Number(event.payload.addedSeconds ?? 0)
+        toast.info(`تم تمديد المزاد ${Math.round(seconds / 60)} دقيقة`, { duration: 2500 })
+        return
+      }
+      if (event.kind === 'auction_ended') toast.info('انتهى المزاد')
+      /*
+       * **«بِيعت» لا «تمّت الصفقة».**
+       *
+       * فاللوحةُ تخرج من السوق لحظةَ الطلب، والسدادُ بعده في مهلته. وقولُ
+       * «تمّت الصفقة» يؤكّد ما لم يقع — ويقرؤه المشتري نفسُه قبل أن يدفع.
+       * وما يَهمّ المشاهدَ أنّها لم تعد متاحة، وهذا ما يُقال.
+       */
+      if (event.kind === 'listing_sold' && shouldAnnounceSold(listingId)) {
+        toast.info('بِيعت هذه اللوحة')
+      }
+    },
+    [listingId],
+  )
 
   const { status, viewersFor } = useRealtime({ topics: [topic], onEvent, onResync: refetch })
 

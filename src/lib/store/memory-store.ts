@@ -27,6 +27,7 @@ import type {
   UserDevice,
   MobileSettings,
   OnboardingSettings,
+  AppReleases,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -42,6 +43,7 @@ import {
   DEFAULT_AUCTION_SETTINGS,
   DEFAULT_MOBILE_SETTINGS,
   DEFAULT_ONBOARDING_SETTINGS,
+  DEFAULT_APP_RELEASES,
   DEFAULT_COMMISSION_SETTINGS,
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_TAX_SETTINGS,
@@ -91,6 +93,7 @@ export type MemoryDatabase = {
   auctionSettings: AuctionSettings
   mobileSettings: MobileSettings
   onboardingSettings: OnboardingSettings
+  appReleases: AppReleases
   commissionSettings: CommissionSettings
   /** إيرادات المنصّة: عمولات وضرائب وعرابين مُصادَرة */
   platformEntries: PlatformEntry[]
@@ -159,6 +162,11 @@ export function emptyDatabase(): MemoryDatabase {
     },
     onboardingSettings: {
       ...DEFAULT_ONBOARDING_SETTINGS,
+      updatedAt: new Date(0).toISOString(),
+      updatedByAdminId: null,
+    },
+    appReleases: {
+      ...DEFAULT_APP_RELEASES,
       updatedAt: new Date(0).toISOString(),
       updatedByAdminId: null,
     },
@@ -697,7 +705,27 @@ export class MemoryStore implements AuctionStore {
     return clone(this.db.deposits.find((d) => d.id === id) ?? null)
   }
 
+  /**
+   * **فرادةُ العربون المحجوز — كما في القاعدة لا دونها.**
+   *
+   * و`deposits_listing_user_held_key` تمنع عربونين مفتوحين لمزايدٍ واحدٍ على
+   * إعلانٍ واحد. وهي في بوستجرس وحدها، فما تمنعه يمرّ في الذاكرة بلا صوت —
+   * ويُكتب الاختبارُ فيمرّ، ويقع العطبُ في الإنتاج وحده.
+   *
+   * وقد وقع: فرادةٌ مطلقةٌ كانت تردّ كلَّ مزايدةٍ في جولةٍ ثانية، ولا اختبارَ
+   * واحدٌ أمسكها لأنّ الذاكرة لا تعرف الفرادة أصلًا. فما تحرسه القاعدةُ
+   * يُحرَس هنا — وإلّا فالاختبارُ يقيس نموذجًا غير المنشور.
+   */
+  private assertSingleHeldDeposit(listingId: string, userId: string, exceptId?: string): void {
+    const clash = this.db.deposits.some(
+      (d) =>
+        d.id !== exceptId && d.listingId === listingId && d.userId === userId && d.status === 'held',
+    )
+    if (clash) throw new Error('عربونٌ محجوزٌ قائمٌ لهذا المزايد على هذا الإعلان')
+  }
+
   async createDeposit(input: NewDeposit): Promise<Deposit> {
+    if (input.status === 'held') this.assertSingleHeldDeposit(input.listingId, input.userId)
     const deposit: Deposit = {
       ...input,
       id: newId('dep'),
@@ -713,6 +741,11 @@ export class MemoryStore implements AuctionStore {
   async updateDeposit(id: string, patch: Partial<Deposit>): Promise<Deposit> {
     const deposit = this.db.deposits.find((d) => d.id === id)
     if (!deposit) throw new Error('العربون غير موجود')
+    /* والفهرسُ الشرطيّ يحرس التعديلَ كما يحرس الإدراج: صفٌّ مغلقٌ يُعاد فتحُه
+     * بجانب مفتوحٍ يكسرها كما يكسرها إدراجٌ ثانٍ */
+    if (patch.status === 'held' && deposit.status !== 'held') {
+      this.assertSingleHeldDeposit(deposit.listingId, deposit.userId, deposit.id)
+    }
     Object.assign(deposit, patch)
     return clone(deposit)
   }
@@ -750,6 +783,24 @@ export class MemoryStore implements AuctionStore {
   }
 
   // ------------------------------------------------------------ إعدادات التطبيق
+
+  async getAppReleases(): Promise<AppReleases> {
+    return clone(this.db.appReleases)
+  }
+
+  async updateAppReleases(
+    patch: Partial<Omit<AppReleases, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ): Promise<AppReleases> {
+    this.db.appReleases = {
+      ...this.db.appReleases,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+      updatedByAdminId: adminId,
+    }
+    this.persist(this.db)
+    return clone(this.db.appReleases)
+  }
 
   async getOnboardingSettings(): Promise<OnboardingSettings> {
     return clone(this.db.onboardingSettings)

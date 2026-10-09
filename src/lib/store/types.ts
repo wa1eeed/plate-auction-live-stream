@@ -17,6 +17,7 @@ import type {
   UserDevice,
   MobileSettings,
   OnboardingSettings,
+  AppReleases,
   ListingEvent,
   ListingEventType,
   Offer,
@@ -217,6 +218,12 @@ export interface AuctionStore {
   listNotifications(userId: string, limit?: number): Promise<Notification[]>
   countUnreadNotifications(userId: string): Promise<number>
   createNotification(input: NewNotification): Promise<Notification>
+  getAppReleases(): Promise<AppReleases>
+  updateAppReleases(
+    patch: Partial<Omit<AppReleases, 'updatedAt' | 'updatedByAdminId'>>,
+    adminId: string | null,
+  ): Promise<AppReleases>
+
   getOnboardingSettings(): Promise<OnboardingSettings>
   updateOnboardingSettings(
     patch: Partial<Omit<OnboardingSettings, 'updatedAt' | 'updatedByAdminId'>>,

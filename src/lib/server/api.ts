@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { isServiceError } from './market-service'
@@ -31,7 +32,15 @@ const LOG_WINDOW_MS = 60_000
 const LOG_KEYS_MAX = 200
 const logged = new Map<string, { at: number; muted: number }>()
 
-function logOnce(message: string): void {
+/**
+ * و**المفتاحُ الرسالةُ وحدها، والرمزُ يُطبع معها ولا يدخل فيه.**
+ *
+ * فالرمز يتبدّل في كلّ نداء — فلو دخل المفتاحَ لصار كلُّ سطرٍ جديدًا، ولعاد
+ * الغرقُ الذي بُني هذا الحارسُ له: عطلٌ قائمٌ في المسح الدوريّ يكتب سبعةَ
+ * عشرَ ألفَ سطرٍ في اليوم. وقد كُسر بذلك فعلًا حين أُضيف الرمز، فأمسكه
+ * الاختبارُ القائم.
+ */
+function logOnce(message: string, trace?: string): void {
   const now = Date.now()
   const seen = logged.get(message)
   if (seen && now - seen.at < LOG_WINDOW_MS) {
@@ -41,7 +50,8 @@ function logOnce(message: string): void {
   if (logged.size >= LOG_KEYS_MAX) logged.clear()
   logged.set(message, { at: now, muted: 0 })
   const muted = seen?.muted ?? 0
-  console.error(muted > 0 ? `[api] ${message} (وكُتم ${muted} مثلُها)` : `[api] ${message}`)
+  const head = trace ? `[api] [${trace}]` : '[api]'
+  console.error(muted > 0 ? `${head} ${message} (وكُتم ${muted} مثلُها)` : `${head} ${message}`)
 }
 
 /** للفحص وحده — يُنسى ما سُجِّل فتُقاس نافذةُ الكتم من جديد. */
@@ -49,7 +59,12 @@ export function resetLogThrottleForTests(): void {
   logged.clear()
 }
 
-/** يحوّل أي خطأ إلى استجابة عربية آمنة بلا تسريب تفاصيل داخلية. */
+/**
+ * يحوّل أي خطأ إلى استجابة عربية آمنة بلا تسريب تفاصيل داخلية.
+ *
+ * وثلاثُ طبقات: `ServiceError` رسالةٌ كُتبت للمستخدم فتمرّ كما هي؛ وخطأُ
+ * التحقّق يُقال أيُّ حقلٍ أخطأ؛ وما عداهما يُكتم نصُّه ويُسجَّل برمزٍ يُذكر.
+ */
 export function handleError(error: unknown) {
   if (isServiceError(error)) {
     return fail(error.message, error.status, error.code)
@@ -60,16 +75,31 @@ export function handleError(error: unknown) {
   }
   if (error instanceof Error) {
     /*
-     * يُسجَّل في الإنتاج أيضًا — وكان في التطوير وحده.
+     * **ما لم نتوقّعه: يُسجَّل كاملًا، ويُقال للمستخدم جملةٌ واحدة.**
      *
-     * وهذا الفرع هو «ما لم نتوقّعه»: `ServiceError` و`ZodError` نتائجُ محكومة
-     * يقرؤها العميل في الردّ، وما يبلغ هنا عطبٌ أو عطلُ بنية. فكتمُه في
-     * الإنتاج يعني أنّ رفعًا يفشل على الخادم فلا يبقى منه **سطرٌ واحد** في
-     * السجلّ — فيُشخَّص بالحدس بدل أن يُقرأ. والروابط تُحجب: رسائل السائق
-     * والتوقيع قد تحمل رابط اتّصالٍ أو توقيعًا موقَّتًا.
+     * و`ServiceError` و`ZodError` نتائجُ محكومةٌ كُتبت ليقرأها المستخدم. وما
+     * يبلغ هنا عطبٌ أو عطلُ بنية، ونصُّه نصُّ السائق أو المكتبة.
+     *
+     * وكان نصُّه يُرسل كما هو. فظهر على شاشة مزايدٍ في الإنتاج:
+     * `Failed query: insert into "deposits" (...) values ($1, …) params:
+     * dep_…, D26-…, lst_…, usr_…, 500000, held, …` — أسماءُ الجداول
+     * وأعمدتُها ومعرّفاتُ الصفوف ومبالغُها، في نافذةٍ فوق صفحة المزاد. وهي
+     * خريطةُ المخطَّط تُعطى لمن يقرؤها، ورعبٌ لمن لا يقرؤها.
+     *
+     * والتوثيق فوق هذه الدالّة كان يقول «بلا تسريب تفاصيل داخلية» — وكان
+     * الكود يقول غير ذلك. فعاد إلى ما وُثّق.
+     *
+     * **ورمزٌ قصيرٌ يصل الشاشةَ بالسجلّ.** فجملةٌ عامّةٌ وحدها تُعمي الدعم:
+     * «ما عمل معي» لا يُشخَّص. والرمزُ يُعرض للمستخدم ويُكتب مع النصّ
+     * الكامل، فيُبحث عنه في السجلّ فيُقرأ العطبُ بعينه.
      */
-    logOnce(redactUrls(error.message))
-    return fail(error.message, 400, 'ERROR')
+    const trace = randomUUID().slice(0, 8)
+    logOnce(redactUrls(error.message), trace)
+    return fail(
+      `تعذّر إتمام العملية — خللٌ غير متوقّع. أعد المحاولة، وإن تكرّر فأبلغ الدعم بالرمز ${trace}.`,
+      500,
+      'INTERNAL',
+    )
   }
   return fail('حدث خطأ غير متوقع', 500, 'INTERNAL')
 }
