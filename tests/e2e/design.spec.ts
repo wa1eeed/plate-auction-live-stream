@@ -690,9 +690,19 @@ test.describe('الجوال عند 360px', () => {
      * `document.querySelector` يأخذ أوّلهما في الـDOM لا أوّلهما على الشاشة —
      * فيقيس صفًّا من جدولٍ آخر ويقارنه ببطاقةٍ من ثالث.
      */
+    /*
+     * ويُنتظر صفٌّ **مرئيّ** قبل القياس.
+     *
+     * وكان يُقاس فورًا، فيعود `find` بـ`undefined` وينفجر `closest` —
+     * «Cannot read properties of undefined». وهو ما وقع في البوّابة دون
+     * المحلّيّ: القياسُ سبق ظهورَ الصفّ. والانتظارُ يُحيل السباقَ يقينًا.
+     */
+    await expect(page.locator('.admin-table tfoot tr').first()).toBeVisible({ timeout: 15_000 })
+
     const foot = await page.evaluate(() => {
       const rows = [...document.querySelectorAll('.admin-table tfoot tr')]
-      const row = rows.find((candidate) => candidate.getBoundingClientRect().width > 0)!
+      const row = rows.find((candidate) => candidate.getBoundingClientRect().width > 0)
+      if (!row) throw new Error('لا صفَّ إجماليٍّ مرئيًّا في الكشف')
       // البطاقة من **جدول الصفّ نفسه** فلا يُقارن عرضٌ بعرضٍ من جدولين
       const card = row.closest('table')!.querySelector('tbody tr')!
       return {
