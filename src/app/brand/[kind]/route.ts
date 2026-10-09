@@ -7,6 +7,7 @@ const KIND: Record<string, BrandAssetKind> = {
   logo: 'logo',
   icon: 'icon',
   og: 'ogImage',
+  'app-icon': 'appIcon',
 }
 
 /**

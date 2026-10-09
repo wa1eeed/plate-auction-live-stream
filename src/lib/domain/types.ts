@@ -1984,6 +1984,17 @@ export const BRAND_ASSET_LIMITS = {
   logo: 512 * 1024,
   icon: 256 * 1024,
   ogImage: 1024 * 1024,
+  /*
+   * **أيقونةُ التطبيق — خانةٌ مستقلّةٌ عن الفافيكون.**
+   *
+   * وعهداهما مختلفان: الفافيكون يجلس في شريط تبويب فيجوز أن يكون شفّافًا
+   * وغيرَ مربّع وصغيرًا. وهذه يضع النظامُ عليها قناعَه المستدير ويكبّرها
+   * لشاشة الإقلاع، فتلزمها مربّعةً معتمةً إلى أطرافها وكبيرة.
+   *
+   * وكان الفافيكون يحكمهما معًا، فظهرت على الأجهزة زوايا بيضاء داخل
+   * الاستدارة — انظر `layout.tsx`. فأُفردت، وحدُّها أكبر: ١٠٢٤ مربّعة.
+   */
+  appIcon: 1024 * 1024,
 } as const
 
 export type BrandAssetKind = keyof typeof BRAND_ASSET_LIMITS
@@ -2024,6 +2035,8 @@ export type BrandSettings = {
   logo: BrandAsset | null
   icon: BrandAsset | null
   ogImage: BrandAsset | null
+  /** أيقونةُ التطبيق وشاشةُ إقلاعه — مربّعةٌ معتمة، لا الفافيكون */
+  appIcon: BrandAsset | null
 
   // ---- ما تقرؤه محرّكات البحث
   metaTitle: string
@@ -2057,6 +2070,7 @@ export const DEFAULT_BRAND_SETTINGS: Omit<BrandSettings, 'updatedAt' | 'updatedB
   logo: null,
   icon: null,
   ogImage: null,
+  appIcon: null,
   metaTitle: 'سوق تداول لوحات المركبات',
   metaDescription:
     'سوق ويب لتداول لوحات المركبات السعودية: اعرض لوحتك للبيع المباشر أو بمزاد أو استقبل العروض، وزايد على لوحات غيرك — بحساب واحد يبيع ويشتري.',

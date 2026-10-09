@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { getBrand } from '@/lib/server/brand-service'
+import { assetUrl, getBrand } from '@/lib/server/brand-service'
 
 /*
  * السجلّ مصدر الهويّة، فالبيان يُولَّد لا يُكتب.
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const brand = await getBrand()
+  const appIcon = assetUrl('appIcon', brand.appIcon)
 
   return {
     name: brand.name,
@@ -45,6 +46,20 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
        * والقياس: المرفوعة ٣٠١×٣٠١ وزواياها `rgb(237,246,244)`، وهذه ٥١٢×٥١٢
        * وزواياها `rgb(3,46,24)`. انظر `layout.tsx` لوجه الفرق بين العهدين.
        */
+      /*
+       * المرفوعةُ في خانة **أيقونة التطبيق** تتقدّم — وهي بعهدها: مربّعةٌ
+       * معتمة. وليست الفافيكون، فتلك عهدٌ آخر ولا تُثبَّت.
+       */
+      ...(appIcon && brand.appIcon
+        ? [
+            {
+              src: appIcon,
+              sizes: '512x512',
+              type: brand.appIcon.mime,
+              purpose: 'any' as const,
+            },
+          ]
+        : []),
       { src: '/app-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
       { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },

@@ -38,6 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = await getBrand()
   const og = assetUrl('ogImage', brand.ogImage)
   const icon = assetUrl('icon', brand.icon)
+  const appIcon = assetUrl('appIcon', brand.appIcon)
 
   return {
     metadataBase: new URL(appUrl()),
@@ -64,7 +65,8 @@ export async function generateMetadata(): Promise<Metadata> {
      */
     icons: {
       icon: icon ? [{ url: icon }] : [{ url: '/app-icon.png', type: 'image/png' }],
-      apple: [{ url: '/app-icon.png' }],
+      /* المرفوعةُ في خانتها، وإلّا فالمصمَّمةُ في `public/` — ولا الفافيكون */
+      apple: [{ url: appIcon ?? '/app-icon.png' }],
     },
     /*
      * iOS لا يقرأ البيان في التثبيت.

@@ -1,5 +1,5 @@
 import { chromium } from '@playwright/test'
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 /**
@@ -26,9 +26,32 @@ const GLYPH = `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="r
     <path d="m9 7 8 8"/><path d="m21 11-8-8"/>
   </g>`
 
+/*
+ * **مصدرُ الرسم: ما رفعته الإدارة، وإلّا فالرمزُ المرسوم.**
+ *
+ * و`BRAND_ICON` مسارُ ملفٍّ يُمرَّر من البيئة — يسحبه سيرُ البناء من
+ * `/brand/app-icon` على المنصّة الحيّة. فأيقونةُ التطبيق وشاشةُ إقلاعه
+ * تتبعان ما يُضبط في اللوحة، بلا تحرير أصولٍ بيد.
+ *
+ * وبلاه يُؤخذ `public/app-icon.png` — أيقونةُ المستودع نفسُها، فيتّسق ما
+ * يُبنى محلّيًّا مع ما هو مدفوع. وبلاهما يُرسم الرمزُ كما كان، فالمستودعُ
+ * يبني وحده بلا شبكة ولا ملفّ.
+ */
+const REPO_ICON = 'public/app-icon.png'
+const BRAND_ICON = process.env.BRAND_ICON_FILE ?? (existsSync(REPO_ICON) ? REPO_ICON : null)
+const brandHref = BRAND_ICON
+  ? `data:image/png;base64,${readFileSync(BRAND_ICON).toString('base64')}`
+  : null
+
+/** الرسمُ في مربّعٍ من 512 — مرفوعًا كان أو مرسومًا. */
+const artwork = brandHref
+  ? `<image href="${brandHref}" x="0" y="0" width="512" height="512" preserveAspectRatio="xMidYMid slice"/>`
+  : `<rect width="512" height="512" fill="${GOLD}"/>
+  <g transform="translate(256 256) scale(11) translate(-12 -12)">${GLYPH}</g>`
+
 const full = (size, radius) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${size}" height="${size}">
-  <rect width="512" height="512" rx="${radius}" fill="${GOLD}"/>
-  <g transform="translate(256 256) scale(11) translate(-12 -12)">${GLYPH}</g>
+  <clipPath id="rounded"><rect width="512" height="512" rx="${radius}"/></clipPath>
+  <g clip-path="url(#rounded)">${artwork}</g>
 </svg>`
 
 /**
@@ -39,14 +62,24 @@ const full = (size, radius) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox=
  * لعرض القلم فلا يُقصّ طرفُ المطرقة على جهازٍ يقصّ دائرة.
  */
 const foreground = (size) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="${size}" height="${size}">
-  <g transform="translate(54 54) scale(2.4) translate(-12 -12)">${GLYPH}</g>
+  ${
+    brandHref
+      ? /* المرفوعةُ تُصغَّر إلى منطقة الأمان (66 من 108) فلا يقصّها القناع */
+        `<image href="${brandHref}" x="21" y="21" width="66" height="66" preserveAspectRatio="xMidYMid meet"/>`
+      : `<g transform="translate(54 54) scale(2.4) translate(-12 -12)">${GLYPH}</g>`
+  }
 </svg>`
 
 const splash = (size) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="${size}" height="${size}">
   <rect width="1024" height="1024" fill="${SPLASH_BG}"/>
   <g transform="translate(512 512)">
-    <rect x="-140" y="-140" width="280" height="280" rx="62" fill="${GOLD}"/>
-    <g transform="scale(6) translate(-12 -12)">${GLYPH}</g>
+    ${
+      brandHref
+        ? `<clipPath id="splash-rounded"><rect x="-140" y="-140" width="280" height="280" rx="62"/></clipPath>
+    <image clip-path="url(#splash-rounded)" href="${brandHref}" x="-140" y="-140" width="280" height="280" preserveAspectRatio="xMidYMid slice"/>`
+        : `<rect x="-140" y="-140" width="280" height="280" rx="62" fill="${GOLD}"/>
+    <g transform="scale(6) translate(-12 -12)">${GLYPH}</g>`
+    }
   </g>
 </svg>`
 
@@ -122,4 +155,4 @@ const feature = `<div style="
 await render(feature, 1024, 'store-assets/play-feature-1024x500.png', 500)
 
 await browser.close()
-console.log(`✓ وُلِّد ${count} ملفًّا من public/app-icon.svg`)
+console.log(`✓ وُلِّد ${count} ملفًّا من ${BRAND_ICON ?? 'الرمز المرسوم'}`)

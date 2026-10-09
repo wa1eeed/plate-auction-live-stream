@@ -92,6 +92,7 @@ export const ASSET_ROUTE: Record<BrandAssetKind, string> = {
   logo: '/brand/logo',
   icon: '/brand/icon',
   ogImage: '/brand/og',
+  appIcon: '/brand/app-icon',
 }
 
 /**

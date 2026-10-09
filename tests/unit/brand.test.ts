@@ -88,3 +88,54 @@ describe('أيقونةُ التثبيت لا تتبع المرفوع', () => {
     resetStoreForTests()
   })
 })
+
+
+/**
+ * **أيقونةُ التطبيق خانةٌ مستقلّةٌ عن الفافيكون.**
+ *
+ * وعهداهما مختلفان: الفافيكون يجلس في شريط تبويب فيجوز أن يكون شفّافًا
+ * وغيرَ مربّع. وهذه يضع النظامُ عليها قناعَه المستدير ويكبّرها لشاشة
+ * الإقلاع. وكان الفافيكون يحكمهما معًا فظهرت زوايا بيضاء داخل الاستدارة.
+ */
+describe('خانةُ أيقونة التطبيق', () => {
+  const asset = (name: string) => {
+    const bytes = Buffer.from(name)
+    return {
+      data: bytes.toString('base64'),
+      mime: 'image/png',
+      fileName: `${name}.png`,
+      bytes: bytes.byteLength,
+      updatedAt: new Date().toISOString(),
+    }
+  }
+
+  it('البيانُ يُقدّم المرفوعةَ في خانتها، ولا يُقدّم الفافيكون', async () => {
+    const { resetStoreForTests, createSeededMemoryStore, getStore } = await import('@/lib/store')
+    resetStoreForTests(createSeededMemoryStore())
+    await getStore().updateBrandSettings({ icon: asset('favicon'), appIcon: asset('app') })
+
+    const manifest = (await import('@/app/manifest')).default
+    const sources = ((await manifest()).icons ?? []).map((row) => row.src)
+
+    expect(sources[0], 'المرفوعةُ في خانتها لم تتقدّم').toContain('/brand/app-icon')
+    expect(
+      sources.some((src) => src === '/brand/icon' || src.startsWith('/brand/icon?')),
+      'الفافيكون دخل أيقوناتِ التثبيت',
+    ).toBe(false)
+    /* والمرسومةُ تبقى خلفها لا بدلًا منها */
+    expect(sources).toContain('/app-icon.png')
+
+    resetStoreForTests()
+  })
+
+  it('وبلا رفعٍ تبقى المصمَّمةُ في `public/`', async () => {
+    const { resetStoreForTests, createSeededMemoryStore } = await import('@/lib/store')
+    resetStoreForTests(createSeededMemoryStore())
+
+    const manifest = (await import('@/app/manifest')).default
+    const sources = ((await manifest()).icons ?? []).map((row) => row.src)
+
+    expect(sources[0]).toBe('/app-icon.png')
+    resetStoreForTests()
+  })
+})
