@@ -58,13 +58,21 @@ export default async function WalletPage() {
         * وترتيبُها: المتاح عنوانًا، والمحجوز في جيبٍ داخله لا بجانبه —
         * فالمحجوز جزءٌ من ماله لا رقمٌ مستقلّ، وموضعُه يقول ذلك قبل نصِّه.
         */}
-      <section className="mb-4 overflow-hidden rounded-3xl bg-[#171C24] p-5 text-white shadow-lg shadow-black/15 sm:p-6">
+      {/*
+        * **لونُها من رموز السمة لا بلونٍ مكتوب.**
+        *
+        * وكانت `bg-[#171C24]` ونصُّها أبيض — فتبقى داكنةً في السمة الفاتحة
+        * بقعةً سوداءَ في صفحةٍ فاتحة. و`ink-900` تنقلب معها: في الداكنة سطحٌ
+        * أغمقُ من البطاقات، وفي الفاتحة `#eaeff5` — فاتحةٌ **وأغمقُ من
+        * الصفحة** (`#f4f6fa`)، فتنفصل عمّا تحتها بلا أن تخرج عن السمة.
+        */}
+      <section className="mb-4 overflow-hidden rounded-3xl border border-ink-600/70 bg-ink-900 p-5 text-paper shadow-lg shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-white/55">المتاح للمزايدة</p>
+            <p className="text-xs font-semibold text-muted">المتاح للمزايدة</p>
             <p className="mt-1.5 text-[2.6rem] font-extrabold leading-none tabular-nums sm:text-5xl">
               {formatAmount(wallet.available)}
-              <span className="ms-2 text-base font-bold text-white/55">ريال</span>
+              <span className="ms-2 text-base font-bold text-muted">ريال</span>
             </p>
           </div>
           {/* كشف الحساب في رأس البطاقة — حيث يُبحث عنه */}
@@ -82,7 +90,7 @@ export default async function WalletPage() {
           * فمن لا محجوز له يقرأ «لا عرابين محجوزة» فيطمئنّ، ومن اختفى عنه
           * السطر يظنّ أنّ ماله نقص ولا يجد له تفسيرًا. والصفر خبرٌ كالرقم.
           */}
-        <div className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3.5">
+        <div className="flex items-center gap-3 rounded-2xl bg-ink-950/60 p-3.5">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gold-500/20 text-gold-400">
             <Lock className="size-4" />
           </span>
@@ -93,7 +101,7 @@ export default async function WalletPage() {
                 {formatAmount(wallet.held)}
               </span>
             </p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-white/50">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
               {heldDeposits.length > 0
                 ? `${arabicCount(heldDeposits.length, {
                     one: 'عربونٌ واحد',
@@ -107,9 +115,9 @@ export default async function WalletPage() {
         </div>
 
         {/* والكلي سطرٌ خفيف: يُذكر ولا يُزاحم */}
-        <p className="mt-3 flex items-center justify-between gap-3 text-[11px] text-white/45">
+        <p className="mt-3 flex items-center justify-between gap-3 text-[11px] text-muted">
           <span>الرصيد الكلي</span>
-          <span className="font-bold tabular-nums text-white/70">
+          <span className="font-bold tabular-nums text-paper">
             {formatAmount(wallet.balance)} ريال
           </span>
         </p>

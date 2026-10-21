@@ -172,31 +172,6 @@
   }
 
   /*
-   * شريط أقسام الحساب يُخفى فوق الصفحات المركَّزة.
-   *
-   * وهي صفحاتُ فعلٍ لا تصفّح — الإعدادات ونموذج إضافة اللوحة: من دخلها يريد
-   * مفتاحًا أو يملأ نموذجًا، وشريطٌ يعرض «مشترياتي» و«مبيعاتي» فوقه يدعوه
-   * إلى الخروج قبل أن يبلغ ما جاء له. والعلامة تُوضع من الصفحة نفسها —
-   * فالتخطيط لا يعرف أيّ صفحةٍ تُعرض تحته.
-   */
-  body:has([data-settings-page]) [data-section-rail] {
-    display: none;
-  }
-
-  /*
-   * ونموذجُ اللوحة يُخفيه **على الضيّق وحده**.
-   *
-   * الشريط على الحاسوب عمودٌ جانبيّ لا يزاحم النموذج، وعلى الجوال كاروسيلٌ
-   * أفقيّ يعتلي الشاشة الأولى ويدفع اللوحة تحت الطيّة. وإخفاؤه هناك تغييرٌ
-   * في تجربة الحاسوب بلا سبب.
-   */
-  @media (max-width: 1023px) {
-    body:has([data-focus-page]) [data-section-rail] {
-      display: none;
-    }
-  }
-
-  /*
    * **في الغلاف الأصيل: المستند لا يُمرَّر — تُمرَّر حاويةٌ داخله.**
    *
    * وهذا أصلُ ثلاثة أعطابٍ ظهرت على الجهاز: الهيدر يتزحزح عند التمرير،
@@ -459,68 +434,70 @@ html[data-transparent='true'] {
 }
 
 /* ==========================================================================
-   لمعانُ إطار البنر — شعاعٌ يدور على الحافّة
+   لمعانُ إطار البنر — شعاعٌ يجري على الأطراف
    ========================================================================== */
 
 /**
- * **شعاعٌ يمرّ على الإطار، لا وميضٌ يغشى الصورة.**
+ * **شعاعٌ يمشي على أطراف البنر — لا هالةٌ تدور خلفه.**
  *
- * والبنرُ إعلانٌ مدفوع، وما حوله من الصفحة ساكن — فيحتاج ما يجذب العين
- * إليه بلا أن يحجب ما فيه. والحافّةُ موضعُ ذلك: شعاعٌ ذهبيٌّ يطوف بها
- * فيُحسّ معدنًا يلمع لا لافتةً تومض.
+ * والبنرُ إعلانٌ مدفوع، وما حوله من الصفحة ساكن، فيحتاج ما يجذب العين إليه
+ * بلا أن يحجب ما فيه. والحافّةُ موضعُ ذلك.
  *
- * **وطريقتُه قناعٌ لا حدّ**: تدرّجٌ مخروطيٌّ يدور خلف البطاقة، ويُقصّ إلى
- * حلقةٍ رفيعةٍ بـ`mask` — فلا يُرى منه إلّا ما وقع على الإطار. والبديلُ
- * `border-image` لا يقبل الاستدارة، و`@property --angle` لا تعمل في كلّ
- * متصفّح — والدورانُ بـ`rotate` يعمل في كلّها.
+ * **وجُرّب تدرّجٌ مخروطيٌّ يدور خلف البطاقة ويُقصّ إلى حلقةٍ** — فخرج هالةً
+ * تلفّ حول المركز لا شعاعًا يجري على الطرف: البقعةُ المضيئة تسرع على الضلع
+ * القصير وتبطئ على الطويل، لأنّ الدورانَ زاويٌّ والمستطيلُ ليس دائرة. ورآه
+ * صاحبُ المنصّة فلم يُعجبه، وأصاب.
  *
- * ومربّعُه `150%` من أطول ضلع: دائرةُ التدرّج يجب أن تغطّي قُطر البطاقة،
- * وإلّا انكشفت الزوايا عند الدوران فظهر الشعاعُ يقفز.
+ * **والمسلكُ الصحيح مسارُ حركة**: قطعةٌ مضيئةٌ تسير على مستطيلٍ مستديرِ
+ * الزوايا بـ`offset-path`، فتقطع الأطرافَ **بسرعةٍ واحدة** وتنعطف مع
+ * الزوايا. و`offset-rotate: auto` يُديرها مع الاتّجاه، فتبقى ملاصقةً للطرف
+ * رأسيّةً على الأضلاع القائمة.
+ *
+ * وكلُّه داخل `@supports`: متصفّحٌ لا يعرف `rect()` في المسار يضع القطعةَ
+ * في ركنٍ ساكنةً — نقطةٌ غريبةٌ أسوأ من لا شيء. فإمّا أن تجري وإمّا ألّا
+ * تكون.
  */
-@keyframes frame-sheen-spin {
+@keyframes edge-run {
   to {
-    rotate: 1turn;
+    offset-distance: 100%;
   }
 }
 
-@utility frame-sheen {
+@utility edge-runner {
   position: relative;
-  isolation: isolate;
+}
 
-  &::before {
+@supports (offset-path: rect(0% 100% 100% 0% round 1rem)) {
+  .edge-runner::after {
     content: '';
     position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0 62%,
-      color-mix(in oklab, var(--color-gold-500) 70%, transparent) 76%,
-      var(--color-gold-400) 82%,
-      color-mix(in oklab, var(--color-gold-500) 70%, transparent) 88%,
-      transparent 96% 100%
+    width: 5rem;
+    height: 2px;
+    border-radius: 999px;
+    /* أطرافُها تذوب في الحافّة فلا تبدو عصًا تُحرَّك */
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-gold-400) 55%, transparent) 35%,
+      var(--color-gold-300) 50%,
+      color-mix(in oklab, var(--color-gold-400) 55%, transparent) 65%,
+      transparent
     );
-    /* الحلقةُ وحدها: الخارجُ ناقصًا الداخل */
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    animation: frame-sheen-spin 6s linear infinite;
+    box-shadow: 0 0 10px color-mix(in oklab, var(--color-gold-400) 65%, transparent);
+    /* `rounded-2xl` = 1rem — ويتبع استدارةَ البطاقة فلا يقطع الزوايا */
+    offset-path: rect(0% 100% 100% 0% round 1rem);
+    offset-rotate: auto;
+    offset-anchor: 50% 50%;
+    animation: edge-run 5s linear infinite;
     pointer-events: none;
+    z-index: 1;
   }
-}
 
-/**
- * ومن طلب تقليل الحركة يُترك له الإطارُ ساكنًا لا أن يُحرم منه.
- */
-@media (prefers-reduced-motion: reduce) {
-  .frame-sheen::before {
-    animation: none;
+  @media (prefers-reduced-motion: reduce) {
+    .edge-runner::after {
+      animation: none;
+      opacity: 0;
+    }
   }
 }
 

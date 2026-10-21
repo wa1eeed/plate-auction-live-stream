@@ -724,6 +724,7 @@ export async function getListingDetail(
 
     soldAmount: listing.soldAmount,
     soldToMe: Boolean(viewerId && listing.soldToUserId === viewerId),
+    settlementPending: await awaitingSettlement(store, listing),
     myOrder: await viewerOrder(store, listing, viewerId),
 
     ledger: bids.map((bid) => ({
@@ -1373,6 +1374,18 @@ export async function requireOwnedListing(
  * مقصورة على طرفيها: من ليس مشتريًا ولا بائعًا لا يرى مبالغ صفقة غيره ولا
  * مراحلها.
  */
+/**
+ * هل خرجت اللوحةُ من السوق ومالُها لم يصل؟
+ *
+ * و`sold` وحدها لا تُفرّق: تقع لحظةَ الطلب وتبقى بعد اكتمال السداد. فيُسأل
+ * عن الصفقة: ما دامت في «بانتظار السداد» فاللوحةُ محجوزةٌ لا مبيعة.
+ */
+async function awaitingSettlement(store: AuctionStore, listing: Listing): Promise<boolean> {
+  if (listing.status !== 'sold') return false
+  const orders = await store.listOrders({ listingId: listing.id })
+  return orders.some((order) => order.status === 'awaiting_settlement')
+}
+
 async function viewerOrder(
   store: AuctionStore,
   listing: Listing,

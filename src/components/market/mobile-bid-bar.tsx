@@ -113,6 +113,8 @@ export function MobileBidBar({
             disabled={busy}
             onClick={async () => {
               setBusy(true)
+              /* يُكتم قبل الطلب: البثّ قد يسبق الردّ — انظر `trade-panel` */
+              muteNextSoldToast(detail.id)
               try {
                 const response = await fetch(`/api/listings/${detail.id}/buy`, {
                   method: 'POST',
@@ -131,8 +133,6 @@ export function MobileBidBar({
                  * في مكانه، وقد صار مرتبطًا بصفقة ومهلتها تجري — وكل ما رآه
                  * توست يختفي بعد ثوانٍ. والحاسوب يفعل الصواب منذ البداية.
                  */
-                /* البثُّ يصل هذا التبويبَ أيضًا — ولا يُخبَر المشتري ببيعٍ هو سببُه */
-                muteNextSoldToast(detail.id)
                 router.push(`/checkout/${data.orderId}`)
               } finally {
                 setBusy(false)

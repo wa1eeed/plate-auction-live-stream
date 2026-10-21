@@ -21,6 +21,11 @@ export default async function ProfileSettingsPage() {
   const user = await getCurrentUser()
   if (!user) notFound()
 
+  /*
+   * `data-settings-page` مقبضٌ للفحص يحصر المحدِّدات في جسم الصفحة — وكان
+   * خطّافًا لـCSS يُخفي شريطَ الأقسام بـ`:has`، فيومض الشريطُ قبل وصوله.
+   * والإخفاءُ صار بالمسار في `SectionRail`.
+   */
   return (
     <div className="space-y-5" data-settings-page>
       <header>

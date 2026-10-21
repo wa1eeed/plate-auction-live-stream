@@ -18,7 +18,7 @@ export default async function NewListingPage() {
      * وكان كاروسيلُ الأقسام يعتلي الشاشة الأولى فيدفع اللوحة تحت الطيّة،
      * ويدعو من جاء ليضيف لوحةً إلى الخروج قبل أن يبدأ. انظر `globals.css`.
      */
-    <div className="space-y-5" data-focus-page>
+    <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-extrabold">أضف لوحة</h1>
         <p className="mt-1 text-sm text-muted">

@@ -327,12 +327,24 @@ test.describe('صفحة الإعدادات', () => {
     await expect(page.locator('#main input').first()).toBeVisible()
   })
 
-  test('وشريط الأقسام معلَّمٌ للإخفاء فيها', async ({ page }) => {
+  /*
+   * **ولا يُصيَّر شريطُ الأقسام فيها أصلًا.**
+   *
+   * وكان يُصيَّر ثمّ يُخفى بـ`body:has([data-settings-page])` — والعلامةُ
+   * داخل محتوى الصفحة والتخطيطُ فوقها، فيُرسم الشريطُ مع هيكل الانتظار ثمّ
+   * يختفي حين يصل المحتوى. وميضٌ في كلّ دخول، شكا منه صاحبُ المنصّة.
+   *
+   * فصار القرارُ بالمسار (`SectionRail`)، ويُقاس بغيابه لا بوجود علامة.
+   */
+  test('ولا يُصيَّر شريطُ الأقسام فيها', async ({ page }) => {
     await loginUser(page, USERS.waleed)
+
+    /* وهو حاضرٌ في صفحات التصفّح — وإلّا فالغيابُ غيابُ الشريط كلِّه */
+    await page.goto('/account/wallet')
+    await expect(page.getByRole('navigation', { name: 'أقسام الحساب' })).toHaveCount(1)
+
     await page.goto('/account/settings')
-    /* العلامتان موجودتان، والإخفاء يقع بـ`:has` في CSS */
-    await expect(page.locator('[data-settings-page]')).toHaveCount(1)
-    await expect(page.locator('[data-section-rail]')).toHaveCount(1)
+    await expect(page.getByRole('navigation', { name: 'أقسام الحساب' })).toHaveCount(0)
   })
 
   test('ومفتاحا الصوت والإشعارات صفّان يُضغطان كاملين', async ({ page }) => {

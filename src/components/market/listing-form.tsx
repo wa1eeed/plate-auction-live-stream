@@ -386,21 +386,15 @@ export function ListingForm({
           * الدراجة أكبر من المعتاد إلى جانبها.
           */}
         {/*
-          * **ظلٌّ يُجلس اللوحةَ على الصفحة لا يُلصقها بها.**
+          * **عمقُ اللوحة من رسمها هي — لا من ظلٍّ حولها.**
           *
-          * واللوحةُ قطعةٌ معدنيّةٌ لها سُمك، وبلا ظلٍّ تبدو رسمًا مطبوعًا على
-          * الخلفية — وهو ما يفرّق معاينةً من لوحةٍ في بطاقات السوق، وتلك
-          * تجلس في صندوقٍ بحافّةٍ وخلفيّةٍ تفصلها.
+          * وكانت المعاينةُ تُرسم بـ`showReflection={false}`، فتخرج مسطّحةً
+          * إلى جانب لوحات بطاقات السوق: تلك تحمل انعكاسَ السطح ونتوءَ الحبر
+          * فتُقرأ قطعةً معدنيّة، وهذه رسمًا مطبوعًا.
           *
-          * و`drop-shadow` لا `box-shadow`: الثانية تظلّل **صندوق** العنصر،
-          * واللوحةُ مستديرةُ الزوايا وما حولها شفّاف — فيخرج ظلٌّ مستطيلٌ
-          * حول فراغ. والأولى تتبع شكل ما رُسم.
-          *
-          * وطبقتان: قريبةٌ ضيّقة تحدّ الحافّة، وبعيدةٌ واسعة ترفعها.
-          *
-          * وتُمرَّر على اللوحة نفسِها لا على الصندوق: `[&>svg]` لا يُطابق —
-          * المكوّن يلفّ الرسمَ في `span`، فالـ`svg` حفيدٌ لا ابن. قِيس
-          * فخرجت `filter: none` والصنفُ مكتوب.
+          * وجُرّب ظلٌّ خارجيٌّ حولها فلم يُصب المقصود: يُجلسها على الصفحة
+          * ولا يُعطيها سُمكًا. والصوابُ أن تُرسم كما تُرسم في كلّ مكان —
+          * فالمعاينةُ تَعِد بما سيراه الناس، وما تعد به يجب أن يكون هو.
           */}
         <div className="mx-auto flex h-[72px] w-full max-w-[560px] items-center justify-center sm:h-[96px]">
           <SaudiLicensePlate
@@ -412,12 +406,6 @@ export function ListingForm({
             emblem={emblem}
             customEmblemUrl={customEmblemUrl || null}
             size="fill"
-            showReflection={false}
-            /*
-             * طبقتان في خاصّيّةٍ واحدة: صنفا `drop-shadow` يتدافعان — أداةٌ
-             * واحدةٌ فيبقى آخرُهما. قِيس فخرجت الضيّقةُ محذوفة.
-             */
-            className="[filter:drop-shadow(0_1px_1px_rgba(10,13,18,0.32))_drop-shadow(0_10px_20px_rgba(10,13,18,0.42))]"
           />
         </div>
         <p className="mt-2.5 text-center text-[11px] leading-relaxed text-muted">
@@ -803,15 +791,35 @@ export function ListingForm({
         * واحدة: أيُّهما يُنهي العمل؟
         */}
       {!lastStep && (
-        <div className="action-bar -mx-4 flex items-center gap-2 border-t border-ink-600 bg-ink-950/95 px-4 py-3 backdrop-blur lg:hidden">
-          {step > 0 && (
-            <Button type="button" variant="ghost" size="lg" onClick={() => setStep(step - 1)}>
-              السابق
+        <div className="action-bar -mx-4 lg:hidden">
+          {/*
+            * **تلاشٍ فوق الشريط — لا خطٌّ يقطع الصفحة.**
+            *
+            * وكان الشريطُ `bg-ink-950/95` مع ضبابٍ خلفه، فيُرى ما تحته
+            * منه: نصٌّ باهتٌ يمرّ تحت الزرّ فيبدو الشريطُ لوحًا شفّافًا
+            * معلّقًا لا قاعدةً للصفحة. فصار معتمًا تامًّا، وفوقه تدرّجٌ
+            * يذوب فيه المحتوى بدل أن يُقصّ عند حافّته.
+            */}
+          <div
+            aria-hidden
+            className="pointer-events-none h-7 bg-gradient-to-t from-ink-950 to-transparent"
+          />
+          <div
+            className={cn(
+              'flex items-center gap-2 border-t border-ink-600/70 bg-ink-950 px-4 py-3',
+              /* ظلٌّ صاعدٌ يرفع الشريطَ عن الصفحة فيُقرأ طبقةً فوقها */
+              'shadow-[0_-10px_26px_-14px_rgba(10,13,18,0.75)]',
+            )}
+          >
+            {step > 0 && (
+              <Button type="button" variant="ghost" size="lg" onClick={() => setStep(step - 1)}>
+                السابق
+              </Button>
+            )}
+            <Button type="button" size="lg" className="flex-1" onClick={goNext}>
+              التالي
             </Button>
-          )}
-          <Button type="button" size="lg" className="flex-1" onClick={goNext}>
-            التالي
-          </Button>
+          </div>
         </div>
       )}
 

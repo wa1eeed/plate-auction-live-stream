@@ -205,9 +205,9 @@ function BannerCard({ banner, priority }: { banner: BannerView; priority: boolea
     />
   )
 
-  /* `frame-sheen` شعاعٌ يطوف بالحافّة — تعريفُه وعلّتُه في `globals.css` */
+  /* `edge-runner` شعاعٌ يمشي على الأطراف — تعريفُه وعلّتُه في `globals.css` */
   const frame =
-    'frame-sheen block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
+    'edge-runner block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
 
   if (!banner.linkUrl) {
     return <div className={frame}>{image}</div>

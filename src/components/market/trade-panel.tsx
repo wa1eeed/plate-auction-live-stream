@@ -84,6 +84,17 @@ export function TradePanel({
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
+    /*
+     * **يُكتم قبل الطلب لا بعده.**
+     *
+     * فالخادم يبثّ `listing_sold` في أثناء معالجة الطلب، والمقبسُ يُسلّمه
+     * إلى هذا التبويب قد يسبق وصولَ الردّ. فكتمٌ بعد `await` سباقٌ يُخسر
+     * على وصلةٍ سريعة — وقد ظهرت النافذةُ للمشتري فعلًا.
+     *
+     * وعلامةٌ تُترك بلا شراءٍ يقع لا تضرّ: تنقضي بعد عشرين ثانية، ولا تكتم
+     * في مدّتها إلّا بيعَ هذه اللوحة بعينها — وهو ما كان المشتري سيفعله.
+     */
+    muteNextSoldToast(detail.id)
     try {
       const response = await fetch(`/api/listings/${detail.id}/buy`, {
         method: 'POST',
@@ -95,8 +106,6 @@ export function TradePanel({
         toast.error(data?.error?.message ?? 'تعذّر إتمام العملية')
         return
       }
-      /* البثُّ يصل هذا التبويبَ أيضًا — ولا يُخبَر المشتري ببيعٍ هو سببُه */
-      muteNextSoldToast(detail.id)
       router.push(`/checkout/${data.orderId}`)
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')

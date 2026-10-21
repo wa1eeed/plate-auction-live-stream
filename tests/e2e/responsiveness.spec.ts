@@ -71,7 +71,12 @@ test.describe('الضغطة تُجيب فورًا', () => {
      * والانتقال الثاني هو المقصود: حدُّ `account/loading` يُثار عند تبدّل
      * جزئه، والانتقال بين ابنين لا يُبدّله — فكان يمرّ **بلا هيكلٍ واحد**.
      */
-    for (const href of ['/account/settings', '/account/wallet', '/account/listings']) {
+    /*
+     * والإعداداتُ آخرًا: شريطُ الأقسام لا يُصيَّر فيها (صفحةُ فعلٍ لا
+     * تصفّح)، فلا رابطَ فيها إلى قسمٍ آخر يُضغط. والمقصودُ الانتقالُ من
+     * الحساب لا منها.
+     */
+    for (const href of ['/account/wallet', '/account/listings', '/account/settings']) {
       const signal = await firstSignal(page, href)
       expect(signal.found, `لا إشارة انتظار عند ${href}`).toBe(true)
       expect(signal.ms, `الإشارة تأخّرت عند ${href} (${signal.kind})`).toBeLessThan(500)

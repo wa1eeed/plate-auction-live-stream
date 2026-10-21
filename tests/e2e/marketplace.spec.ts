@@ -133,23 +133,37 @@ test.describe('سوق تداول اللوحات', () => {
     await buyer.goto(`/market/${listingId}`)
     await expect(buyer.getByRole('button', { name: /^اشترِ الآن/ })).toHaveCount(0)
 
+    /*
+     * **ولا يُقال «بِيعت» والمالُ لم يصل.**
+     *
+     * فحالةُ الإعلان تصير `sold` لحظةَ الطلب — وهو صواب: اللوحةُ تُحجز فلا
+     * يشتريها اثنان. لكنّ اللفظَ يؤكّد ما لم يقع، ويقرؤه **المشتري نفسُه**
+     * وهو في طريقه إلى السداد فيظنّ أنّه دفع. وإن انقضت المهلةُ بلا سدادٍ
+     * عادت اللوحةُ إلى السوق — وهو ما لا يحتمله ذلك اللفظ.
+     */
+    await expect(buyer.getByText('محجوزة — بانتظار السداد')).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByText('بِيعت اللوحة')).toHaveCount(0)
+
     await buyerContext.close()
   })
 
-  /*
-   * **خبرُ البيع يصل من يشاهد، ونصُّه صادق.**
+  /**
+   * **خبرُ البيع يصل من يشاهد ولا يصل من سبّبه، ونصُّه صادق.**
    *
    * فاللوحةُ تخرج من السوق لحظةَ الطلب والسدادُ بعده في مهلته — وكان النصُّ
    * «تمّت الصفقة»: يؤكّد ما لم يقع، ويقرؤه المشتري نفسُه قبل أن يدفع.
    *
-   * **وكتمُه عمّن سبّبه يُفحص في وحدةٍ لا هنا.** فعلى الحلقة المحلّية يُنقل
-   * المشتري إلى صفحة السداد قبل أن يصل الحدثُ إلى تبويبه، فلا نافذةَ تظهر
-   * أصلًا — ويمرّ الفحصُ وإن رُفع الكتمُ كلُّه. جُرّب فمرّ. وقاعدةُ الكتم في
-   * `tests/unit/sold-announcement.test.ts` بمدخلٍ ومخرجٍ لا بسباق.
+   * **ويُمسَك الردُّ لا الطلب** ليبقى المشتري على صفحة اللوحة حين يصل
+   * الحدث: الطلبُ يمضي فيُعالَج ويُبثّ، ثمّ يُحبس جوابُه ثانيتين.
    *
-   * ويبقى ما يُفحص هنا حقيقةً: أنّ البثّ يصل، وأنّ النصّ لا يؤكّد سدادًا.
+   * > **وشرطُ الكتم نفسُه ليس محروسًا هنا.** جُرّب بنقل `muteNextSoldToast`
+   * > إلى ما بعد الردّ — وهو العطبُ الذي ظهر لصاحب المنصّة — فمرّ الفحصُ
+   * > ولم تظهر نافذةٌ عند المشتري أصلًا. فما يُقاس هنا وصولُ الخبر إلى
+   * > المشاهد وصدقُ نصّه، لا الكتم. وقاعدةُ الكتم في
+   * > `tests/unit/sold-announcement.test.ts` بمدخلٍ ومخرج، وترتيبُ النداء
+   * > قبل الطلب يُقرأ في `trade-panel` سطرًا واحدًا.
    */
-  test('من يشاهد يصله خبرُ البيع بنصٍّ لا يؤكّد سدادًا', async ({ browser }) => {
+  test('المشتري لا تلحقه نافذةُ بيعٍ هو سببُه — ومن يشاهد تصله', async ({ browser }) => {
     const buyerContext = await browser.newContext()
     const watcherContext = await browser.newContext()
     const buyer = await buyerContext.newPage()
@@ -160,17 +174,27 @@ test.describe('سوق تداول اللوحات', () => {
     await watcher.goto(`/market/${listingId}`)
     await buyer.goto(`/market/${listingId}`)
 
+    await buyer.route('**/api/listings/*/buy', async (route) => {
+      const response = await route.fetch()
+      await new Promise((resolve) => setTimeout(resolve, 2_000))
+      await route.fulfill({ response })
+    })
+
     const buyButton = buyer.getByRole('button', { name: /^اشترِ الآن/ })
     await expect(buyButton).toBeVisible({ timeout: 15_000 })
     await buyButton.click()
-    await buyer.waitForURL(/\/checkout\/ord_/, { timeout: 20_000 })
 
-    /* المشاهدُ يُخبَر، ولا يُقال له إنّ صفقةً تمّت */
+    /* المشاهدُ يُخبَر — فالبثُّ واصلٌ والفحصُ ليس أجوف */
     await expect(watcher.getByText('بِيعت هذه اللوحة')).toBeVisible({ timeout: 20_000 })
     await expect(watcher.getByText('تمّت الصفقة')).toHaveCount(0)
 
-    /* ولا يجد المشتري على صفحة سداده تأكيدَ صفقةٍ لم يدفعها */
+    /* شبكةُ أمانٍ لا برهان — انظر التحفّظ في توثيق الفحص أعلاه */
+    await buyer.waitForTimeout(900)
+    await expect(buyer.getByText('بِيعت هذه اللوحة')).toHaveCount(0)
     await expect(buyer.getByText('تمّت الصفقة')).toHaveCount(0)
+
+    await buyer.waitForURL(/\/checkout\/ord_/, { timeout: 25_000 })
+    await expect(buyer.getByText('بِيعت هذه اللوحة')).toHaveCount(0)
 
     await buyerContext.close()
     await watcherContext.close()

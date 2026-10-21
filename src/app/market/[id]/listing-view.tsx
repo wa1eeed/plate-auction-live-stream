@@ -331,20 +331,46 @@ export function ListingView({
  */
 function ClosedSummary({ detail }: { detail: ListingDetail }) {
   if (detail.status === 'sold') {
+    /*
+     * **«محجوزة» قبل السداد، و«بِيعت» بعده.**
+     *
+     * وحالةُ `sold` تقع لحظةَ الطلب: تخرج اللوحةُ من السوق ويبقى السدادُ في
+     * مهلته. فكان يُقال «بِيعت» — ويقرؤها **المشتري نفسُه** وهو في طريقه
+     * إلى الدفع، فيظنّ أنّه دفع. وإن انقضت المهلةُ بلا سدادٍ عادت اللوحةُ
+     * إلى السوق — وهو ما لا يحتمله لفظُ «بِيعت».
+     *
+     * وما يَهمّ المشاهدَ في الحالين أنّها لم تعد تُشترى، وهذا مقولٌ في
+     * اللفظين. والفرقُ أنّ الأوّل لا يؤكّد مالًا لم يصل.
+     */
+    const pending = detail.settlementPending
     return (
-      <div className="rounded-2xl border border-success/60 bg-success-soft p-5 text-center">
-        <Award className="mx-auto mb-2 size-9 text-success" />
-        {/*
-         * **«بِيعت» لا «تمّت الصفقة».**
-         *
-         * فحالةُ `sold` تقع لحظةَ الطلب: تخرج اللوحةُ من السوق ويبقى السداد
-         * في مهلته. و«تمّت الصفقة» تؤكّد انقضاءَ ما لم ينقضِ — ويقرؤها
-         * المشتري نفسُه قبل أن يدفع. وما يَهمّ المشاهدَ أنّها لم تعد متاحة.
-         */}
-        <p className="text-lg font-extrabold text-success">بِيعت اللوحة</p>
+      <div
+        className={cn(
+          'rounded-2xl border p-5 text-center',
+          pending ? 'border-gold-600/60 bg-gold-500/[0.07]' : 'border-success/60 bg-success-soft',
+        )}
+      >
+        {pending ? (
+          <Clock3 className="mx-auto mb-2 size-9 text-gold-500" />
+        ) : (
+          <Award className="mx-auto mb-2 size-9 text-success" />
+        )}
+        <p
+          className={cn(
+            'text-lg font-extrabold',
+            pending ? 'text-gold-500' : 'text-success',
+          )}
+        >
+          {pending ? 'محجوزة — بانتظار السداد' : 'بِيعت اللوحة'}
+        </p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums text-gold-500">
           {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>
         </p>
+        {pending && (
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            لم يصل المال بعد. وإن لم يُسدَّد في مهلته عادت اللوحةُ إلى السوق.
+          </p>
+        )}
       </div>
     )
   }
