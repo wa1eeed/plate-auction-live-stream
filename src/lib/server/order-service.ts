@@ -10,7 +10,12 @@ import type { Order } from '@/lib/domain/types'
 import { getStore } from '@/lib/store'
 import type { AuctionStore } from '@/lib/store/types'
 import type { AccountOrder } from '@/lib/domain/types'
-import { ServiceError, listAccountOrders, releaseLosingDeposits } from './market-service'
+import {
+  ServiceError,
+  listAccountOrders,
+  releaseListingAfterDeadOrder,
+  releaseLosingDeposits,
+} from './market-service'
 import { settleOrderDeposit } from './wallet-service'
 import {
   chargeOrderCommission,
@@ -114,19 +119,8 @@ async function restoreCancelledListing(
   by: 'buyer' | 'seller',
 ): Promise<void> {
   const listing = await store.getListing(order.listingId)
-  if (!listing || listing.status !== 'sold') return
-
-  await store.updateListing(listing.id, {
-    status: 'active',
-    soldToUserId: null,
-    soldAmount: 0,
-    endedAt: null,
-  })
-  await store.appendEvent({
-    listingId: listing.id,
-    eventType: 'listing_published',
-    payload: { reason: 'order_cancelled', orderReference: order.reference },
-  })
+  if (!listing) return
+  if (!(await releaseListingAfterDeadOrder(store, order))) return
 
   const plate = `${listing.arabicLetters} ${listing.plateNumbers}`
   /* الخبرُ لمن لم يفعل: من ألغى يعرف، وشريكُه هو الذي ينتظر */
@@ -225,8 +219,20 @@ export async function getPurchases(userId: string): Promise<AccountOrder[]> {
   return listAccountOrders(userId, 'buyer')
 }
 
+/**
+ * مبيعاتُ البائع — **وما لم يصل مالُه ليس بيعًا**.
+ *
+ * فصفقةٌ أُغلقت لعدم السداد تبقى في «مبيعاتي» صفًّا يقول «أُغلقت لعدم
+ * السداد»: لا مالَ فيها ولا مشترٍ ولا فعلٌ يُطلب من صاحبها، ولوحتُها عادت
+ * إلى السوق تنتظر مشتريًا آخر. فوجودُها هنا يُطيل القائمة بما انتهى،
+ * ويجعل عدّ «مبيعاتي» أكبر ممّا بِيع.
+ *
+ * **وتبقى في «مشترياتي»**: المشتري طرفٌ فيها فعلًا — قد يكون عربونُه
+ * صودر، وله أن يقرأ لماذا أُغلقت. وسجلُّها كاملٌ عند الإدارة.
+ */
 export async function getSales(userId: string): Promise<AccountOrder[]> {
   await sendPaymentReminders(getStore())
   await sweepEscrow(getStore())
-  return listAccountOrders(userId, 'seller')
+  const sales = await listAccountOrders(userId, 'seller')
+  return sales.filter((order) => order.status !== 'defaulted')
 }

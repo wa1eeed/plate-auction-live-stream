@@ -241,6 +241,27 @@ describe('قرارات الإدارة على العربون', () => {
     expect(line?.note).toBe('لم يسدّد')
   })
 
+  /**
+   * **والمصادرةُ تُحرّر اللوحة — وإلّا حُبست مع عربون صاحبها.**
+   *
+   * فالمصادرةُ تُعلن موتَ الصفقة، وكانت تترك اللوحة `sold` بلا صفقةٍ
+   * قائمة: لا تُعرض في السوق، ولا تظهر معروضةً في «إدارة لوحاتي»،
+   * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها. فيُصادَر
+   * عربونُ المشتري **وتبقى لوحةُ البائع محبوسةً إلى الأبد**.
+   */
+  it('المصادرة تُعيد اللوحة إلى السوق معروضة', async () => {
+    const { listing, order, deposit } = await endedAuction()
+    expirePaymentWindow(order.id)
+    expect((await store.getListing(listing.id))!.status).toBe('sold')
+
+    await forfeitDeposit({ depositId: deposit.id, adminId: adminId(), reason: 'لم يسدّد' })
+
+    const after = (await store.getListing(listing.id))!
+    expect(after.status, 'اللوحة بقيت محبوسةً بعد المصادرة').toBe('active')
+    expect(after.soldToUserId, 'بقي اسمُ مشترٍ على لوحةٍ لم تُبَع').toBeNull()
+    expect(after.soldAmount, 'بقي مبلغُ بيعٍ لم يقع').toBe(0)
+  })
+
   it('لا تجوز المصادرة ومهلة السداد قائمة — والخادم هو من يمنع', async () => {
     const { deposit } = await endedAuction()
     await expect(

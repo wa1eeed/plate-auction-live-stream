@@ -1421,6 +1421,55 @@ export async function requireOwnedListing(
  * و`sold` وحدها لا تُفرّق: تقع لحظةَ الطلب وتبقى بعد اكتمال السداد. فيُسأل
  * عن الصفقة: ما دامت في «بانتظار السداد» فاللوحةُ محجوزةٌ لا مبيعة.
  */
+/** الحالاتُ التي تبقى فيها الصفقةُ حيّةً على اللوحة — فلا تُحرَّر من تحتها. */
+const LIVE_ORDER_STATUSES: readonly Order['status'][] = [
+  'awaiting_settlement',
+  'escrow_held',
+  'ownership_transferred',
+  'disputed',
+]
+
+/**
+ * **لوحةُ صفقةٍ ماتت تعود إلى السوق.**
+ *
+ * وحالةُ اللوحة تصير `sold` لحظةَ الطلب لا لحظةَ وصول المال. فإذا ماتت
+ * الصفقةُ بعدها — عدولًا أو تخلّفًا عن السداد أو مصادرةً — بقيت اللوحة
+ * `sold` بلا صفقةٍ قائمة: **لا تُعرض في السوق، ولا تظهر في «إدارة لوحاتي»
+ * معروضةً، و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها**.
+ * لوحةٌ لا تُشترى ولا تُستردّ.
+ *
+ * **ولا تُحرَّر إن كان عليها صفقةٌ حيّةٌ أخرى**: إعادةُ الإرساء تُعلن تخلّف
+ * الأوّل ثمّ تُرسي على من يليه، فلو حُرِّرت بين الفعلين لَأُخرجت لوحةٌ
+ * لها مشترٍ جديد.
+ *
+ * ويعود معها ما يُشتقّ منها: اسمُ المشتري ومبلغُ البيع وختمُ الانتهاء.
+ */
+export async function releaseListingAfterDeadOrder(
+  store: AuctionStore,
+  order: Order,
+): Promise<boolean> {
+  const listing = await store.getListing(order.listingId)
+  if (!listing || listing.status !== 'sold') return false
+
+  const others = (await store.listOrders({ listingId: listing.id })).filter(
+    (row) => row.id !== order.id && LIVE_ORDER_STATUSES.includes(row.status),
+  )
+  if (others.length > 0) return false
+
+  await store.updateListing(listing.id, {
+    status: 'active',
+    soldToUserId: null,
+    soldAmount: 0,
+    endedAt: null,
+  })
+  await store.appendEvent({
+    listingId: listing.id,
+    eventType: 'listing_published',
+    payload: { reason: 'order_closed', orderReference: order.reference, orderStatus: order.status },
+  })
+  return true
+}
+
 async function awaitingSettlement(store: AuctionStore, listing: Listing): Promise<boolean> {
   if (listing.status !== 'sold') return false
   const orders = await store.listOrders({ listingId: listing.id })

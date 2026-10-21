@@ -18,7 +18,7 @@ import { buildStatement, isOverdue, isWalletError, type Statement } from '@/lib/
 import type { Halalas } from '@/lib/domain/money'
 import { getStore } from '@/lib/store'
 import type { AuctionStore } from '@/lib/store/types'
-import { ServiceError } from './market-service'
+import { ServiceError, releaseListingAfterDeadOrder } from './market-service'
 import { notify } from './notification-service'
 import { formatAmount } from '@/lib/domain/money'
 
@@ -204,7 +204,18 @@ export async function forfeitDeposit(input: {
   })
 
   if (order && order.status === 'awaiting_settlement') {
-    await store.updateOrderStatus(order.id, 'defaulted', Date.now())
+    const defaulted = await store.updateOrderStatus(order.id, 'defaulted', Date.now())
+    /*
+     * **واللوحةُ تعود إلى السوق مع مصادرة العربون.**
+     *
+     * فالمصادرةُ تُعلن موتَ الصفقة، وكانت تترك اللوحةَ `sold` بلا صفقةٍ
+     * قائمة: لا تُعرض، ولا يُعيد صاحبُها عرضَها (`canSellerRelist` تستثني
+     * `sold`) — فيُصادَر عربونُ المشتري وتبقى لوحةُ البائع محبوسة.
+     *
+     * ولا تُحرَّر إن كان عليها صفقةٌ حيّةٌ أخرى — انظر الحارسَ في
+     * `releaseListingAfterDeadOrder`.
+     */
+    await releaseListingAfterDeadOrder(store, defaulted)
   }
   await notify(store, {
     userId: deposit.userId,

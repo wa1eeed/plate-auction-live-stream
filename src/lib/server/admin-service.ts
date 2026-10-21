@@ -42,6 +42,7 @@ import {
   ServiceError,
   closeListing,
   relistListing,
+  releaseListingAfterDeadOrder,
   releaseLosingDeposits,
 } from './market-service'
 import { forfeitDeposit } from './wallet-service'
@@ -771,6 +772,20 @@ export async function setOrderStatusByAdmin(input: {
   }
   const updated = await store.updateOrderStatus(order.id, input.status, Date.now())
 
+  /*
+   * **ولوحةُ صفقةٍ ماتت تعود إلى السوق.**
+   *
+   * فإعلانُ التخلّف كان يقلب حالَ الصفقة ولا يمسّ اللوحة: تبقى `sold` بلا
+   * صفقةٍ قائمة — لا تُعرض في السوق، ولا تظهر معروضةً في «إدارة لوحاتي»،
+   * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها. لوحةٌ
+   * عالقةٌ لا تُشترى ولا تُستردّ، وقد أغلقت الإدارةُ صفقتَها بنفسها.
+   *
+   * والحارسُ في `releaseListingAfterDeadOrder`: لا تُحرَّر إن كان عليها
+   * صفقةٌ حيّةٌ أخرى — فإعادةُ الإرساء تُعلن تخلّفَ الأوّل ثمّ تُرسي على
+   * من يليه.
+   */
+  const released = await releaseListingAfterDeadOrder(store, updated)
+
   if (input.status === 'defaulted') {
     await notify(store, {
       userId: order.buyerId,
@@ -780,6 +795,17 @@ export async function setOrderStatusByAdmin(input: {
       href: '/account/purchases',
       listingId: order.listingId,
     })
+    if (released) {
+      /* والبائعُ ينتظر لوحتَه: لا يكفي أن تُحرَّر صامتةً */
+      await notify(store, {
+        userId: order.sellerId,
+        type: 'order_defaulted',
+        title: 'لم يسدّد المشتري في مهلته',
+        body: 'أُغلقت الصفقة وعادت لوحتك معروضة في السوق.',
+        href: '/account/listings',
+        listingId: order.listingId,
+      })
+    }
   }
   await store.appendAudit({
     actorId: input.adminId,

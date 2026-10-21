@@ -7,6 +7,7 @@ import { getReawardContext, reawardOrder, setOrderStatusByAdmin } from '@/lib/se
 import { startOrderPayment } from '@/lib/server/checkout-service'
 import { markPaymentFailed, markPaymentPaid } from '@/lib/server/payment-service'
 import { finalizeDueAuctions } from '@/lib/server/market-service'
+import { getPurchases, getSales } from '@/lib/server/order-service'
 import type { Order, Payment } from '@/lib/domain/types'
 
 let db: MemoryDatabase
@@ -153,6 +154,42 @@ describe('ردّ دفعة عالقة', () => {
     )
     expect(refunds).toHaveLength(1)
     expect(refunds[0].amount).toBe(payment.amount)
+  })
+
+  /**
+   * **إعلانُ التخلّف يُحرّر اللوحة — ولا يُبقي صفقةً ميّتةً في «مبيعاتي».**
+   *
+   * فالإعلانُ كان يقلب حالَ الصفقة ولا يمسّ اللوحة: تبقى `sold` بلا صفقةٍ
+   * قائمة — لا تُعرض في السوق، ولا تظهر معروضةً في «إدارة لوحاتي»،
+   * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها. فتُغلق
+   * الإدارةُ الصفقةَ وتبقى اللوحةُ محبوسةً إلى الأبد.
+   *
+   * **وصفٌّ لا مالَ فيه ليس بيعًا**: يبقى في «مشترياتي» لأنّ المشتري طرفٌ
+   * فيه، ويخرج من «مبيعاتي» لأنّ البائع لم يبع.
+   */
+  it('إعلان التخلّف يُعيد اللوحة معروضة ويُخرج الصفقة من مبيعات البائع', async () => {
+    const order = pendingOrder()
+    expect((await store.getListing(order.listingId))!.status).toBe('sold')
+
+    await setOrderStatusByAdmin({ orderId: order.id, status: 'defaulted', adminId: adminId() })
+
+    const listing = (await store.getListing(order.listingId))!
+    expect(listing.status, 'اللوحة بقيت محبوسةً بعد إعلان التخلّف').toBe('active')
+    expect(listing.soldToUserId, 'بقي اسمُ مشترٍ على لوحةٍ لم تُبَع').toBeNull()
+    expect(listing.soldAmount, 'بقي مبلغُ بيعٍ لم يقع').toBe(0)
+
+    const sales = await getSales(order.sellerId)
+    expect(
+      sales.some((row) => row.id === order.id),
+      'صفقةٌ لم يصل مالُها ما زالت تُعدّ بيعًا',
+    ).toBe(false)
+
+    /* وتبقى عند المشتري: عربونُه قد يكون صودر، وله أن يقرأ لماذا أُغلقت */
+    const purchases = await getPurchases(order.buyerId)
+    expect(
+      purchases.some((row) => row.id === order.id),
+      'غابت الصفقةُ عن طرفها الذي يعنيه أمرُها',
+    ).toBe(true)
   })
 
   it('لا يُرفض ما سُوّي فعلًا ولو كان بلا قيد محفظة', async () => {
