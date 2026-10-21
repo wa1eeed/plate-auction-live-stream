@@ -14,5 +14,6 @@
 | [0004](0004-structural-error-markers.md) | علامات أخطاء بنيوية بدل `instanceof` | مقبول |
 | [0005](0005-commands-http-events-websocket.md) | الأوامر على HTTP والأحداث على WebSocket | مقبول |
 | [0006](0006-one-plate-per-listing.md) | الإعلان = لوحة واحدة، وبنية معلومات مسطّحة | مقبول |
-| [0007](0007-stable-svg-ids.md) | معرّفات SVG مشتقّة من المحتوى | مقبول |
+| [0007](0007-stable-svg-ids.md) | معرّفات SVG مشتقّة من المحتوى | ✗ منسوخ بـ0009 |
 | [0008](0008-pivot-to-marketplace.md) | التحوّل من بثّ تيك توك إلى سوق ويب | مقبول |
+| [0009](0009-per-instance-svg-ids.md) | معرّفات SVG فريدة لكلّ نسخة | مقبول |
