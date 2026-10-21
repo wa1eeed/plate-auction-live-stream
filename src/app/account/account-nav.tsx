@@ -17,66 +17,18 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-/**
- * **الأقسامُ في عائلاتٍ ذاتِ ألوان — لا صفٌّ رماديٌّ متساوٍ.**
- *
- * وعشرةُ أقسامٍ بلونٍ واحدٍ تُقرأ قائمةً تُمسح حرفًا حرفًا. واللونُ يُقسّمها
- * قبل أن تُقرأ: ما يخصّ لوحاتي ذهبيٌّ، وما يخصّ تداولي سماويّ، وما يخصّ
- * المال والصفقات أخضر. فيُعرف موضعُ «فواتيري» من لونه قبل اسمه.
- *
- * والترتيبُ يتبع العائلات لا الأهواء، فالمتجاورُ في اللون متجاورٌ في الصفّ.
- */
-type Family = 'account' | 'plates' | 'trade' | 'money'
-
-const FAMILY_CHIP: Record<Family, string> = {
-  account: 'bg-ink-700 text-muted',
-  plates: 'bg-gold-500/15 text-gold-400',
-  trade: 'bg-sky-500/15 text-sky-500',
-  money: 'bg-success/15 text-success',
-}
-
-const GROUPS: { key: Family; title: string; links: { href: string; label: string; icon: typeof Home }[] }[] = [
-  {
-    key: 'account',
-    title: 'حسابي',
-    links: [{ href: '/account', label: 'نظرة عامة', icon: Home }],
-  },
-  {
-    key: 'plates',
-    title: 'لوحاتي',
-    links: [
-      { href: '/account/listings', label: 'إدارة لوحاتي', icon: LayoutList },
-      { href: '/account/showcase', label: 'معرض لوحاتي', icon: Share2 },
-    ],
-  },
-  {
-    key: 'trade',
-    title: 'تداولي',
-    links: [
-      { href: '/account/bids', label: 'مزايداتي', icon: Gavel },
-      { href: '/account/offers', label: 'العروض والسومات', icon: HandCoins },
-    ],
-  },
-  {
-    key: 'money',
-    title: 'مالي وصفقاتي',
-    links: [
-      { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
-      { href: '/account/purchases', label: 'مشترياتي', icon: ShoppingBag },
-      { href: '/account/sales', label: 'مبيعاتي', icon: Store },
-      { href: '/account/invoices', label: 'فواتيري', icon: FileText },
-    ],
-  },
-  {
-    key: 'account',
-    title: 'الضبط',
-    links: [{ href: '/account/settings', label: 'الإعدادات', icon: Settings }],
-  },
+const LINKS = [
+  { href: '/account', label: 'نظرة عامة', icon: Home },
+  { href: '/account/listings', label: 'إدارة لوحاتي', icon: LayoutList },
+  { href: '/account/showcase', label: 'معرض لوحاتي', icon: Share2 },
+  { href: '/account/wallet', label: 'محفظتي', icon: Wallet },
+  { href: '/account/bids', label: 'مزايداتي', icon: Gavel },
+  { href: '/account/offers', label: 'العروض والسومات', icon: HandCoins },
+  { href: '/account/purchases', label: 'مشترياتي', icon: ShoppingBag },
+  { href: '/account/sales', label: 'مبيعاتي', icon: Store },
+  { href: '/account/invoices', label: 'فواتيري', icon: FileText },
+  { href: '/account/settings', label: 'الإعدادات', icon: Settings },
 ]
-
-const LINKS = GROUPS.flatMap((group) =>
-  group.links.map((link) => ({ ...link, family: group.key })),
-)
 
 const FADE = '2.25rem'
 
@@ -164,51 +116,25 @@ export function AccountNav({ pendingOffers = 0 }: { pendingOffers?: number }) {
           * — العمود يُقاس بأعرض ما فيه — فتُمرَّر الصفحة كلّها يمينًا ويسارًا
           * بدل أن يُمرَّر الشريط وحده.
           */}
-        {/*
-          * **صفٌّ واحدٌ على الجوال، وعائلاتٌ معنونةٌ على الحاسوب.**
-          *
-          * فالعمودُ الجانبيّ يتّسع لعناوينَ تفصل المجموعات، فيُقرأ تصنيفًا
-          * لا قائمةً من عشرة. والصفُّ الأفقيّ لا يتّسع لها، فيحمل اللونَ
-          * وحده: كلُّ عائلةٍ بلونِ شارتها.
-          */}
-        <ul className="flex gap-1.5 py-1 lg:flex-col lg:gap-0 lg:py-0">
-          {LINKS.map((link, index) => {
+        <ul className="flex gap-1.5 py-1 lg:flex-col lg:gap-1.5 lg:py-0">
+          {LINKS.map((link) => {
             const active =
               link.href === '/account' ? pathname === '/account' : pathname.startsWith(link.href)
-            const group = GROUPS.find((g) => g.links.some((l) => l.href === link.href))!
-            const firstOfGroup = group.links[0].href === link.href
             return (
-              <li key={link.href} className={cn('shrink-0', index > 0 && 'lg:mt-0.5')}>
-                {firstOfGroup && (
-                  <p className="hidden px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wide text-muted/70 lg:block">
-                    {group.title}
-                  </p>
-                )}
+              <li key={link.href} className="shrink-0">
                 <Link
                   ref={active ? activeRef : undefined}
                   href={link.href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'group/link inline-flex w-full items-center gap-2 whitespace-nowrap rounded-full py-1.5 pe-3.5 ps-1.5 text-sm font-semibold transition-all',
-                    'lg:rounded-xl lg:py-1.5 lg:pe-3',
+                    'inline-flex w-full items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2.5 text-sm font-semibold transition-colors',
+                    'lg:rounded-xl lg:px-3',
                     active
-                      ? /* الحاضرُ لوحٌ ذهبيٌّ مصمَت — يُرى قبل أن يُقرأ */
-                        'bg-gold-500 text-ink-950 shadow-sm shadow-gold-600/30 lg:bg-ink-700 lg:text-paper lg:shadow-none'
+                      ? 'bg-gold-500/15 text-gold-400 ring-1 ring-gold-600/40 lg:bg-ink-700 lg:text-paper lg:ring-0'
                       : 'bg-ink-800/60 text-muted hover:bg-ink-800 hover:text-paper lg:bg-transparent',
                   )}
                 >
-                  {/*
-                    * الأيقونةُ في شارةٍ بلون عائلتها — وفي الحاضرِ تُقلب
-                    * إلى شفّافيةٍ على الذهب فلا تُزاحم لونَه.
-                    */}
-                  <span
-                    className={cn(
-                      'grid size-7 shrink-0 place-items-center rounded-full transition-colors',
-                      active ? 'bg-ink-950/15 text-ink-950 lg:bg-ink-900 lg:text-paper' : FAMILY_CHIP[link.family],
-                    )}
-                  >
-                    <link.icon className="size-3.5" />
-                  </span>
+                  <link.icon className="size-4 shrink-0" />
                   {link.label}
                   {/*
                     * عدّادٌ على «العروض والسومات» وحده.

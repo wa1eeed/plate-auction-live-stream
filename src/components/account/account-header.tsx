@@ -1,8 +1,11 @@
+'use client'
+
 import Link from 'next/link'
-import { Wallet } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Gavel, HandCoins, LayoutList, ShoppingBag, Store, Wallet } from 'lucide-react'
 import { formatAmount } from '@/lib/domain/money'
 import type { User } from '@/lib/domain/types'
-import { formatYear } from '@/lib/utils'
+import { cn, formatYear } from '@/lib/utils'
 
 /**
  * **رأسُ الملفّ — هويّةٌ ورصيدٌ في بطاقةٍ واحدة.**
@@ -86,40 +89,170 @@ export function AccountHeader({
   )
 }
 
+export type CounterTone = 'gold' | 'sky' | 'success'
+
+/** أيقونةُ القسم باسمها لا بمكوّنها — انظر التعليق على `SECTION_ICONS`. */
+export type CounterIcon = keyof typeof SECTION_ICONS
+
 export type CounterColumn = {
   href: string
   label: string
   total: number
-  rows: { label: string; count: number }[]
+  icon: CounterIcon
+  /** لونُ الشارة — يُميّز الأقسامَ بلمحة */
+  tone: CounterTone
+  /**
+   * الصفوفُ تفصيلُ العدد، و`alert` تقول أيُّها **ينتظر تصرّفًا**.
+   *
+   * و«٥ معروضة» حالٌ صحيّة لا نداء، و«١ بانتظار سدادك» نداء. فلو أُبرز
+   * كلاهما لفقد الإبرازُ معناه: بطاقاتٌ كلُّها تقول «انظر إليّ» فلا يُنظر
+   * إلى شيء.
+   */
+  rows: { label: string; count: number; alert?: boolean }[]
 }
 
 /**
- * **ثلاثةُ أعمدةٍ بتفصيلها — لا ثلاثةُ أرقامٍ مجرّدة.**
+ * **الأيقونةُ تُختار باسمها لا بتمرير المكوّن.**
  *
- * و«٤ طلبات» سؤالٌ لا جواب: أهي أربعٌ تنتظرني أم أربعٌ انتهت؟ فيُكتب تحت
- * كلّ رقمٍ ممّا يتركّب — سطران يكفيان، وما زاد صار جدولًا يُقرأ لا يُمسح.
+ * فالصفحة مكوّنُ خادم وهذه مكوّنُ عميل، وReact لا يُسلسل دالّةً عبر هذا
+ * الحدّ — فتمريرُ المكوّن يُسقط الصفحة بخطأ تسلسل. وهو المسلكُ نفسُه في
+ * `plate-carousel`.
+ */
+const SECTION_ICONS = {
+  listings: LayoutList,
+  purchases: ShoppingBag,
+  sales: Store,
+  bids: Gavel,
+  offers: HandCoins,
+} as const
+
+const TONE: Record<CounterTone, string> = {
+  gold: 'bg-gold-500/15 text-gold-400',
+  sky: 'bg-sky-500/15 text-sky-500',
+  success: 'bg-success/15 text-success',
+}
+
+/**
+ * **أقسامُ الملفّ — بطاقاتٌ تُمرَّر، لا جدولُ أرقامٍ صغير.**
+ *
+ * وكانت ثلاثةَ أعمدةٍ يفصلها خطّ، وتحت كلٍّ صفّان بخطٍّ من عشر نقاط: يُقرأ
+ * جدولًا لا بطاقة، ولا يقول أيُّها يعنيني الآن. وثلاثةٌ وحدها كانت تُعرض
+ * والملفُّ فيه أكثر.
+ *
+ * فصارت بطاقاتٍ تُمرَّر بالإصبع: لكلٍّ شارتُها الملوّنة وعددُها بارزًا
+ * وسطرٌ واحدٌ يقول ما ينتظر تصرّفًا. **ومؤشّرٌ تحتها يقول إنّ وراءها
+ * مزيدًا** — وشريطٌ يُمرَّر بلا إشارةٍ لا يُمرَّره أحد.
  */
 export function AccountCounters({ columns }: { columns: CounterColumn[] }) {
+  const trackRef = useRef<HTMLUListElement>(null)
+  const [progress, setProgress] = useState({ ratio: 1, offset: 0 })
+
+  const measure = useCallback(() => {
+    const node = trackRef.current
+    if (!node) return
+    const max = node.scrollWidth - node.clientWidth
+    /* نسبةُ ما يُرى من الشريط، ومنها عرضُ الإبهام */
+    const ratio = node.scrollWidth > 0 ? node.clientWidth / node.scrollWidth : 1
+    /* والقيمةُ المطلقة: `scrollLeft` يعدّ بالسالب في RTL */
+    setProgress({ ratio, offset: max > 0 ? Math.abs(node.scrollLeft) / max : 0 })
+  }, [])
+
+  useEffect(() => {
+    const node = trackRef.current
+    if (!node) return
+    measure()
+    node.addEventListener('scroll', measure, { passive: true })
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => {
+      node.removeEventListener('scroll', measure)
+      observer.disconnect()
+    }
+  }, [measure, columns.length])
+
+  const scrollable = progress.ratio < 0.999
+
   return (
-    <ul className="surface grid grid-cols-3 divide-x divide-x-reverse divide-ink-600/70 rounded-2xl">
-      {columns.map((column) => (
-        <li key={column.href}>
-          <Link href={column.href} className="block h-full px-3 py-3.5 transition-colors hover:bg-ink-700/40">
-            <span className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[11px] text-muted">{column.label}</span>
-              <b className="text-lg font-extrabold tabular-nums text-paper">{column.total}</b>
-            </span>
-            <span className="mt-2 block space-y-1">
-              {column.rows.map((row) => (
-                <span key={row.label} className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[10px] text-muted">{row.label}</span>
-                  <b className="text-[11px] tabular-nums text-muted">{row.count}</b>
+    <div>
+      <ul
+        ref={trackRef}
+        className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0"
+      >
+        {columns.map((column) => {
+          const calling = column.rows.find((row) => row.alert && row.count > 0)
+          const resting = column.rows[0]
+          const Icon = SECTION_ICONS[column.icon]
+          return (
+            <li key={column.href} className="w-[7.25rem] shrink-0 snap-start">
+              <Link
+                href={column.href}
+                className={cn(
+                  'surface flex h-full flex-col rounded-2xl p-3 transition-colors',
+                  'hover:border-ink-500 active:scale-[0.98]',
+                  /* ما ينتظر تصرّفًا يُحاط بذهبٍ خافت — يُرى قبل أن يُقرأ */
+                  calling && 'border-gold-600/45 bg-gold-500/[0.05]',
+                )}
+              >
+                <span className="flex items-center justify-between gap-1">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'grid size-7 shrink-0 place-items-center rounded-lg',
+                      TONE[column.tone],
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                  </span>
+                  <b className="text-xl font-extrabold leading-none tabular-nums text-paper">
+                    {column.total}
+                  </b>
                 </span>
-              ))}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
+
+                <span className="mt-2 block truncate text-[11px] font-bold text-paper">
+                  {column.label}
+                </span>
+
+                {calling ? (
+                  <span className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-gold-500">
+                    <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-gold-500" />
+                    <span className="truncate">
+                      {calling.count} {calling.label}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="mt-1.5 block truncate text-[10px] text-muted">
+                    {resting ? `${resting.count} ${resting.label}` : '—'}
+                  </span>
+                )}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+
+      {/*
+        * **مؤشّرُ تمريرٍ يتبع الموضع — لا خطٌّ ساكنٌ للزينة.**
+        *
+        * وشريطٌ يُمرَّر بلا إشارةٍ لا يعلم أحدٌ أنّ وراءه شيئًا. والمؤشّرُ
+        * يقول شيئين معًا: أنّ ثَمّ مزيدًا (بعرض إبهامه)، وأين أنت منه
+        * (بموضعه). وهو ما تفعله الشرائحُ في أنظمة الهواتف.
+        *
+        * ويختفي إن كان كلُّ شيءٍ ظاهرًا: إشارةٌ إلى ما لا وجود له تُربك.
+        */}
+      {scrollable && (
+        <div aria-hidden className="mx-auto mt-2 h-1 w-16 overflow-hidden rounded-full bg-ink-600/70">
+          <span
+            className="block h-full rounded-full bg-gold-500/80 transition-transform duration-150 ease-out"
+            style={{
+              width: `${Math.max(progress.ratio * 100, 22)}%`,
+              /* الإزاحةُ بنسبة ما بقي من الشريط بعد الإبهام */
+              transform: `translateX(${
+                (1 / Math.max(progress.ratio, 0.22) - 1) * progress.offset * 100
+              }%)`,
+            }}
+          />
+        </div>
+      )}
+    </div>
   )
 }

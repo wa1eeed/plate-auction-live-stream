@@ -241,10 +241,13 @@ export default async function AccountOverviewPage() {
               {
                 href: '/account/sales',
                 label: 'مبيعاتي',
+                icon: 'sales' as const,
+                tone: 'success' as const,
                 total: sales.length,
                 rows: [
                   {
                     label: 'تحت الإجراء',
+                    alert: true,
                     count: sales.filter((o) =>
                       ['awaiting_settlement', 'escrow_held', 'ownership_transferred', 'disputed'].includes(
                         o.status,
@@ -257,10 +260,13 @@ export default async function AccountOverviewPage() {
               {
                 href: '/account/purchases',
                 label: 'مشترياتي',
+                icon: 'purchases' as const,
+                tone: 'sky' as const,
                 total: purchases.length,
                 rows: [
                   {
                     label: 'بانتظار سدادك',
+                    alert: true,
                     count: purchases.filter((o) => o.status === 'awaiting_settlement').length,
                   },
                   {
@@ -272,6 +278,8 @@ export default async function AccountOverviewPage() {
               {
                 href: '/account/listings',
                 label: 'لوحاتي',
+                icon: 'listings' as const,
+                tone: 'gold' as const,
                 total: listings.length,
                 rows: [
                   {
@@ -280,6 +288,22 @@ export default async function AccountOverviewPage() {
                   },
                   { label: 'مسودّة', count: drafts.length },
                 ],
+              },
+              {
+                href: '/account/bids',
+                label: 'مزايداتي',
+                icon: 'bids' as const,
+                tone: 'gold' as const,
+                total: bids.length,
+                rows: [{ label: 'أنت الأعلى فيها', count: leadingBids.length }],
+              },
+              {
+                href: '/account/offers',
+                label: 'العروض',
+                icon: 'offers' as const,
+                tone: 'sky' as const,
+                total: offers.length,
+                rows: [{ label: 'بانتظار ردّك', count: pendingOffers.length, alert: true }],
               },
             ]}
           />
