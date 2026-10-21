@@ -157,6 +157,15 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   suspended: 'موقوف من الإدارة',
 }
 
+/**
+ * **اسمُ اللوحة المحجوزةِ بانتظار الدفع — مكتوبٌ مرّةً واحدة.**
+ *
+ * ولا يُقرأ من `LISTING_STATUS_LABELS`: هي تُسمّي الحالةَ الخام، و`sold`
+ * فيها «مُباع» — فيُقال «مُباع» عن لوحةٍ لم يصل مالُها. وهذا الاسمُ يُقال
+ * في بطاقة السوق وفي شارة الصفحة وفي خبرها، فمكانٌ واحدٌ له يمنع افتراقَها.
+ */
+export const RESERVED_LISTING_LABEL = 'محجوزة بانتظار الدفع'
+
 export const CLOSED_LISTING_STATUSES: readonly ListingStatus[] = [
   'sold',
   'reserve_not_met',
@@ -678,6 +687,18 @@ export type ListingCard = {
    */
   isMine: boolean
   createdAt: string
+  /**
+   * **محجوزةٌ بانتظار السداد — لا مباعة.**
+   *
+   * وحالةُ `sold` تحمل معنيين: حُجزت ولم يصل المال، وبيعت واستقرّ. والأولى
+   * **تبقى في السوق**: لا تُشترى، لكنّ على المشترين الآخرين أن يعرفوا أنّها
+   * محجوزةٌ مؤقّتًا — فإن انقضت المهلةُ بلا سدادٍ عادت معروضة. وإخفاؤها
+   * يجعل عودتَها ظهورًا مفاجئًا لِما لم يُرَ قبله.
+   *
+   * ويُحسب على الخادم من حال الصفقة (`awaiting_settlement`) لا من الحالة
+   * وحدها — وهو نفسُه `ListingDetail.settlementPending`.
+   */
+  settlementPending: boolean
 }
 
 /** تفاصيل إعلان كاملة للعرض العام. */
@@ -1436,6 +1457,8 @@ export type NotificationType =
   | 'order_disputed'
   | 'order_released'
   | 'order_refunded'
+  /** عدل أحدُ الطرفين قبل السداد — واللوحةُ عادت إلى السوق */
+  | 'order_cancelled'
   /** أُعيد عرض لوحة زايد عليها — دعوة لا إلزام */
   /** رسالةٌ تكتبها الإدارة وتُرسلها لشريحة — لا يولّدها حدثٌ في المنصّة */
   | 'broadcast'

@@ -65,10 +65,13 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
      * الاتّجاهين معًا بلا شرطٍ على RTL، ويتبع الإصبعَ لحظةً بلحظة لأنّه
      * يُحسب في كلّ إطارِ تمرير.
      *
-     * و`--p` موقَّعة (قبل المركز أو بعده) تُحرّك الصورة، و`--near` قربٌ من
-     * صفرٍ إلى واحد يُكبّر البطاقة ويُجلّيها. وكلتاهما تُقرآن في CSS
-     * بخاصّيّتي `translate` و`scale` وحدهما — فالرسمُ في المُركِّب بلا
-     * إعادة تخطيط.
+     * و`--near` قربٌ من صفرٍ إلى واحد يُكبّر البطاقة ويُجلّيها، ويُقرأ في
+     * CSS بـ`scale` و`opacity` وحدهما — فالرسمُ في المُركِّب بلا إعادة
+     * تخطيط.
+     *
+     * **ولا `--p` بعد اليوم**: كانت تُزيح الصورةَ داخل إطارها، وثمنُ ذلك
+     * تكبيرٌ يُخفي الحوافّ — أي قَصُّ كلِّ بنر. فذهبت الإزاحةُ ومعها
+     * حسابُها، ولا يُكتب في كلّ إطارِ تمريرٍ ما لا يقرؤه أحد.
      */
     const paint = () => {
       const box = node.getBoundingClientRect()
@@ -79,7 +82,6 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
         const offset = rect.left + rect.width / 2 - middle
         /* نسبةُ البعد إلى عرض الشريحة: واحدٌ يعني شريحةً كاملةً جانبًا */
         const p = Math.max(-1.5, Math.min(1.5, offset / (rect.width || 1)))
-        slide.style.setProperty('--p', p.toFixed(4))
         slide.style.setProperty('--near', Math.max(0, 1 - Math.abs(p)).toFixed(4))
       }
     }
@@ -229,7 +231,22 @@ function BannerCard({ banner, priority }: { banner: BannerView; priority: boolea
        * حتى يُحسب التخطيط — فيبدأ طلبُه متأخّرًا بلا مكسب.
        */
       priority={priority}
-      className="banner-media"
+      /*
+       * **الصورةُ كاملةً داخل الإطار — لا تُقَصّ.**
+       *
+       * و`MediaImage` تُصيّر `object-cover`، فما خالف ٢:١ يُقَصّ. وكان فوقه
+       * `banner-media`: تكبيرٌ ١٫١٢ وإزاحةٌ ٨٪ يصنعان منظرًا يتبع التمرير —
+       * وثمنُهما **اثنا عشر بالمئة من كلّ بنرٍ تُقَصّ** ولو كانت نسبتُه
+       * ٢:١ تمامًا، فالتكبيرُ لا يسأل عن النسبة. ومن يدفع لبنرٍ يريده كما
+       * صمّمه: اسمٌ عند الحافّة يُقَصّ نصفُه أسوأ من بنرٍ بلا حركة.
+       *
+       * و`object-contain` تُكتب هنا لا في `@utility`: `tailwind-merge` تُسقط
+       * `object-cover` حين تراها صنفًا من فصيلتها، ولا تعرف فصيلةَ صنفٍ من
+       * عندنا — فيبقى الاثنان ويحسمهما ترتيبُ الطبقة لا قصدُنا.
+       *
+       * والمنظرُ باقٍ في الشريحة كلِّها (`banner-slide`) لا في صورتها.
+       */
+      className="object-contain"
     />
   )
 

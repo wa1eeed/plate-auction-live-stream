@@ -29,8 +29,10 @@ export default async function ProfileSettingsPage() {
   return (
     <div className="space-y-5" data-settings-page>
       <header>
+        {/* للويب وحده: الغلافُ له زرُّ رجوعٍ في هيدره — انظر `AppBackButton` */}
         <Link
           href="/account/settings"
+          data-web-only
           className="mb-3 inline-flex items-center gap-1 text-[13px] text-muted transition-colors hover:text-paper"
         >
           <ChevronRight className="size-4" />

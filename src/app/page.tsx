@@ -100,8 +100,16 @@ export default async function HomePage() {
           stats={{
             active: open.length,
             liveAuctions: auctions.length,
+            /*
+             * **ولا يُجمع في المبيعات ما لم يصل مالُه.**
+             *
+             * فحالةُ `sold` تقع لحظةَ الطلب، والمحجوزُ بانتظار الدفع حالتُه
+             * `sold` وقد يعود إلى السوق إن لم يُسدَّد. فجمعُه في «إجمالي
+             * المبيعات» رقمٌ يُعلن مالًا لم يُستلم — وهو العطبُ نفسُه الذي
+             * كانت تقوله شارةُ «مُباع» على لوحةٍ محجوزة.
+             */
             sold: listings
-              .filter((card) => card.status === 'sold')
+              .filter((card) => card.status === 'sold' && !card.settlementPending)
               .reduce((sum, card) => sum + card.displayPrice, 0),
           }}
         />

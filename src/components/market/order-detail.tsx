@@ -60,7 +60,9 @@ export function OrderDetail({
         toast.error(data?.error?.message ?? 'تعذّر إلغاء الصفقة')
         return
       }
-      toast.success('أُلغيت الصفقة، وعادت اللوحة إليك')
+      toast.success(
+        side === 'buyer' ? 'عدلتَ عن الشراء، وعادت اللوحة إلى السوق' : 'أُلغيت الصفقة، وعادت اللوحة إلى السوق',
+      )
       await refresh()
     } finally {
       setBusy(false)
@@ -96,10 +98,18 @@ export function OrderDetail({
                 </Button>
               )}
               <OrderEscrowActions order={order} side={side} />
-              {side === 'seller' && order.status === 'awaiting_settlement' && (
+              {/*
+                * **والعدولُ لطرفيها معًا ما دامت بلا سداد.**
+                *
+                * فمن ضغط «اشترِ الآن» ثمّ عدل لم يكن له مخرج: لا يدفع فتبقى
+                * الصفقةُ معلّقةً حتى تنقضي مهلتُها، واللوحةُ محجوزةٌ طوالها
+                * لا يشتريها غيرُه ولا يسحبها صاحبُها.
+                */}
+              {order.status === 'awaiting_settlement' && (
                 <CancelOrderButton
                   busy={busy}
                   disabled={busy}
+                  side={side}
                   hasDeposit={order.settlement.deposit > 0}
                   onConfirm={cancel}
                 />
@@ -128,38 +138,55 @@ export function OrderDetail({
  * للمشتري، وتعود اللوحة إلى البائع. وكل فعل مدمّر آخر في المنصّة محروس بحوار
  * يقول ما يقع — فلا يكون أخطرها أسهلها.
  */
+/**
+ * إلغاء الصفقة — فعلٌ لا رجعة فيه يمسّ مال طرفٍ ثانٍ.
+ *
+ * **والنصُّ يقول ما يقع لا ما يُطمئن.** وكان يَعِد بأمرين لا يفعلهما الكود:
+ * «تعود اللوحة إليك مسودّةً» — ولم تكن تعود أصلًا — و«يعود عربون المشتري
+ * إلى رصيده»، والعربونُ لا يُفكّ إلّا بقرار إدارة (`refundDeposit` تشترط
+ * `adminId`). فصار الأوّلُ صحيحًا بالكود، والثاني صحيحًا بالنصّ.
+ */
 function CancelOrderButton({
   busy,
   disabled,
+  side,
   hasDeposit,
   onConfirm,
 }: {
   busy: boolean
   disabled: boolean
+  side: 'buyer' | 'seller'
   /** هل للمشتري عربون محجوز على هذه الصفقة؟ */
   hasDeposit: boolean
   onConfirm: () => void
 }) {
+  const buyer = side === 'buyer'
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button size="sm" variant="outline" disabled={disabled}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />}
-          إلغاء الصفقة
+          {buyer ? 'أعدل عن الشراء' : 'إلغاء الصفقة'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <AlertDialogTitle>إلغاء الصفقة؟</AlertDialogTitle>
+        <AlertDialogTitle>{buyer ? 'تعدل عن الشراء؟' : 'إلغاء الصفقة؟'}</AlertDialogTitle>
         <AlertDialogDescription>
-          تُغلق الصفقة <b className="text-paper">نهائيًّا ولا رجعة فيها</b>، وتعود اللوحة
-          إليك مسودّةً تعرضها متى شئت.
+          تُغلق الصفقة <b className="text-paper">نهائيًّا ولا رجعة فيها</b>،{' '}
+          {buyer
+            ? 'وتعود اللوحة إلى السوق معروضة يشتريها غيرك.'
+            : 'وتعود اللوحة إلى السوق معروضة كما كانت.'}
           {hasDeposit
-            ? ' ويعود عربون المشتري المحجوز إلى رصيده — فلا مصادرة في إلغاءٍ منك.'
+            ? buyer
+              ? ' ويبقى عربونك محجوزًا حتى تفصل فيه الإدارة — والعدولُ قد يُسقطه.'
+              : ' ويبقى عربون المشتري محجوزًا حتى تفصل فيه الإدارة.'
             : ' ولا مبلغ محجوزًا على هذه الصفقة.'}
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel>تراجع</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>نعم، ألغِ الصفقة</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>
+            {buyer ? 'نعم، أعدل' : 'نعم، ألغِ الصفقة'}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

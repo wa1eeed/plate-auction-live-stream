@@ -24,6 +24,7 @@ import { OverdueTag } from '@/components/market/overdue-tag'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
+  RESERVED_LISTING_LABEL,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
   isClosedListing,
@@ -97,8 +98,20 @@ export function ListingView({
           {backTo.label}
         </Link>
         {/* البثّ والمشاهدون في المسرح نفسه — حيث يُقرآن مع ما يصفانه */}
-        {!isLiveAuction && closed && (
-          <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>
+        {/*
+          * **وشارةُ الرأس تقول «محجوزة» لا «مُباع».**
+          *
+          * و`LISTING_STATUS_LABELS` تُسمّي الحالةَ الخام، و`sold` فيها
+          * «مُباع» — فكانت الشارةُ تُعلن البيعَ في أعلى صفحةٍ يقول خبرُها
+          * تحتها إنّها بانتظار الدفع: خبران متناقضان في شاشةٍ واحدة. وأوّلُ
+          * من يقرؤها المشتري نفسُه وهو في طريقه إلى السداد.
+          */}
+        {!isLiveAuction && (closed || detail.settlementPending) && (
+          <Badge variant={detail.settlementPending ? 'gold' : 'muted'}>
+            {detail.settlementPending
+              ? RESERVED_LISTING_LABEL
+              : LISTING_STATUS_LABELS[detail.status]}
+          </Badge>
         )}
       </div>
 
@@ -164,7 +177,12 @@ export function ListingView({
             <Badge variant="muted">{PLATE_TYPE_LABELS[detail.plate.plateType]}</Badge>
             {/* الوسم نفسه الذي في كعب البطاقة — لفظًا واحدًا لمعنًى واحد */}
             {detail.isMine && <OwnerTag />}
-            {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>}
+            {closed && !detail.settlementPending && (
+              <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>
+            )}
+            {detail.settlementPending && (
+              <Badge variant="gold">{RESERVED_LISTING_LABEL}</Badge>
+            )}
             <ReferenceChip reference={detail.reference} />
 
             <button
@@ -361,7 +379,7 @@ function ClosedSummary({ detail }: { detail: ListingDetail }) {
             pending ? 'text-gold-500' : 'text-success',
           )}
         >
-          {pending ? 'محجوزة — بانتظار السداد' : 'بِيعت اللوحة'}
+          {pending ? RESERVED_LISTING_LABEL : 'بِيعت اللوحة'}
         </p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums text-gold-500">
           {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>

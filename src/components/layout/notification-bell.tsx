@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bell, CheckCheck, Megaphone, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trophy, Wallet, XCircle } from 'lucide-react'
+import { Bell, CheckCheck, Megaphone, Clock3, FileCheck, Gavel, HandCoins, Receipt, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trophy, Undo2, Wallet, XCircle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +49,8 @@ const ICONS: Record<NotificationType, React.ElementType> = {
   order_disputed: ShieldAlert,
   order_released: Wallet,
   order_refunded: Wallet,
+  /** عدولٌ قبل السداد — واللوحةُ رجعت معروضة */
+  order_cancelled: Undo2,
   listing_relisted: RotateCcw,
   listing_suspended: ShieldX,
   listing_reinstated: ShieldCheck,

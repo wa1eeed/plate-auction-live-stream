@@ -288,7 +288,26 @@ test.describe('الرئيسية على الجوال', () => {
 
     const banners = page.getByRole('region', { name: 'إعلانات المنصّة' })
     await expect(banners).toBeVisible()
-    await expect(banners.getByAltText('بنرٌ قائم')).toBeVisible()
+    const banner = banners.getByAltText('بنرٌ قائم')
+    await expect(banner).toBeVisible()
+
+    /*
+     * **والصورةُ تُعرض كاملةً — لا تُقَصّ.**
+     *
+     * وكان عليها `scale: 1.12` وإزاحةٌ ٨٪ تصنعان منظرًا يتبع التمرير،
+     * فتُقَصّ **اثنا عشر بالمئة من كلّ بنر** ولو كانت نسبتُه ٢:١ تمامًا —
+     * فالتكبيرُ لا يسأل عن النسبة. ومن يدفع لبنرٍ يريده كما صمّمه.
+     *
+     * ويُقاس المحسوبُ لا الصنف: `object-cover` تأتي من `MediaImage`
+     * و`object-contain` تُمرَّر فوقها، وأيُّهما تغلب يحسمه الدمجُ لا قصدُنا
+     * — فالقياسُ على ما رسمه المتصفّح.
+     */
+    const fit = await banner.evaluate((node) => {
+      const style = getComputedStyle(node)
+      return { objectFit: style.objectFit, scale: style.scale, translate: style.translate }
+    })
+    expect(fit.objectFit, 'البنر يُقَصّ ليملأ إطاره').toBe('contain')
+    expect(['none', '1'], 'البنر مُكبَّرٌ فتُقَصّ حوافّه').toContain(fit.scale)
 
     /*
      * **لا يُقاس الإخفاء بل الغياب.**

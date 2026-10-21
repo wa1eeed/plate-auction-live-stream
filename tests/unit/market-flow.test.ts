@@ -390,6 +390,67 @@ describe('صفحات الحساب', () => {
     })
     expect(cancelled.status).toBe('cancelled')
   })
+
+  /**
+   * **والمشتري يعدل عن شراءٍ لم يُسدّده — واللوحةُ تعود إلى السوق.**
+   *
+   * وكان الإلغاءُ للبائع وحده، فمن ضغط «اشترِ الآن» ثمّ عدل لا مخرجَ له:
+   * لا يدفع فتبقى الصفقةُ معلّقةً حتى تنقضي مهلتُها، واللوحةُ محجوزةٌ
+   * طوالها لا يشتريها غيرُه ولا يسحبها صاحبُها.
+   *
+   * **والأثرُ الثاني هو الأهمّ**: الإلغاء كان يقلب حالَ الصفقة ولا يمسّ
+   * اللوحة. فتبقى `sold` بلا صفقةٍ قائمة — لا تظهر في السوق،
+   * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها: **لوحةٌ
+   * عالقةٌ إلى الأبد**. ويُقاس الأمران معًا، فحالُ الصفقة وحدها كانت تمرّ
+   * خضراء على العطب.
+   */
+  it('المشتري يعدل عن شرائه قبل السداد، واللوحة تعود معروضة', async () => {
+    const fixed = findBy((l) => l.saleType === 'fixed' && l.status === 'active')
+    const buyer = db.users.find((u) => u.id !== fixed.sellerId)!
+    const { order } = await buyNow({
+      listingId: fixed.id,
+      buyerId: buyer.id,
+      clientRequestId: 'ord-undo',
+    })
+    expect((await store.getListing(fixed.id))!.status, 'الشراء لم يحجز اللوحة').toBe('sold')
+
+    const cancelled = await updateOrderStatus({
+      orderId: order.id,
+      userId: buyer.id,
+      status: 'cancelled',
+    })
+    expect(cancelled.status).toBe('cancelled')
+
+    const listing = (await store.getListing(fixed.id))!
+    expect(listing.status, 'اللوحة بقيت محجوزةً بعد العدول — عالقةٌ لا تُعرض ولا تُعاد').toBe(
+      'active',
+    )
+    expect(listing.soldToUserId, 'بقي اسمُ مشترٍ على لوحةٍ لم تُبَع').toBeNull()
+    expect(listing.soldAmount, 'بقي مبلغُ بيعٍ لم يقع').toBe(0)
+
+    /* والبائعُ يُخبَر: هو من ينتظر، والمشتري يعرف أنّه عدل */
+    const seller = await getNotifications(fixed.sellerId)
+    expect(
+      seller.items.some((note) => note.type === 'order_cancelled'),
+      'لم يُخبَر البائعُ بعدول المشتري',
+    ).toBe(true)
+  })
+
+  /** ولا يعدل بعد السداد: المالُ صار أمانةً، ومخرجُه الاعتراضُ لا الإلغاء. */
+  it('العدول ممنوعٌ بعد أن يصل المال', async () => {
+    const fixed = findBy((l) => l.saleType === 'fixed' && l.status === 'active')
+    const buyer = db.users.find((u) => u.id !== fixed.sellerId)!
+    const { order } = await buyNow({
+      listingId: fixed.id,
+      buyerId: buyer.id,
+      clientRequestId: 'ord-paid',
+    })
+    await store.updateOrderStatus(order.id, 'escrow_held', Date.now())
+
+    await expect(
+      updateOrderStatus({ orderId: order.id, userId: buyer.id, status: 'cancelled' }),
+    ).rejects.toMatchObject({ code: 'ORDER_CLOSED' })
+  })
 })
 
 /*

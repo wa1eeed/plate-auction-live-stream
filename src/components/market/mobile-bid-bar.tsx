@@ -12,6 +12,7 @@ import { isClosedListing, type ListingDetail } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
 import { CompactCountdown } from './auction-countdown'
 import { AuctionBidBox } from './auction-bid-box'
+import { OfferBox } from './offer-box'
 
 function randomRequestId() {
   return `req_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
@@ -143,9 +144,18 @@ export function MobileBidBar({
             اشترِ الآن بـ {formatAmount(detail.price)} ريال
           </Button>
         ) : (
-          <Button asChild size="lg" variant="secondary" className="w-full">
-            <a href="#trade">أرسل عرضك</a>
-          </Button>
+          /*
+           * **الحقلُ والزرُّ هنا — لا مرساةٌ تقفز إلى نموذجٍ في الصفحة.**
+           *
+           * وكان زرًّا نصُّه «أرسل عرضك» وهو رابطٌ إلى `#trade`: يُقرأ وعدًا
+           * بالإرسال ولا يُرسل، فتتحرّك الصفحةُ تحت الإصبع ثمّ يُبحث عن
+           * الحقل. والنموذجُ في الجسم كان يظهر فوق الشريط معه، فيُرى
+           * مدخلان لفعلٍ واحد.
+           *
+           * والواجهةُ نفسُها التي يراها على الحاسوب — لا منطقان لفعلٍ واحد،
+           * وهو مسلكُ `AuctionBidBox` أعلاه.
+           */
+          <OfferBox detail={detail} isSignedIn={isSignedIn} onDone={onDone} variant="bar" />
         )}
       </div>
     </div>

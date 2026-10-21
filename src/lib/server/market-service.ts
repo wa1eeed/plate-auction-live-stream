@@ -529,6 +529,20 @@ export async function getMarketListings(
   const now = Date.now()
   const cards: ListingCard[] = []
 
+  /*
+   * **الصفقاتُ المنتظِرةُ سدادًا تُجلب دفعةً واحدة.**
+   *
+   * فالبطاقةُ تحتاج أن تعرف: أهذه «محجوزةٌ بانتظار الدفع» أم «مباعة»؟ وهو
+   * ما يُقرأ من صفقتها لا من حالتها. وسؤالُ المخزن لكلّ لوحةٍ على حدة
+   * استعلامٌ لكلّ بطاقة — N+1 على صفحةٍ تحمل العشرات. فيُسأل مرّةً وتُبنى
+   * مجموعةُ المعرّفات.
+   */
+  const reserved = new Set(
+    (await store.listOrders({}))
+      .filter((order) => order.status === 'awaiting_settlement')
+      .map((order) => order.listingId),
+  )
+
   for (const listing of listings) {
     if (listing.status === 'draft') continue
     const seller = await store.findUser(listing.sellerId)
@@ -558,11 +572,18 @@ export async function getMarketListings(
       sellerName: seller?.displayName ?? 'مستخدم',
       isMine: Boolean(viewerId) && listing.sellerId === viewerId,
       createdAt: listing.createdAt,
+      settlementPending: listing.status === 'sold' && reserved.has(listing.id),
     })
   }
 
-  // المزادات الجارية أولًا، ثم المتاح، ثم المغلق
+  /*
+   * المزادات الجارية أولًا، ثم المتاح، ثم المحجوز، ثم المغلق.
+   *
+   * **والمحجوزُ بينهما لا في آخرهما**: ليس متاحًا فلا يُزاحم ما يُشترى،
+   * وليس مغلقًا فلا يُدفن مع المنتهي — فإن لم يُسدَّد عاد معروضًا.
+   */
   const rank = (card: ListingCard) => {
+    if (card.settlementPending) return 2
     if (card.status !== 'active') return 3
     if (card.saleType === 'auction') return 0
     return 1
@@ -841,7 +862,27 @@ export async function buyNow(input: { listingId: string; buyerId: string; client
     })
     return result
   } catch (error) {
-    if (isTradeError(error)) throw new ServiceError(error.message, 409, error.code)
+    if (isTradeError(error)) {
+      /*
+       * **ومن جاء إلى لوحةٍ محجوزةٍ يُقال له إنّها محجوزة.**
+       *
+       * فاللوحةُ المحجوزةُ تبقى في السوق الآن كي يعرف غيرُ صاحبها حالَها،
+       * فيَفتحها ثانٍ ويضغط. و«الإعلان لم يعد متاحًا» تُقرأ انتهاءً — فيُظنّ
+       * البيعُ تامًّا، وقد لا يكون: إن انقضت المهلةُ بلا سدادٍ عادت معروضة.
+       * فيُقال له الحقُّ ويُدعى إلى العودة.
+       */
+      if (error.code === 'LISTING_NOT_ACTIVE') {
+        const listing = await store.getListing(input.listingId)
+        if (listing && (await awaitingSettlement(store, listing))) {
+          throw new ServiceError(
+            'محجوزةٌ بانتظار سداد مشترٍ آخر — إن لم يُسدَّد في مهلته عادت إلى السوق',
+            409,
+            'LISTING_RESERVED',
+          )
+        }
+      }
+      throw new ServiceError(error.message, 409, error.code)
+    }
     throw error
   }
 }

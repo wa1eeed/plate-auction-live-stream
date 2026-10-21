@@ -407,7 +407,22 @@ test.describe('صفحة اللوحة بلا ملاحةٍ سفلية', () => {
       )
     }
 
+    /*
+     * **و«بيانات حسابي» معها.**
+     *
+     * فهي صفحةٌ داخليّةٌ تُفتح من الإعدادات ورابطُها إليها، وكانت بلا علامة
+     * — وهي ما رآه صاحبُ المنصّة في التطبيق بعد أن عُلِّمت الثلاثُ قبلها.
+     * ولا تحتاج بذرًا، فتُقاس بمسارها.
+     */
     await loginUser(page, USERS.waleed)
+    await page.goto('/account/settings/profile')
+    const settingsBack = page.locator('#main a').first()
+    await expect(settingsBack, 'لا رابطَ في بيانات حسابي').toBeVisible()
+    await expect(
+      settingsBack,
+      'مَخرجُ الرجوع بلا علامةِ الويب في /account/settings/profile',
+    ).toHaveAttribute('data-web-only', /.*/)
+
     await page.goto(invoiceHref!)
     const invoiceBack = page.locator('#main a').first()
     await expect(invoiceBack, `لا رابطَ في ${invoiceHref}`).toBeVisible()

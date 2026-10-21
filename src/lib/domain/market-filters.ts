@@ -87,8 +87,25 @@ export function filterAndSortListings(cards: ListingCard[], filters: MarketFilte
     if (filters.plateType !== 'all' && card.plate.plateType !== filters.plateType) return false
     if (filters.letterCount !== 'all' && letterCountOf(card) !== filters.letterCount) return false
     if (filters.digitCount !== 'all' && digitCountOf(card) !== filters.digitCount) return false
-    if (filters.availability === 'open' && card.status !== 'active') return false
-    if (filters.availability === 'closed' && !isClosedListing(card.status)) return false
+    /*
+     * **المحجوزُ بانتظار السداد في «المتاح» لا في «المغلق».**
+     *
+     * فحالةُ `sold` تقع لحظةَ الطلب لا لحظةَ وصول المال، وشرطُ `!== 'active'`
+     * كان يُسقطها من السوق في تلك اللحظة. فتختفي اللوحةُ من سوقٍ لم تُبَع
+     * فيه بعد — وإن انقضت المهلةُ بلا سدادٍ عادت، فيُقرأ رجوعُها ظهورًا
+     * مفاجئًا لِما لم يُرَ قبله.
+     *
+     * وبقاؤها مقصودٌ لغيرِ صاحبها: **يعرف المشترون الآخرون أنّها محجوزةٌ
+     * مؤقّتًا** فلا يحسبونها بيعًا تمّ، ولا يفقدون أثرَها إن عادت.
+     *
+     * **ولا تُعدّ مغلقةً**: `isClosedListing('sold')` صحيحةٌ بحكم الحالة،
+     * فلولا استثناؤها لظهرت في الوجهين معًا — «المتاح» و«المغلق» — وهما
+     * متناقضان.
+     */
+    const reserved = card.settlementPending
+    if (filters.availability === 'open' && card.status !== 'active' && !reserved) return false
+    if (filters.availability === 'closed' && (!isClosedListing(card.status) || reserved))
+      return false
     return true
   })
 

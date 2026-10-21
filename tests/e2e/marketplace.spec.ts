@@ -1,6 +1,7 @@
 import { expect, test } from './support/hydrated'
 import { type Page } from '@playwright/test'
 import { stableCount } from '../support/ui'
+import { RESERVED_LISTING_LABEL } from '@/lib/domain/types'
 
 const USERS = {
   waleed: { email: 'waleed@demo.sa', password: 'demo1234', name: 'وليد العتيبي' },
@@ -52,7 +53,15 @@ async function clearStandingOffer(page: Page) {
   const withdraw = page.getByRole('button', { name: 'اسحب العرض' })
   if ((await withdraw.count()) === 0) return
   await withdraw.first().click()
-  await expect(page.getByLabel('مبلغ العرض')).toBeVisible({ timeout: 15_000 })
+  /*
+   * `filter({ visible: true })`: الحقلُ مكتوبٌ مرّتين — في اللوحة الجانبيّة
+   * (`hidden lg:block`) وفي الشريط الثابت (`lg:hidden`) — وإحداهما مخبوءةٌ
+   * دائمًا. و`getByLabel` لا تُصفّي بالظهور، فتطابق اثنين ويسقط الوضع
+   * الصارم. وأختُها `getByRole` تُصفّي لأنّ المخبوءَ خارج شجرة الإتاحة.
+   */
+  await expect(page.getByLabel('مبلغ العرض').filter({ visible: true })).toBeVisible({
+    timeout: 15_000,
+  })
 }
 
 test.describe('سوق تداول اللوحات', () => {
@@ -129,20 +138,98 @@ test.describe('سوق تداول اللوحات', () => {
     await expect(buyer.getByRole('heading', { name: 'مشترياتي' })).toBeVisible()
     await expect(buyer.getByText('بانتظار السداد').first()).toBeVisible({ timeout: 15_000 })
 
+    /*
+     * **وللمشتري أن يعدل قبل أن يدفع — ولا اعتراضَ له قبل ذلك.**
+     *
+     * فمن ضغط «اشترِ الآن» ثمّ عدل لم يكن له مخرج: لا يدفع فتبقى الصفقةُ
+     * معلّقةً حتى تنقضي مهلتُها، واللوحةُ محجوزةٌ طوالها لا يشتريها غيرُه.
+     *
+     * **وزرُّ الاعتراض كان يظهر هنا** — قبل أن يصل ريال. ولا شيءَ يُعترض
+     * عليه: لا مالَ محجوزًا، ومخرجُ من عدل العدولُ لا بابُ الإدارة. ويبقى
+     * الزرُّ بعد السداد، و`escrow.spec.ts` تحرس ذلك في الحالين.
+     */
+    const orderHref = await buyer
+      .locator('li[data-row^="S"] a[href^="/account/orders/"]')
+      .first()
+      .getAttribute('href')
+    expect(orderHref, 'الصفّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
+    await buyer.goto(orderHref!)
+    await expect(
+      buyer.getByRole('button', { name: 'أعدل عن الشراء' }),
+      'لا مخرجَ للمشتري من صفقةٍ لم يدفعها',
+    ).toBeVisible()
+    await expect(
+      buyer.getByRole('button', { name: 'استفسار أو اعتراض' }),
+      'بابُ الاعتراض مفتوحٌ قبل أن يصل المال',
+    ).toHaveCount(0)
+
     // الإعلان لم يعد متاحًا للشراء
     await buyer.goto(`/market/${listingId}`)
     await expect(buyer.getByRole('button', { name: /^اشترِ الآن/ })).toHaveCount(0)
 
     /*
-     * **ولا يُقال «بِيعت» والمالُ لم يصل.**
+     * **ولا يُقال «بِيعت» ولا «مُباع» والمالُ لم يصل.**
      *
      * فحالةُ الإعلان تصير `sold` لحظةَ الطلب — وهو صواب: اللوحةُ تُحجز فلا
      * يشتريها اثنان. لكنّ اللفظَ يؤكّد ما لم يقع، ويقرؤه **المشتري نفسُه**
      * وهو في طريقه إلى السداد فيظنّ أنّه دفع. وإن انقضت المهلةُ بلا سدادٍ
      * عادت اللوحةُ إلى السوق — وهو ما لا يحتمله ذلك اللفظ.
+     *
+     * و«مُباع» كانت شارةً في أعلى الصفحة تأتي من `LISTING_STATUS_LABELS`،
+     * فيتناقض رأسُ الصفحة مع خبرها: شارةٌ تقول بِيعت وخبرٌ يقول بانتظار
+     * الدفع. فيُقاس الاثنان: حضورُ الاسم الصحيح **وغيابُ** الخام.
      */
-    await expect(buyer.getByText('محجوزة — بانتظار السداد')).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByText(RESERVED_LISTING_LABEL).first()).toBeVisible({ timeout: 15_000 })
     await expect(buyer.getByText('بِيعت اللوحة')).toHaveCount(0)
+    await expect(buyer.getByText('مُباع', { exact: true })).toHaveCount(0)
+
+    /**
+     * **وتبقى في السوق محجوزةً — لا تختفي منه.**
+     *
+     * فالفلترُ الافتراضيّ `open` كان يُسقط كلَّ ما ليست حالتُه `active`،
+     * فتغيب اللوحةُ من السوق لحظةَ الطلب لا لحظةَ وصول المال. وبقاؤها
+     * مقصودٌ لغيرِ صاحبها: **يعرف المشترون الآخرون أنّها محجوزةٌ مؤقّتًا**،
+     * ولا يُقرأ رجوعُها — إن لم يُسدَّد — ظهورًا مفاجئًا لِما لم يُرَ.
+     *
+     * ويُقاس من بطاقتها في السوق نفسِه: حضورُها، واسمُها عليها، وألّا
+     * تَدعُو إلى شراءٍ لا يقع.
+     */
+    const cards = (await (await buyer.request.get('/api/listings')).json()) as {
+      listings: { id: string; reference: string; settlementPending: boolean }[]
+    }
+    const mine = cards.listings.find((row) => row.id === listingId)
+    expect(mine, 'اللوحةُ غابت عن حمولة السوق أصلًا').toBeTruthy()
+    expect(mine!.settlementPending, 'الخادم لا يَسِمها محجوزة').toBe(true)
+
+    /*
+     * ويُحصر السوقُ برقم الإعلان لا يُقرأ صفحتَه الأولى.
+     *
+     * فالشبكةُ تعرض اثنتي عشرة ثمّ «عرض المزيد»، والمحجوزةُ تُرتَّب بعد
+     * المتاح — فقد تقع خارج الأولى، فيُقرأ غيابُها عن الصفحة غيابًا عن
+     * السوق. والبحثُ بالرقم يُبقي بطاقةً واحدةً فيُقاس ما يُقصد.
+     */
+    await buyer.goto('/market')
+    await buyer.getByLabel('بحث في السوق').fill(mine!.reference)
+
+    const reservedCard = buyer.locator('article').filter({
+      has: buyer.locator(`a[href="/market/${listingId}"]`),
+    })
+    await expect(reservedCard, 'اللوحةُ المحجوزةُ غابت عن السوق').toBeVisible({ timeout: 15_000 })
+    /*
+     * ويُقرأ الاسمُ من **الاسم المتاح** للبطاقة لا بـ`getByText(...).first()`.
+     *
+     * فالوسمُ مكتوبٌ مرّتين في البطاقة: مرّةً للجوال (`sm:hidden`) ومرّةً
+     * للشاشة الأوسع (`hidden sm:flex`) — وإحداهما مخبوءةٌ دائمًا. و`.first()`
+     * تأخذ الأولى في ترتيب العقد، وهي المخبوءة على الحاسوب، فتسقط
+     * `toBeVisible` على عنصرٍ صحيحٍ موجود. والاسمُ المتاح يقرأ الظاهرَ وحده.
+     */
+    await expect(
+      reservedCard.getByRole('link', { name: new RegExp(RESERVED_LISTING_LABEL) }),
+    ).toBeVisible()
+    await expect(
+      reservedCard.getByText('اشترِ الآن'),
+      'بطاقةٌ محجوزةٌ تَدعُو إلى شراءٍ لا يقع',
+    ).toHaveCount(0)
 
     await buyerContext.close()
   })
@@ -212,9 +299,9 @@ test.describe('سوق تداول اللوحات', () => {
 
     await buyer.goto(`/market/${listingId}`)
     await clearStandingOffer(buyer)
-    await buyer.getByLabel('مبلغ العرض').fill(String(amount))
+    await buyer.getByLabel('مبلغ العرض').filter({ visible: true }).fill(String(amount))
     await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
-    await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByText('عرضك الحالي').filter({ visible: true })).toBeVisible({ timeout: 15_000 })
 
     // البائع يرى العرض ويقبله
     const sellerUser = Object.values(USERS).find((u) => u.name === sellerName)!
@@ -244,6 +331,70 @@ test.describe('سوق تداول اللوحات', () => {
    * يُخشى أن تقع الصفقةُ على الأوّل — يدفع المشتري ما لم يقبله البائع.
    * فيُقرأ المبلغ من صفحة المبيعات بعد تمام الجولة.
    */
+  /**
+   * **حقلُ العرض وزرُّه في موضعٍ واحدٍ لكلّ عرض.**
+   *
+   * وكان النموذجُ كاملًا في جسم الصفحة، وفي الشريط الثابت زرٌّ نصُّه «أرسل
+   * عرضك» لا يُرسل — مرساةٌ تقفز إلى النموذج. فيُرى على الجوّال مدخلان
+   * لفعلٍ واحد: من ضغط الزرَّ وجد الصفحةَ تتحرّك تحته ثمّ بحث عن الحقل.
+   *
+   * فصار على الجوّال **في الشريط الثابت وحده**، وعلى الحاسوب في اللوحة
+   * الجانبيّة وحدها. والفحصُ يقيس الوجهين:
+   *
+   * - **واحدٌ ظاهرٌ لا اثنان** في كلّ عرض — وهو جوهرُ الطلب.
+   * - **وموضعُه**: في الجوّال داخل الشريط الثابت (`position: fixed`)، وفي
+   *   الحاسوب خارجَه.
+   *
+   * ولا يُقاس بعدّ العقد: الصفُّ الآخر يبقى في الشجرة مخبوءًا بالتنسيق —
+   * وهو مسلكُ المشروع في اختلاف العروض (قرارٌ في CSS لا في شجرة React).
+   */
+  test('حقلُ العرض وزرُّه في الشريط الثابت على الجوّال، وفي اللوحة على الحاسوب', async ({
+    page,
+  }) => {
+    await login(page, USERS.majed)
+    const listingId = await findListing(page, 'offers', USERS.majed.name)
+    await page.goto(`/market/${listingId}`)
+    await clearStandingOffer(page)
+
+    const field = page.getByLabel('مبلغ العرض').filter({ visible: true })
+    const submit = page.getByRole('button', { name: 'أرسل العرض' }).filter({ visible: true })
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(field, 'حقلٌ واحدٌ ظاهرٌ على الجوّال').toHaveCount(1)
+    await expect(submit, 'زرُّ إرسالٍ واحدٌ ظاهرٌ على الجوّال').toHaveCount(1)
+    /* ولا مرساةَ تَعِد بالإرسال ولا تُرسل */
+    await expect(
+      page.getByRole('link', { name: 'أرسل عرضك' }),
+      'بقيت المرساةُ التي تقفز إلى النموذج',
+    ).toHaveCount(0)
+    expect(
+      await field.evaluate((node) => {
+        let el: HTMLElement | null = node as HTMLElement
+        while (el) {
+          if (getComputedStyle(el).position === 'fixed') return true
+          el = el.parentElement
+        }
+        return false
+      }),
+      'الحقلُ على الجوّال ليس في الشريط الثابت',
+    ).toBe(true)
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await expect(field, 'حقلٌ واحدٌ ظاهرٌ على الحاسوب').toHaveCount(1)
+    await expect(submit, 'زرُّ إرسالٍ واحدٌ ظاهرٌ على الحاسوب').toHaveCount(1)
+    expect(
+      await field.evaluate((node) => {
+        let el: HTMLElement | null = node as HTMLElement
+        while (el) {
+          if (getComputedStyle(el).position === 'fixed') return true
+          el = el.parentElement
+        }
+        return false
+      }),
+      'الحقلُ على الحاسوب داخل شريطٍ ثابت — موضعُه اللوحة',
+    ).toBe(false)
+  })
+
   test('السوم يُرسل ويقبله المشتري فتقع الصفقة بمبلغ البائع', async ({ browser }) => {
     const buyerContext = await browser.newContext()
     const buyer = await buyerContext.newPage()
@@ -257,9 +408,9 @@ test.describe('سوق تداول اللوحات', () => {
 
     await buyer.goto(`/market/${listingId}`)
     await clearStandingOffer(buyer)
-    await buyer.getByLabel('مبلغ العرض').fill(String(offered))
+    await buyer.getByLabel('مبلغ العرض').filter({ visible: true }).fill(String(offered))
     await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
-    await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByText('عرضك الحالي').filter({ visible: true })).toBeVisible({ timeout: 15_000 })
 
     // البائع يسوم بدل أن يقبل
     const sellerUser = Object.values(USERS).find((u) => u.name === sellerName)!

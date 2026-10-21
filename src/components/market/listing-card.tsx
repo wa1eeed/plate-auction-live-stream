@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
+  RESERVED_LISTING_LABEL,
   PLATE_FORMAT_LABELS,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
@@ -77,7 +78,16 @@ export function ListingCard({
   href?: string
 }) {
   const Icon = SALE_ICON[card.saleType]
-  const closed = isClosedListing(card.status)
+  /**
+   * **ثلاثُ حالاتٍ لا اثنتان: متاحٌ، ومحجوزٌ، ومغلق.**
+   *
+   * و`sold` كانت تُقرأ مغلقةً دائمًا، فتُعطى البطاقةُ لونَ المنتهي ونداءَه.
+   * والمحجوزُ بينهما: لا يُشترى الآن — فلا يُقال له «اشترِ الآن» — ولم
+   * يَنتهِ أمرُه، فإن لم يُسدَّد عاد معروضًا. فيُوسَم باسمه ويبقى حيًّا في
+   * السوق كي **يعرف المشترون الآخرون أنّه محجوزٌ مؤقّتًا**.
+   */
+  const reserved = card.settlementPending
+  const closed = isClosedListing(card.status) && !reserved
   const isLiveAuction = card.saleType === 'auction' && card.status === 'active'
 
   return (
@@ -172,8 +182,15 @@ export function ListingCard({
             * اللوحة، والوسم هنا يصف ولا يُنادي.
             */}
           <div className="flex flex-wrap items-center justify-center gap-1 sm:hidden">
-            <CardTag tone={closed ? 'muted' : TAG_TONE[card.saleType]} dot>
-              {closed ? LISTING_STATUS_LABELS[card.status] : SALE_TYPE_LABELS[card.saleType]}
+            <CardTag
+              tone={closed ? 'muted' : reserved ? 'gold' : TAG_TONE[card.saleType]}
+              dot
+            >
+              {closed
+                ? LISTING_STATUS_LABELS[card.status]
+                : reserved
+                  ? RESERVED_LISTING_LABEL
+                  : SALE_TYPE_LABELS[card.saleType]}
             </CardTag>
             <CardTag tone="muted">{PLATE_TYPE_LABELS[card.plate.plateType]}</CardTag>
             {/*
@@ -214,6 +231,7 @@ export function ListingCard({
               <Badge variant="default">{PLATE_FORMAT_LABELS.sport}</Badge>
             )}
             {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[card.status]}</Badge>}
+            {reserved && <Badge variant="gold">{RESERVED_LISTING_LABEL}</Badge>}
           </div>
 
           {/*
@@ -229,7 +247,8 @@ export function ListingCard({
                 data-card-price
                 className={cn(
                   'text-xl font-extrabold tabular-nums',
-                  card.status === 'sold' ? 'text-success' : 'text-gold-500',
+                  /* الأخضرُ للبيعِ التامّ — والمحجوزُ ذهبيٌّ كالمعروض */
+                  card.status === 'sold' && !reserved ? 'text-success' : 'text-gold-500',
                 )}
               >
                 {card.displayPrice > 0 ? formatAmount(card.displayPrice) : '—'}
@@ -300,7 +319,12 @@ export function ListingCard({
             * قد يريد الصورَ أو المرجعَ أو كشفَ المزايدات. واسمٌ يَعِد بفعلٍ
             * بعينه يَعِد بأكثر ممّا يفعل، ويطول فيضيق به عرضُ البطاقة.
             */}
-          {closed ? 'عرض التفاصيل' : card.saleType === 'fixed' ? 'اشترِ الآن' : 'التفاصيل'}
+          {/* والمحجوزُ لا يُدعى إلى شراءٍ لا يقع — يُفتح ليُقرأ حالُه */}
+          {closed || reserved
+            ? 'عرض التفاصيل'
+            : card.saleType === 'fixed'
+              ? 'اشترِ الآن'
+              : 'التفاصيل'}
           <ArrowLeft className="size-3.5" />
         </span>
       </p>

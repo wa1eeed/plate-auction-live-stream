@@ -47,12 +47,12 @@ async function makeUnread(buyer: Page) {
   const withdraw = buyer.getByRole('button', { name: 'اسحب العرض' })
   if ((await withdraw.count()) > 0) {
     await withdraw.first().click()
-    await expect(buyer.getByLabel('مبلغ العرض')).toBeVisible({ timeout: 15_000 })
+    await expect(buyer.getByLabel('مبلغ العرض').filter({ visible: true })).toBeVisible({ timeout: 15_000 })
   }
 
-  await buyer.getByLabel('مبلغ العرض').fill(String(Math.round(detail.minimumOffer / 100) + 1_500))
+  await buyer.getByLabel('مبلغ العرض').filter({ visible: true }).fill(String(Math.round(detail.minimumOffer / 100) + 1_500))
   await buyer.getByRole('button', { name: 'أرسل العرض' }).click()
-  await expect(buyer.getByText('عرضك الحالي')).toBeVisible({ timeout: 15_000 })
+  await expect(buyer.getByText('عرضك الحالي').filter({ visible: true })).toBeVisible({ timeout: 15_000 })
 
   return Object.values(USERS).find((u) => u.name === detail.seller.displayName)!
 }

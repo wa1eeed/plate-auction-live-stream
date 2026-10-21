@@ -21,6 +21,8 @@ function card(
     bids?: number
     remaining?: number
     createdAt?: string
+    /** محجوزةٌ بانتظار الدفع — تبقى في «المتاح» وتخرج من «المغلق» */
+    settlementPending?: boolean
   } = {},
 ): ListingCard {
   return {
@@ -44,8 +46,9 @@ function card(
     endsAt: overrides.remaining ? new Date(Date.now() + overrides.remaining).toISOString() : null,
     remainingMs: overrides.remaining ?? 0,
     sellerName: 'بائع',
-  isMine: false,
+    isMine: false,
     createdAt: overrides.createdAt ?? '2026-01-01T00:00:00.000Z',
+    settlementPending: overrides.settlementPending ?? false,
   }
 }
 
@@ -93,6 +96,39 @@ describe('فلاتر السوق', () => {
   it('يعرض المغلق عند طلبه', () => {
     expect(filterAndSortListings(CARDS, { ...base, availability: 'closed' }).map((c) => c.id)).toEqual(['d'])
     expect(filterAndSortListings(CARDS, { ...base, availability: 'all' })).toHaveLength(4)
+  })
+
+  /**
+   * **المحجوزةُ بانتظار الدفع تبقى في «المتاح» وتخرج من «المغلق».**
+   *
+   * فحالةُ `sold` تقع لحظةَ الطلب لا لحظةَ وصول المال، وشرطُ `!== 'active'`
+   * كان يُسقطها من السوق في تلك اللحظة — فتختفي لوحةٌ لم تُبَع بعد، وإن
+   * انقضت المهلةُ بلا سدادٍ عادت فيُقرأ رجوعُها ظهورًا مفاجئًا.
+   *
+   * ويُقاس الوجهان معًا: حضورُها في «المتاح» **وغيابُها** عن «المغلق».
+   * فالثاني هو ما يمنع ظهورَها في الوجهين — و`isClosedListing('sold')`
+   * صحيحةٌ بحكم الحالة، فلولا استثناؤها لصدق عليها «متاح» و«مغلق» جميعًا.
+   */
+  it('المحجوزةُ بانتظار الدفع في المتاح لا في المغلق', () => {
+    const reserved = card('e', {
+      ar: 'ب',
+      en: 'B',
+      numbers: '55',
+      saleType: 'fixed',
+      status: 'sold',
+      settlementPending: true,
+      createdAt: '2026-01-05T00:00:00.000Z',
+    })
+    const cards = [...CARDS, reserved]
+
+    const open = filterAndSortListings(cards, { ...base, availability: 'open' }).map((c) => c.id)
+    expect(open, 'المحجوزةُ غائبةٌ عن المتاح').toContain('e')
+    expect(open, 'والمباعةُ التامّة لا تعود إليه').not.toContain('d')
+
+    const closed = filterAndSortListings(cards, { ...base, availability: 'closed' }).map(
+      (c) => c.id,
+    )
+    expect(closed, 'المحجوزةُ عُدَّت مغلقةً فظهرت في الوجهين').toEqual(['d'])
   })
 })
 

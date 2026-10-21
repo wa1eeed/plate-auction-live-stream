@@ -37,7 +37,16 @@ export async function applyOrderCompletion(
   await chargeOrderCommission(order, adminId, external)
 }
 
-/** البائع يعلّم صفقته مكتملة أو ملغاة. */
+/**
+ * إلغاء صفقةٍ لم تُسدَّد — **لطرفيها معًا**.
+ *
+ * وكان للبائع وحده. والمشتري الذي ضغط «اشترِ الآن» ثمّ عدل لا مخرجَ له: لا
+ * يدفع فتبقى الصفقةُ معلّقةً إلى أن تنقضي مهلتُها، واللوحةُ محجوزةٌ طوالها
+ * لا يشتريها غيرُه ولا يسحبها صاحبُها. فصار له أن يعدل صراحةً.
+ *
+ * **ولا يُلغي إلّا ما لم يصل مالُه**: بعد السداد يصير المالُ أمانةً عند
+ * المنصّة، ومخرجُه الاعتراضُ لا الإلغاء.
+ */
 export async function updateOrderStatus(input: {
   orderId: string
   userId: string
@@ -46,7 +55,12 @@ export async function updateOrderStatus(input: {
   const store = getStore()
   const order = await store.getOrder(input.orderId)
   if (!order) throw new ServiceError('الطلب غير موجود', 404, 'ORDER_NOT_FOUND')
-  if (order.sellerId !== input.userId) {
+  const isSeller = order.sellerId === input.userId
+  const isBuyer = order.buyerId === input.userId
+  if (!isSeller && !isBuyer) {
+    throw new ServiceError('لا تملك صلاحية على هذه الصفقة', 403, 'FORBIDDEN')
+  }
+  if (input.status === 'completed' && !isSeller) {
     throw new ServiceError('البائع وحده يستطيع تحديث حالة الطلب', 403, 'FORBIDDEN')
   }
   if (order.status !== 'awaiting_settlement') {
@@ -75,7 +89,58 @@ export async function updateOrderStatus(input: {
       'USE_TRANSFER_FLOW',
     )
   }
-  return store.updateOrderStatus(order.id, input.status, Date.now())
+  const cancelled = await store.updateOrderStatus(order.id, input.status, Date.now())
+
+  /*
+   * **واللوحةُ تعود إلى السوق — وإلّا سُجنت.**
+   *
+   * فحالتُها صارت `sold` لحظةَ الطلب، والإلغاءُ كان يقلب حالَ الصفقة ولا
+   * يمسّها. فتبقى `sold` بلا صفقةٍ قائمة: لا تُعرض في السوق،
+   * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها — **لوحةٌ
+   * عالقةٌ إلى الأبد**. وكان الإشعار يقول «وعادت اللوحة إليك» وهي لم تعد.
+   *
+   * والعودةُ `active` لا `draft`: صاحبُها نشرها ولم يسحبها، والمُلغي قد
+   * يكون المشتري.
+   */
+  await restoreCancelledListing(store, order, isBuyer ? 'buyer' : 'seller')
+
+  return cancelled
+}
+
+/** يُعيد لوحةَ صفقةٍ أُلغيت إلى السوق، ويُخبر الطرفَ الآخر. */
+async function restoreCancelledListing(
+  store: AuctionStore,
+  order: Order,
+  by: 'buyer' | 'seller',
+): Promise<void> {
+  const listing = await store.getListing(order.listingId)
+  if (!listing || listing.status !== 'sold') return
+
+  await store.updateListing(listing.id, {
+    status: 'active',
+    soldToUserId: null,
+    soldAmount: 0,
+    endedAt: null,
+  })
+  await store.appendEvent({
+    listingId: listing.id,
+    eventType: 'listing_published',
+    payload: { reason: 'order_cancelled', orderReference: order.reference },
+  })
+
+  const plate = `${listing.arabicLetters} ${listing.plateNumbers}`
+  /* الخبرُ لمن لم يفعل: من ألغى يعرف، وشريكُه هو الذي ينتظر */
+  await notify(store, {
+    userId: by === 'buyer' ? order.sellerId : order.buyerId,
+    type: 'order_cancelled',
+    title: by === 'buyer' ? 'عدل المشتري عن الشراء' : 'ألغى البائع الصفقة',
+    body:
+      by === 'buyer'
+        ? `«${plate}» عادت إلى السوق معروضة.`
+        : `أُلغيت صفقة «${plate}» قبل السداد.`,
+    href: by === 'buyer' ? '/account/sales' : '/account/purchases',
+    listingId: listing.id,
+  })
 }
 
 /**
