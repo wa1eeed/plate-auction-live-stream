@@ -14,7 +14,7 @@
 <SaudiLicensePlate
   plateType="private"        // private | transport | motorcycle
   plateFormat="long"         // long | standard | sport
-  arabicLetters="كطع"
+  arabicLetters="ك ط ع"
   latinLetters="KTE"
   plateNumbers="4040"        // الأرقام العربية تُشتق تلقائيًا
   emblem="palm-swords-black"

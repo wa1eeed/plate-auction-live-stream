@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { StoryView } from '@/lib/domain/types'
 
@@ -36,6 +36,8 @@ export function StoryViewer({
   const [slideIndex, setSlideIndex] = useState(0)
   const [progress, setProgress] = useState(0)
   const [paused, setPaused] = useState(false)
+  /** هل وصلت وسيطةُ الشريحة الحاليّة؟ — بها يُحبَس المؤقّت ويُعرض الانتظار */
+  const [ready, setReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const story = stories[index]
@@ -99,9 +101,40 @@ export function StoryViewer({
     return () => window.removeEventListener('keydown', onKey)
   }, [go, onClose])
 
+  /*
+   * **الشريحةُ تُستأنف من الصفر مع كلّ تبديل، ولا تبدأ قبل أن تصل.**
+   *
+   * فالمؤقّتُ كان يمضي من لحظة التبديل سواءٌ وصلت الصورةُ أم لا — فشريحةٌ
+   * مدّتُها خمسُ ثوانٍ تُنزَّل في ثلاث تُرى ثانيتين ثمّ تُطوى. وقد شكا
+   * صاحبُ المنصّة أنّه ينتظر الصورَ حتى تظهر؛ وهذا وجهُه الآخر: تظهر
+   * متأخّرةً ثمّ تذهب مبكّرة.
+   */
+  useEffect(() => {
+    setReady(false)
+    setProgress(0)
+  }, [slide?.id])
+
+  /*
+   * **وتُجلب التاليةُ سلفًا.**
+   *
+   * فالانتقالُ بين الشرائح لحظيٌّ في التطبيقات المعروفة لأنّ ما بعدها
+   * محمَّلٌ قبل أن يُطلب. والصورةُ المجلوبةُ تسكن ذاكرةَ المتصفّح، فحين
+   * تُعرض لا شبكةَ تُنتظر.
+   */
+  useEffect(() => {
+    const next =
+      story?.slides[slideIndex + 1] ?? stories[index + 1]?.slides[0] ?? null
+    if (!next) return
+    const url = next.mediaKind === 'video' ? next.posterUrl : next.mediaUrl
+    if (!url) return
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = url
+  }, [story, slideIndex, stories, index])
+
   /* الصورة: مؤقّتٌ بمدّتها. والفدّيو يقود نفسه في `onTimeUpdate` أدناه. */
   useEffect(() => {
-    if (!slide || slide.mediaKind === 'video' || paused) return
+    if (!slide || slide.mediaKind === 'video' || paused || !ready) return
     const total = slide.durationSeconds * 1000
     const startedAt = Date.now() - progress * total
     let frame = 0
@@ -119,7 +152,7 @@ export function StoryViewer({
     return () => cancelAnimationFrame(frame)
     // `progress` مقصودُ الإغفال: إدراجه يُعيد بناء المؤقّت في كلّ إطار
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slide, paused, go])
+  }, [slide, paused, go, ready])
 
   useEffect(() => {
     const node = videoRef.current
@@ -191,6 +224,8 @@ export function StoryViewer({
               if (node.duration > 0) setProgress(node.currentTime / node.duration)
             }}
             onEnded={() => go(1)}
+            onLoadedData={() => setReady(true)}
+            onError={() => setReady(true)}
             className="size-full object-contain"
           />
         ) : (
@@ -201,7 +236,23 @@ export function StoryViewer({
             alt={slide.alt}
             className="size-full object-contain"
             decoding="async"
+            fetchPriority="high"
+            onLoad={() => setReady(true)}
+            /* وعطبُ التحميل يُطلق المؤقّتَ أيضًا — وإلّا وقف العارضُ أبدًا */
+            onError={() => setReady(true)}
           />
+        )}
+
+        {/*
+          * **انتظارٌ ظاهرٌ فوق السواد.**
+          *
+          * وشاشةٌ سوداءُ صامتةٌ لا تُفرَّق عن عطب. ودوّارةٌ رقيقةٌ تقول
+          * «قادمٌ» — وهي ما تفعله تطبيقاتُ التواصل في الموضع نفسِه.
+          */}
+        {!ready && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center">
+            <Loader2 className="size-7 animate-spin text-white/70" />
+          </div>
         )}
 
         {/*

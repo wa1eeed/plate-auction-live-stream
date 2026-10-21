@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useRealtime } from '@/lib/hooks/use-realtime'
 import { useSound } from '@/lib/hooks/use-sound'
+import { markOf, readMark, shouldChime, writeMark } from '@/lib/notification-chime'
 import { isNativeShell } from '@/lib/device'
 import { haptic } from '@/lib/haptics'
 import { URGENT_NOTIFICATIONS as URGENT } from '@/lib/domain/types'
@@ -66,7 +67,14 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
   const { play } = useSound()
-  const previousUnread = useRef(0)
+  /*
+   * مرآةُ `open` لتُقرأ داخل المزامنة: `useCallback` يحتجز القيمةَ وقتَ
+   * إنشائه، فقراءةُ `open` منه تُعطي حالةً قديمة.
+   */
+  const openRef = useRef(false)
+  openRef.current = open
+  /** إنعاشٌ مؤجَّل: وصل جديدٌ والقائمةُ مفتوحة — فيُنفَّذ عند إغلاقها. */
+  const pendingRefresh = useRef(false)
 
   const sync = useCallback(async () => {
     try {
@@ -76,9 +84,23 @@ export function NotificationBell({ userId }: { userId: string }) {
       setItems(data.items)
       setUnread(data.unread)
 
-      // صوت عند وصول جديد فقط — لا عند كل مزامنة
-      if (data.unread > previousUnread.current) {
-        const latest = data.items[0]
+      /*
+       * **نبرةٌ لكلّ إشعارٍ جديد مرّةً — لا لكلّ فتحةِ صفحة.**
+       *
+       * وكان الشرطُ `unread > previousUnread.current` وعدّادُه يبدأ صفرًا مع
+       * كلّ تركيب — فأوّلُ مزامنةٍ بعد أيّ تحميلٍ تراه أكبرَ من صفر فتُنبّه.
+       * فمن عنده إشعارٌ لم يقرأه يسمع النبرةَ في كلّ صفحةٍ يدخلها وكلّ مرّةٍ
+       * يُحدّث فيها. وفي التطبيق أشدّ: الملاحةُ تُعيد تحميل الغلاف.
+       *
+       * فصارت العلامةُ **أحدثَ إشعارٍ بعينه** محفوظةً في المتصفّح — انظر
+       * `@/lib/notification-chime`.
+       */
+      const latest = data.items[0]
+      const mark = readMark(userId)
+      writeMark(userId, markOf(latest))
+
+      const arrived = shouldChime(latest, mark)
+      if (arrived) {
         /*
          * لكل جنسٍ نبرته: العرض الوارد جرسٌ لطيف لا نبرةَ تحذير.
          *
@@ -100,40 +122,35 @@ export function NotificationBell({ userId }: { userId: string }) {
          * أو لوحةٌ رست. وما عداه يُقرأ في الجرس متى فُتحت المنصّة.
          */
         if (latest && URGENT.includes(latest.type)) haptic('warning')
+
+        /*
+         * **والإنعاشُ يتبع الوصولَ نفسَه لا عدّادًا في الذاكرة.**
+         *
+         * وكان حارسُه `useRef(0)` يُقارَن به `unread` — وهو يبدأ صفرًا مع
+         * كلّ تركيب. فأوّلُ مزامنةٍ بعد أيّ تحميلٍ ترى العددَ أكبرَ منه
+         * فتُنعش المسارَ كلَّه: جولةُ خادمٍ وإعادةُ تصييرٍ للشجرة **في كلّ
+         * صفحةٍ تُدخَل وكلّ تحديث**. وهو ما شكاه صاحبُ المنصّة في التطبيق:
+         * يدخل صفحةً فتُحدَّث، ويبدّل تابًا فتُحدَّث.
+         *
+         * ولا يقع والقائمةُ مفتوحة: من فتحها يقرأ ما فيها، وإعادةُ الشجرة
+         * من تحتها قد تُغلقها في وجهه. فيُؤجَّل إلى إغلاقها.
+         */
+        if (openRef.current) pendingRefresh.current = true
+        else router.refresh()
       }
-      previousUnread.current = data.unread
     } catch {
       // انقطاع مؤقّت — المزامنة التالية تُصحّح
     }
-  }, [play])
+  }, [play, userId, router])
 
   useRealtime({ topics: [`user:${userId}`], onResync: sync })
 
-  /*
-   * إنعاشُ الصفحة عند إشعارٍ **جديد** — لا عند كلّ عددٍ أكبر من صفر.
-   *
-   * وكان الشرط `unread > 0` وحده، وهو يُنعش المسار كلَّه في كلّ مرّةٍ يتبدّل
-   * فيها العدد وهو موجب — والإنعاش يُعيد تصيير الخادم لكلّ الشجرة. وثلاثة
-   * عيوبٍ فيه:
-   *
-   *  ١. عملٌ كبير لخبرٍ صغير: إشعارٌ واحد يُعيد بناء الصفحة كلّها.
-   *  ٢. **وهو يقع والقائمة مفتوحة** — فتُعاد الشجرة من تحتها، وعلى جهازٍ
-   *     أبطأ من الحاسوب قد تُغلق في وجه صاحبها.
-   *  ٣. وبعد `markAllRead` يصير العدد صفرًا فيُنعَش مرّةً أخرى.
-   *
-   * فصار الإنعاش على **الزيادة** وحدها، ولا يقع والقائمة مفتوحة: من فتحها
-   * يقرأ ما فيها، وما تحتها يُنعَش عند إغلاقها.
-   */
-  const refreshedAt = useRef(0)
+  /* الإنعاشُ المؤجَّل يُنفَّذ عند إغلاق القائمة — انظر `sync` أعلاه. */
   useEffect(() => {
-    if (open) return
-    if (unread <= refreshedAt.current) {
-      refreshedAt.current = unread
-      return
-    }
-    refreshedAt.current = unread
+    if (open || !pendingRefresh.current) return
+    pendingRefresh.current = false
     router.refresh()
-  }, [unread, open, router])
+  }, [open, router])
 
   /*
    * شارةُ الأيقونة — الرقم على أيقونة التطبيق في الشاشة الرئيسية.

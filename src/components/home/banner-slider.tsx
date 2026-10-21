@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { MediaImage } from '@/components/ui/media-image'
 import type { BannerView } from '@/lib/domain/types'
 
 /** تبديلٌ تلقائيّ كلّ هذه المدّة — ما لم تلمسه يدٌ أو يُطلب تقليل الحركة. */
@@ -88,9 +89,9 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
         }}
         className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
       >
-        {banners.map((banner) => (
+        {banners.map((banner, index) => (
           <li key={banner.id} className="w-full shrink-0 snap-center px-4 sm:px-6">
-            <BannerCard banner={banner} />
+            <BannerCard banner={banner} priority={index === 0} />
           </li>
         ))}
       </ul>
@@ -119,29 +120,33 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
   )
 }
 
-function BannerCard({ banner }: { banner: BannerView }) {
+function BannerCard({ banner, priority }: { banner: BannerView; priority: boolean }) {
   /*
    * `next/image` لا يُستعمل هنا.
    *
-   * الصورة تسكن R2 بنطاقٍ يُضبط من البيئة، ومُحسِّن Next يشترط `remotePatterns`
-   * مخبوزةً في البناء — فنطاقٌ يُبدَّل يعني بناءً جديدًا. والصورة مرفوعةٌ
-   * بمقاسها سلفًا (٢:١) ولا تحتاج قصًّا، فالمكسب من المُحسِّن قليلٌ والثمن
-   * ربطُ النشر بالبناء.
+   * ومُحسِّنُه يقتضي `sharp` في الحاوية، والخادمُ بنواةٍ واحدة (`cpus: 1`)
+   * — فتحويلُ صورةٍ عليه يحبسه عن كلّ طلبٍ آخر. والتصغيرُ يقع حيث يكلّف
+   * مرّةً واحدة: في متصفّح من يرفع (`@/lib/client/downscale-image`).
+   *
+   * وكان التعليلُ هنا أنّ الصور تسكن R2 بنطاقٍ من البيئة — وR2 أُسقط من
+   * المشروع، والقرارُ باقٍ بعلّةٍ أمتن.
    */
   const image = (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <MediaImage
       src={banner.imageUrl}
       alt={banner.alt}
       width={banner.width}
       height={banner.height}
-      loading="lazy"
-      decoding="async"
-      className="size-full object-cover"
+      /*
+       * **الأوّلُ يُجلب فورًا.** وهو فوق الطيّة دائمًا، و`lazy` عليه تأجيلٌ
+       * حتى يُحسب التخطيط — فيبدأ طلبُه متأخّرًا بلا مكسب.
+       */
+      priority={priority}
     />
   )
 
-  const frame = 'block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
+  const frame =
+    'relative block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
 
   if (!banner.linkUrl) {
     return <div className={frame}>{image}</div>

@@ -1080,6 +1080,70 @@ test.describe('تنبيهُ المنصّة', () => {
 
 
 /**
+ * **كلُّ لوحةٍ تُشير إلى تعريفاتها هي، لا إلى تعريفات غيرها.**
+ *
+ * ومعرّفاتُ SVG مجالُها الوثيقةُ كلُّها: `url(#id)` يُحلّ إلى **أوّل** تعريفٍ
+ * بالاسم أيًّا كان صاحبُه. وكان معرّفُ اللوحة مشتقًّا من محتواها ومقاسها —
+ * فلوحتان متطابقتان في صفحةٍ واحدة تخرجان بالمعرّف نفسه.
+ *
+ * **وهو ما وقع في الرئيسية على الحاسوب.** صفُّ «ينتهي قريبًا» للجوّال
+ * `lg:hidden` يحمل المزاداتِ نفسَها التي في كاروسيل «مزادات جارية». فتبقى
+ * النسخةُ المخفيّة في الشجرة وتسبق المرئيّة فتملك التعريفات، ومتصفّحٌ لا
+ * يرسم ما في `display:none` لا يجد قصًّا صالحًا — **فلا يرسم اللوحة أصلًا**.
+ * أربعُ لوحاتٍ خرجت صناديقَ فارغة.
+ *
+ * **والمقيسُ هنا الإشارةُ لا الرسم.** فلوحةٌ لا تُرسم لا تُفرَّق عن لوحةٍ
+ * بيضاءَ بقياس الصندوق: قِيس فخرجت الأحرفُ «مرئيّةً» بمربّعاتٍ غير صفريّة
+ * وهي لا تظهر على الشاشة. والإشارةُ الخارجةُ من اللوحة هي العطب نفسُه،
+ * وتُقاس قياسًا قاطعًا.
+ */
+test.describe('معرّفاتُ اللوحات', () => {
+  test('لا تتسرّب إشارةُ لوحةٍ إلى تعريفات أخرى في الرئيسية', async ({ page }) => {
+    /* الحاسوبُ هو ما يُخفي صفَّ الجوّال ويُبقيه في الشجرة — وفيه وقع العطب */
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/')
+    /* وأوّلُ لوحةٍ في الشجرة هي المخفيّةُ نفسُها — فيُنتظر ما في الكاروسيل */
+    await expect(
+      page.locator('section[aria-labelledby="carousel-gold"] svg[data-plate-type]').first(),
+    ).toBeVisible({ timeout: 15_000 })
+
+    const audit = await page.evaluate(() => {
+      const plates = [...document.querySelectorAll('svg[data-plate-type]')]
+      const seen = new Map<string, number>()
+      const escapes: string[] = []
+
+      for (const svg of plates) {
+        for (const node of svg.querySelectorAll('defs [id]')) {
+          seen.set(node.id, (seen.get(node.id) ?? 0) + 1)
+        }
+        for (const el of svg.querySelectorAll('*')) {
+          for (const attr of ['filter', 'clip-path', 'mask', 'fill', 'stroke']) {
+            const value = el.getAttribute(attr)
+            if (!value?.includes('url(#')) continue
+            const id = value.slice(value.indexOf('#') + 1, value.indexOf(')'))
+            const target = document.getElementById(id)
+            /* الإشارةُ تخرج من لوحتها: إمّا لا تجد شيئًا، أو تجد لوحةً أخرى */
+            if (!target || target.closest('svg') !== svg) {
+              escapes.push(`${svg.getAttribute('aria-label')} → ${attr}=#${id}`)
+            }
+          }
+        }
+      }
+      return {
+        plates: plates.length,
+        duplicates: [...seen].filter(([, n]) => n > 1).map(([id]) => id),
+        escapes,
+      }
+    })
+
+    expect(audit.plates, 'لا لوحاتٍ في الصفحة تُقاس').toBeGreaterThan(4)
+    expect(audit.escapes, 'لوحةٌ تستعير تعريفاتِ غيرها').toEqual([])
+    expect(audit.duplicates, 'معرّفاتٌ مكرّرةٌ بين لوحتين').toEqual([])
+  })
+})
+
+
+/**
  * **كاروسيلاتُ الرئيسية: لوحاتٌ بحجمها، ورأسٌ لا يأكل الشاشة.**
  *
  * و`size="fill"` يعني `h-full` على الـSVG، فيُحسب من أبيه. وكان الأبُ بلا

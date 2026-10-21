@@ -1,4 +1,5 @@
 import { uploadRejection } from '@/lib/domain/upload-limits'
+import { downscaleImage } from './downscale-image'
 
 export type UploadResult = { key: string; width: number | null; height: number | null }
 export type UploadPurpose = 'banner' | 'story' | 'poster'
@@ -25,11 +26,18 @@ const megabytes = (bytes: number): string =>
  *
  * ويعطي مع ذلك ما تحتاجه الواجهة: تقدّمًا حقيقيًّا بدل دوّارةٍ لا تقول شيئًا.
  */
-export function uploadMedia(
-  file: File,
+export async function uploadMedia(
+  original: File,
   purpose: UploadPurpose,
   onProgress?: (fraction: number) => void,
 ): Promise<UploadResult> {
+  /*
+   * **تُصغَّر قبل أن تُرسل** — فما يُحفظ هو ما يُقدَّم للمشاهدين.
+   *
+   * ويقع قبل فحص الحدّ: صورةٌ تتجاوز الخمسةَ والعشرين ميغابايت قد تمرّ بعد
+   * تصغيرها، فلا يُردّ رافعٌ على صورةٍ يقبلها المصغَّرُ منها.
+   */
+  const file = await downscaleImage(original)
   const mime = file.type.trim().toLowerCase()
 
   /*

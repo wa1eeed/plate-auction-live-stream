@@ -1,3 +1,6 @@
+'use client'
+
+import { useId } from 'react'
 import { cn } from '@/lib/utils'
 import type { PlateEmblem, PlateSize, PlateType, PlateFormat } from '@/lib/domain/types'
 import { toArabicIndicDigits } from '@/lib/saudi-plate-mapping'
@@ -45,13 +48,6 @@ const SIZE_CLASS: Record<PlateSize, string> = {
   fullscreen: 'w-full',
   // تملأ حاويتها بالكامل، وSVG يتوسّط نفسه داخلها بنسبته المحفوظة
   fill: 'h-full w-full',
-}
-
-function stableUid(parts: string[]): string {
-  const source = parts.join('|')
-  let hash = 5381
-  for (let i = 0; i < source.length; i++) hash = ((hash << 5) + hash + source.charCodeAt(i)) >>> 0
-  return `plt${hash.toString(36)}`
 }
 
 /**
@@ -397,16 +393,30 @@ export function SaudiLicensePlate({
   const eastern = arabicNumbers ?? toArabicIndicDigits(western)
   const geo = geometryOf(plateType, plateFormat)
   /*
-   * معرّفٌ ثابت مشتقّ من كلّ ما يُغيّر تعريفات اللوحة — متطابق بين الخادم
-   * والعميل.
+   * **معرّفٌ لكلّ نسخةٍ على حدة — لا مشتقٌّ من محتواها.**
    *
-   * ويجب أن يضمّ الإصدار والمقاس لا المحتوى وحده: بطاقات اختيار الإصدار
-   * الثلاث تحمل الحروف والأرقام نفسها، فخرجت بمعرّفٍ واحد وتضاربت
-   * `clipPath` فيها. والمتصفّح يحلّ `url(#id)` إلى **أوّل** تعريف، فقُصّت
-   * الطويلة والرياضية على مقاس الاعتيادية (٤٦٠) وسقط منهما كلّ ما بعده:
-   * الحروف وشريط الدولة.
+   * ومعرّفاتُ SVG مجالُها الوثيقةُ كلُّها: `url(#id)` يُحلّ إلى **أوّل**
+   * تعريفٍ بالاسم أيًّا كان صاحبُه. فلوحتان متطابقتان في صفحةٍ واحدة تخرجان
+   * بالمعرّف نفسه، فتستعير الثانيةُ قصَّ الأولى ومرشِّحَها.
+   *
+   * وكان مشتقًّا من المحتوى والمقاس. وعلاجًا لتضاربٍ سابق — بطاقاتُ اختيار
+   * الإصدار الثلاث تحمل الحروف نفسها — أُضيف الإصدارُ والمقاس إلى المصدر.
+   * وهو علاجٌ للعَرَض: **نسختان متطابقتان تمامًا تتضاربان كما كانتا**.
+   *
+   * وقد وقع في الرئيسية: صفُّ «ينتهي قريبًا» للجوّال `lg:hidden` يحمل
+   * المزاداتِ نفسَها التي في كاروسيل «مزادات جارية». فعلى الحاسوب تبقى
+   * النسخةُ المخفيّة في الشجرة وتسبق المرئيّة، فتملك التعريفات — ومتصفّحٌ
+   * لا يرسم ما في `display:none` لا يجد قصًّا صالحًا، **فلا يرسم اللوحة
+   * أصلًا**. أربعُ لوحاتٍ خرجت صناديقَ فارغة، وقِيست فإذا معرّفاتُها
+   * مكرّرةٌ مرّتين وإشاراتُها تشير إلى غير صاحبها.
+   *
+   * و`useId` هو جوابُ هذا بعينه: فريدٌ لكلّ نسخة، ومتطابقٌ بين الخادم
+   * والعميل — وهو ما كان الاشتقاقُ من المحتوى يطلبه ويخطئه.
+   *
+   * والنقطتان تُنزعان: صيغةُ React تحملهما، وهي جائزةٌ في جزء العنوان لكنّها
+   * تُسقط أيَّ محدِّد CSS يُكتب يومًا على هذا المعرّف. والباقي فريدٌ وحدَه.
    */
-  const uid = stableUid([plateType, plateFormat, size, arabicLetters, latinLetters, western, emblem])
+  const uid = `plt${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   const letterCount = Array.from(arabicLetters).length
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MediaImage } from '@/components/ui/media-image'
 import type { StoryView } from '@/lib/domain/types'
 import { StoryViewer } from './story-viewer'
 
@@ -88,14 +89,22 @@ export function StoryRail({ stories }: { stories: StoryView[] }) {
                   )}
                 >
                   <span className="relative z-10 grid size-full place-items-center overflow-hidden rounded-full bg-ink-950 p-[2px]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={story.slides[0].posterUrl ?? story.slides[0].mediaUrl}
-                      alt={story.slides[0].alt}
-                      loading="lazy"
-                      decoding="async"
-                      className="size-full rounded-full object-cover"
-                    />
+                    {/*
+                      * **الحلقاتُ أوّلُ ما يُرى، فتُجلب فورًا لا كسولًا.**
+                      *
+                      * وستٌّ منها أعلى الشاشة، و`lazy` يؤجّلها حتى يُحسب
+                      * التخطيط — فتظهر دوائرُ فارغةٌ ثمّ تمتلئ واحدةً تلو
+                      * أخرى. وهي صغيرةٌ بعد التصغير عند الرفع، فجلبُها
+                      * فورًا لا يزاحم شيئًا.
+                      */}
+                    <span className="relative size-full overflow-hidden rounded-full">
+                      <MediaImage
+                        src={story.slides[0].posterUrl ?? story.slides[0].mediaUrl}
+                        alt={story.slides[0].alt}
+                        priority={index < 4}
+                        className="rounded-full"
+                      />
+                    </span>
                   </span>
                   {/* شارةُ الفدّيو تتبع الشريحة الأولى — وهي غلافُ الحلقة */}
                   {story.slides[0].mediaKind === 'video' && (
