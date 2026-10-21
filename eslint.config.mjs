@@ -14,13 +14,26 @@ const config = [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
-  // ‏.next-e2e مخرجات الاختبار الشامل — مبنى مولّد لا مصدر
+  /*
+   * مخرجاتُ البناء مولَّدةٌ لا مصدرٌ — تُهمَل.
+   *
+   * **والمُهملُ يُطابَق في أيّ عمق لا في الجذر وحده.** فـ`.next-e2e/**`
+   * مُثبَّتةٌ بجذر المستودع، وتحت `.claude/worktrees/` نُسخُ عملٍ لكلِّ
+   * واحدةٍ منها مخرجاتُها — فتدخلها ESLint وتسقط على ملفٍّ يمحوه بناءٌ
+   * يجري في نسخةٍ أخرى:
+   *
+   *     ENOENT: .claude/worktrees/…/.next-e2e/static/…/_buildManifest.js
+   *
+   * وبادئةُ `**` تُطابق النسخَ كلَّها، و`.claude` تُقصى جملةً: ليس فيها
+   * مصدرٌ يُفحص، وما فيها من كودٍ تفحصه نسختُه هي.
+   */
   {
     ignores: [
-      '.next/**',
-      '.next-e2e/**',
-      '.next-dev/**',
-      'node_modules/**',
+      '**/.next/**',
+      '**/.next-e2e/**',
+      '**/.next-dev/**',
+      '**/node_modules/**',
+      '.claude/**',
       'tests/e2e/**',
       'next-env.d.ts',
     ],

@@ -293,7 +293,14 @@ export function ListingCard({
           {card.isMine && <OwnerTag />}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-400 transition-transform group-hover:-translate-x-0.5">
-          {closed ? 'عرض التفاصيل' : card.saleType === 'fixed' ? 'اشترِ الآن' : 'التفاصيل والمزايدة'}
+          {/*
+            * **«التفاصيل» وحدها — لا «التفاصيل والمزايدة».**
+            *
+            * فالزرُّ يفتح الصفحة، والمزايدةُ أحدُ ما فيها لا كلُّه: من يفتحه
+            * قد يريد الصورَ أو المرجعَ أو كشفَ المزايدات. واسمٌ يَعِد بفعلٍ
+            * بعينه يَعِد بأكثر ممّا يفعل، ويطول فيضيق به عرضُ البطاقة.
+            */}
+          {closed ? 'عرض التفاصيل' : card.saleType === 'fixed' ? 'اشترِ الآن' : 'التفاصيل'}
           <ArrowLeft className="size-3.5" />
         </span>
       </p>

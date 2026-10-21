@@ -172,4 +172,40 @@ test.describe('صفحة الإعلان على الجوال', () => {
     // فجوة الشبكة وحدها (24px) لا فراغ ناتج عن امتداد العمود على صفّين
     expect(gap).toBeLessThanOrEqual(32)
   })
+  /**
+   * **ما تحمله البطاقاتُ يُخبأ عن كاروسيل الجوّال وحده.**
+   *
+   * فبطاقاتُ الأقسام تحت كرت المحفظة `lg:hidden`، ولوحاتُ الإحصاء على
+   * الشاشة الكبيرة تغطّي أربعةً من الخمسة: لا لوحةَ لـ«العروض والسومات»
+   * ولا رابطَ له في صفحة الملفّ. فحذفُ الخمسةِ من القائمة — لا إخفاؤها
+   * بـCSS — يقطع الطريقَ إلى السوم المنتظِر على الحاسوب كلَّه.
+   *
+   * والفحصُ يقيس الوجهين معًا من المنتقي نفسه: في الجوّال تُحجب، وفي
+   * الحاسوب تُرى. فلو أُعيد الترشيحُ حذفًا لسقط الشطرُ الثاني.
+   */
+  test('أقسامُ البطاقات تُخبأ في الجوّال وتبقى في عمود الحاسوب', async ({ page }) => {
+    await loginUser(page, USERS.sara)
+    const rail = page.getByRole('navigation', { name: 'أقسام الحساب' })
+    const covered = ['إدارة لوحاتي', 'مزايداتي', 'العروض والسومات', 'مشترياتي', 'مبيعاتي']
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/account')
+    // «نظرة عامة» حاضرةٌ دائمًا — فحضورُها يُثبت أنّ الشريطَ نفسَه مُصيَّر
+    await expect(rail.getByRole('link', { name: 'نظرة عامة' })).toBeVisible()
+    for (const label of covered) {
+      await expect(rail.getByRole('link', { name: new RegExp(label) })).toBeHidden()
+    }
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    for (const label of covered) {
+      await expect(rail.getByRole('link', { name: new RegExp(label) })).toBeVisible()
+    }
+
+    // وفي غير «نظرة عامة» تعود كلُّها إلى الجوّال: لا بطاقاتِ هناك
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/account/invoices')
+    for (const label of covered) {
+      await expect(rail.getByRole('link', { name: new RegExp(label) })).toBeVisible()
+    }
+  })
 })

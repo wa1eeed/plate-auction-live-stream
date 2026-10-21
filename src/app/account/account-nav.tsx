@@ -44,8 +44,37 @@ const FADE = '2.25rem'
  * - **والتلاشي يتبع الموضع**: يتلاشى الطرف الذي وراءه مخبوء وحده، فيُقرأ
  *   التلاشي دعوةً إلى التمرير لا زخرفةً ثابتة تقصّ طرفًا لا شيء بعده.
  */
+/**
+ * **أقسامٌ تحملها مربّعاتُ «نظرة عامة» — فلا تُكرَّر فوقها.**
+ *
+ * وصفحةُ الملفّ تعرض تحت كرت المحفظة بطاقاتٍ لهذه الأقسام بأعدادها وما
+ * ينتظر فيها تصرّفًا. فوجودُها في الشريط فوقها تكرارٌ يُطيل الصفَّ ويجعله
+ * يُسحب بلا داعٍ — والبطاقةُ أغنى من الشارة: فيها العددُ والنداء.
+ *
+ * **وفي غير هذه الصفحة تعود كلُّها**: لا بطاقاتِ هناك، والشريطُ هو الطريق.
+ *
+ * **والإخفاءُ بـCSS في عرض الجوّال وحده — لا حذفٌ من القائمة.**
+ *
+ * فالبطاقاتُ التي تُبرِّر الحذف `lg:hidden`، ولوحاتُ الإحصاء على الشاشة
+ * الكبيرة تغطّي أربعةً من الخمسة: لا لوحةَ لـ«العروض والسومات» ولا رابطَ
+ * له في الصفحة. فحذفُه من العمود الجانبيّ يقطع الطريقَ إليه كلَّه — وهو
+ * وحدَه صاحبُ عدّادِ السوم المنتظِر، فأسوأُ الخمسةِ فقدًا.
+ *
+ * ولماذا `hidden lg:block` لا قياسُ العرض بـ`matchMedia`؟ لأنّ القياس
+ * يقع بعد الترطيب: يُرسم الشريطُ كاملًا ثمّ يُقصّ، فيومض ما يُخفى — وهي
+ * الوَمضةُ نفسُها التي أُصلحت في `SectionRail`.
+ */
+const ON_OVERVIEW = [
+  '/account/listings',
+  '/account/bids',
+  '/account/offers',
+  '/account/purchases',
+  '/account/sales',
+]
+
 export function AccountNav({ pendingOffers = 0 }: { pendingOffers?: number }) {
   const pathname = usePathname()
+  const onOverview = pathname === '/account'
   const scrollerRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLAnchorElement>(null)
 
@@ -120,8 +149,13 @@ export function AccountNav({ pendingOffers = 0 }: { pendingOffers?: number }) {
           {LINKS.map((link) => {
             const active =
               link.href === '/account' ? pathname === '/account' : pathname.startsWith(link.href)
+            /** مخبوءٌ عن كاروسيل الجوّال في «نظرة عامة» وحدها، باقٍ في العمود */
+            const tileCovers = onOverview && ON_OVERVIEW.includes(link.href)
             return (
-              <li key={link.href} className="shrink-0">
+              <li
+                key={link.href}
+                className={cn('shrink-0', tileCovers && 'hidden lg:block')}
+              >
                 <Link
                   ref={active ? activeRef : undefined}
                   href={link.href}

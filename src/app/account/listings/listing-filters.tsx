@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { useId, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { isClosedListing, type ListingStatus, type SaleType } from '@/lib/domain/types'
 
 export type ListingFacet = { saleType: SaleType; status: ListingStatus }
@@ -70,79 +70,102 @@ export function ListingFilters({
 
   return (
     <div className="space-y-3">
-      <Row
-        label="طريقة البيع"
-        items={SALES.map((item) => ({ ...item, count: countSale(item.key) }))}
-        active={sale}
-        onPick={(key) => setSale(key as SaleType | 'all')}
-      />
-      <Row
-        label="الحال"
-        items={BUCKETS.map((item) => ({ ...item, count: countBucket(item.key) }))}
-        active={bucket}
-        onPick={(key) => setBucket(key as Bucket)}
-      />
+      {/*
+        * **مُنتقيان ورقمٌ — لا ثمانيةُ أزرارٍ في صفّين يُسحبان.**
+        *
+        * وكانت الشرائحُ ثمانيًا في صفّين أفقيّين: أربعٌ لطريقة البيع وأربعٌ
+        * للحال، كلٌّ منهما يُسحب بالإصبع. فتأخذ من الشاشة سطرين قبل أوّل
+        * لوحة، ولا يُرى ما اختير إلّا بالتمرير إليه.
+        *
+        * **والمنتقي الأصليّ لا قائمةٌ مبنيّة**: يفتح منتقي النظام نفسه —
+        * عجلةً في iOS وقائمةً في أندرويد — فيُحسّ من التطبيق لا من صفحة
+        * ويب. وهو المسلكُ نفسُه في تابز الإعدادات.
+        *
+        * وكلُّ خيارٍ يحمل عددَه، فيُعرف ما وراءه قبل اختياره. والرقمُ إلى
+        * جانبهما حصيلةُ الاثنين معًا — وهو ما يُبحث عنه بعد الترشيح.
+        */}
+      <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+        <Picker
+          label="نوع البيع"
+          value={sale}
+          onPick={(key) => setSale(key as SaleType | 'all')}
+          items={SALES.map((item) => ({ ...item, count: countSale(item.key) }))}
+        />
+        <Picker
+          label="حالة العرض"
+          value={bucket}
+          onPick={(key) => setBucket(key as Bucket)}
+          items={BUCKETS.map((item) => ({ ...item, count: countBucket(item.key) }))}
+        />
+        <span
+          aria-label={`${shown.length} لوحة بعد الترشيح`}
+          className="grid h-11 min-w-11 place-items-center rounded-xl border border-gold-600/45 bg-gold-500/10 px-2 text-sm font-extrabold tabular-nums text-gold-500"
+        >
+          {shown.length}
+        </span>
+      </div>
 
       {shown.length === 0 ? (
         <p className="surface rounded-2xl p-6 text-center text-sm text-muted">
           لا لوحة تطابق هذا الترشيح.
         </p>
       ) : (
-        <ul className="space-y-3">
-          {shown.map((node, index) => (
-            <li key={index}>{node}</li>
-          ))}
-        </ul>
+        /*
+         * **ولا يُلفّ المصفوفُ في `li` ثانية.**
+         *
+         * فـ`MyListingCard` يُصيّر `<li>` بنفسه، وكان يُلفّ هنا في `<li>`
+         * أخرى — و`li` داخل `li` ترميزٌ غير صحيح. والمتصفّح يُصلحه بنقل
+         * الداخلة خارج أختها، فيخالف ما رُسم في الخادم ما رُطِّب في
+         * المتصفّح: **سقط الترطيبُ كلُّه** وأُعيد بناءُ الشجرة في العميل.
+         * قُرئ في وحدة التحكّم: «Hydration failed… <li> cannot be a
+         * descendant of <li>».
+         */
+        <ul className="space-y-3">{shown}</ul>
       )}
     </div>
   )
 }
 
-function Row({
+function Picker({
   label,
   items,
-  active,
+  value,
   onPick,
 }: {
   label: string
   items: { key: string; label: string; count: number }[]
-  active: string
+  value: string
   onPick: (key: string) => void
 }) {
+  /*
+   * `useId` لا الاسمُ العربيّ: «نوع البيع» فيه مسافة، ومُعرّفٌ بمسافةٍ
+   * ترميزٌ غير صحيح لا يُنتقى بمحدِّد CSS. وهو المسلكُ نفسُه في اللوحة.
+   */
+  const id = useId()
   return (
-    <div
-      role="group"
-      aria-label={label}
-      /* صفٌّ يُسحب أفقيًّا — ولا يُلفّ سطرين فيأكل الشاشة */
-      className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {items.map((item) => {
-        const on = item.key === active
-        return (
-          <button
-            key={item.key}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onPick(item.key)}
-            className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors',
-              on
-                ? 'border-gold-600 bg-gold-500 text-ink-950'
-                : 'border-ink-600 bg-ink-800 text-muted hover:text-paper',
-            )}
-          >
-            {item.label}
-            <span
-              className={cn(
-                'rounded-full px-1.5 text-[10px] tabular-nums',
-                on ? 'bg-ink-950/15 text-ink-950' : 'bg-ink-700 text-muted',
-              )}
-            >
-              {item.count}
-            </span>
-          </button>
-        )
-      })}
+    <div className="min-w-0">
+      <label htmlFor={id} className="mb-1 block truncate text-[11px] font-bold text-muted">
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(event) => onPick(event.target.value)}
+          /* `ps-3 pe-8`: مكانُ السهم محجوزٌ فلا يركب النصّ عليه */
+          className="h-11 w-full appearance-none truncate rounded-xl border border-ink-600 bg-ink-800 ps-3 pe-8 text-xs font-bold text-paper outline-none transition-colors focus-visible:border-gold-500"
+        >
+          {items.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label} ({item.count})
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 end-2.5 my-auto size-4 text-muted"
+        />
+      </div>
     </div>
   )
 }

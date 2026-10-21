@@ -33,7 +33,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
     <PageShell>
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        <Button asChild variant="ghost" size="sm" className="mb-3">
+        {/* للويب وحده: الغلافُ له زرُّ رجوعٍ في هيدره — انظر `AppBackButton` */}
+        <Button asChild variant="ghost" size="sm" className="mb-3" data-web-only>
           <Link href="/account/purchases">
             <ArrowRight className="size-4" />
             مشترياتي

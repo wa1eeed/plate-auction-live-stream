@@ -18,7 +18,8 @@ export function InvoiceActions({ reference }: { reference: string }) {
         <p className="text-xs text-muted">احفظها أو اطبعها — نسختك منها لا تتغيّر.</p>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="secondary" asChild>
+        {/* للويب وحده: الغلافُ له زرُّ رجوعٍ في هيدره — انظر `AppBackButton` */}
+        <Button size="sm" variant="secondary" asChild data-web-only>
           <Link href="/account/purchases">
             <ArrowRight className="size-4" />
             رجوع

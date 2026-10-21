@@ -94,7 +94,12 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
   return (
     <nav
       aria-label="التنقّل"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-600/70 bg-ink-950"
+      /*
+       * زاويتان عُلويّتان مستديرتان — فيُقرأ لوحًا يعلو الصفحة لا حدًّا
+       * يقطعها. و`overflow-hidden` ممنوع هنا: الزرُّ الأوسط مرفوعٌ فوق
+       * الشريط، فقصُّ ما يفيض يقطع نصفَه.
+       */
+      className="fixed inset-x-0 bottom-0 z-40 rounded-t-[5px] border-t border-ink-600/70 bg-ink-950"
       style={{ paddingBottom: 'var(--safe-bottom)' }}
     >
       <div className="relative mx-auto flex h-16 max-w-lg items-stretch justify-around px-2">
@@ -152,20 +157,31 @@ function Tab({
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
+      /* مقبضٌ للفحص: يفرّق مواضعَ الشريط عن الزرّ الأوسط المرفوع فوقه */
+      data-nav-tab
       className={cn(
-        'group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold transition-colors duration-200 active:scale-95',
-        active ? 'text-gold-400' : 'text-muted',
+        'group relative flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors duration-200 active:scale-95',
+        active ? 'text-gold-500' : 'text-muted',
       )}
     >
+      {/*
+        * **شارةُ الموضع شريطٌ على الحافّة العليا — لا هالةٌ خلف الأيقونة.**
+        *
+        * وكانت هالةً تنمو خلفها، فتُزاحم الأيقونةَ في مساحتها ولا تُرى من
+        * طرف العين. والشريطُ على الحافّة يُقرأ من بعيد كعلامةِ تبويبٍ،
+        * ويُلصق القسمَ بحدّ الشاشة — وهو ما تفعله التطبيقاتُ المعروفة.
+        *
+        * وينمو من المنتصف لا يَظهر دفعةً: الحركةُ تقول «انتقلتَ إلى هنا».
+        */}
+      <span
+        aria-hidden
+        className={cn(
+          'absolute inset-x-0 top-0 mx-auto h-[3px] rounded-b-full bg-gold-500',
+          'transition-all duration-300 ease-out',
+          active ? 'w-8 opacity-100' : 'w-0 opacity-0',
+        )}
+      />
       <span className="relative flex size-7 items-center justify-center">
-        {/* الهالة: تنمو من الوسط فتُقرأ الحركة اتّجاهًا لا وميضًا */}
-        <span
-          aria-hidden
-          className={cn(
-            'absolute inset-0 rounded-full bg-gold-500/15 transition-all duration-300 ease-out',
-            active ? 'scale-100 opacity-100' : 'scale-50 opacity-0',
-          )}
-        />
         <Icon
           className={cn(
             'relative size-5 transition-transform duration-300 ease-out',
@@ -174,7 +190,8 @@ function Tab({
           strokeWidth={active ? 2.5 : 2}
         />
       </span>
-      <span className="transition-opacity duration-200">{label}</span>
+      {/* والاسمُ يبقى تحت الأيقونة: خمسةُ رسومٍ بلا أسماءٍ تُخمَّن لا تُقرأ */}
+      <span className={cn('transition-all duration-200', active && 'font-extrabold')}>{label}</span>
     </Link>
   )
 }

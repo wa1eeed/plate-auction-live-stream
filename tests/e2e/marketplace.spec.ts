@@ -351,9 +351,14 @@ test.describe('سوق تداول اللوحات', () => {
     await page.waitForURL('**/account/listings')
     await expect(page.getByText('7788').first()).toBeVisible({ timeout: 15_000 })
 
-    // النشر يُظهرها في السوق
+    /*
+     * النشر يُظهرها في السوق — والشارةُ في البطاقة لا في خيارات الترشيح.
+     *
+     * فمنتقي «حالة العرض» يحمل خيارًا نصُّه «معروضة (٥)»، و`getByText` يصيبه
+     * أوّلًا — وخياراتُ `select` ليست «مرئيّة» فيُقرأ العطبُ حيث لا عطب.
+     */
     await page.getByRole('button', { name: 'انشر في السوق' }).first().click()
-    await expect(page.getByText('معروض').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('li').getByText('معروض').first()).toBeVisible({ timeout: 15_000 })
 
     await page.goto('/market')
     await page.getByLabel('بحث في السوق').fill('7788')

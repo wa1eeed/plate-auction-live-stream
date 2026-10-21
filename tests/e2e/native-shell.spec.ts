@@ -219,6 +219,57 @@ test.describe('الملاحة السفلية والهيدر', () => {
     expect(style.bg, 'خلفية الهيدر شفّافة').not.toMatch(/rgba\([^)]*,\s*0?\.\d+\)/)
   })
 
+  /**
+   * **شارةُ الموضع شريطٌ على حافّة الشريط العليا، والاسمُ باقٍ تحتها.**
+   *
+   * وكانت هالةً تنمو خلف الأيقونة: تُزاحمها في مساحتها ولا تُرى من طرف
+   * العين. والشريطُ على الحافّة يُقرأ علامةَ تبويبٍ من بعيد.
+   *
+   * **والمقيسُ الأثرُ لا الأصناف**: عرضُ الشارة فوق الحاضر وحده، وصفرٌ فوق
+   * غيره. وزاويتا الشريط العُلويّتان مستديرتان فيُقرأ لوحًا يعلو الصفحة.
+   */
+  test('شارةُ القسم الحاضر وحده، وزاويتا الشريط مستديرتان', async ({ page }) => {
+    await page.addInitScript(() => {
+      ;(window as unknown as { Capacitor: unknown }).Capacitor = {
+        isNativePlatform: () => true,
+        getPlatform: () => 'ios',
+      }
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/market')
+
+    const nav = page.getByRole('navigation', { name: 'التنقّل', exact: true })
+    await expect(nav).toBeVisible({ timeout: 15_000 })
+
+    const shape = await nav.evaluate((el: HTMLElement) => {
+      const computed = getComputedStyle(el)
+      /* المواضعُ وحدها: الزرُّ الأوسط المرفوع رابطٌ أيضًا ولا شارةَ له */
+      const marks = [...el.querySelectorAll('a[data-nav-tab]')].map((link) => ({
+        current: link.getAttribute('aria-current') === 'page',
+        /* الشارةُ أوّلُ ابنٍ مخفيٍّ عن القارئ داخل الرابط */
+        width: Math.round(
+          (link.querySelector('[aria-hidden]') as HTMLElement)?.getBoundingClientRect().width ?? -1,
+        ),
+        /* والاسمُ تحتها — خمسةُ رسومٍ بلا أسماءٍ تُخمَّن لا تُقرأ */
+        label: (link.textContent ?? '').trim(),
+      }))
+      return { radius: computed.borderTopLeftRadius, marks }
+    })
+
+    expect(shape.radius, 'زاويتا الشريط حادّتان').not.toBe('0px')
+
+    const here = shape.marks.filter((mark) => mark.current)
+    const others = shape.marks.filter((mark) => !mark.current)
+    expect(here.length, 'لا قسمَ حاضرٌ يُقاس عليه').toBe(1)
+    expect(here[0].width, 'لا شارةَ فوق القسم الحاضر').toBeGreaterThan(8)
+    for (const mark of others) {
+      expect(mark.width, `شارةٌ فوق «${mark.label}» وليس هو الحاضر`).toBe(0)
+    }
+    for (const mark of shape.marks) {
+      expect(mark.label.length, 'قسمٌ بلا اسمٍ تحت أيقونته').toBeGreaterThan(1)
+    }
+  })
+
   test('وارتفاعُه ثابتٌ بين أعلى الصفحة وأسفلها', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/market')
@@ -296,6 +347,74 @@ test.describe('صفحة اللوحة بلا ملاحةٍ سفلية', () => {
      */
     const back = page.locator('a[data-web-only][href="/market"]').first()
     await expect(back).toBeVisible()
+  })
+
+  /**
+   * **وكلُّ رابطِ رجوعٍ في أعلى صفحةٍ يحمل العلامةَ — لا رابطُ السوق وحده.**
+   *
+   * فالغلافُ له زرُّ رجوعٍ في هيدره، فيجتمع لفعلٍ واحدٍ مخرجان: رابطٌ في
+   * الصفحة وزرٌّ فوقها. وثلاثُ صفحاتٍ كانت تحمله بلا علامة — السداد،
+   * والصفقة، والفاتورة.
+   *
+   * **ويُقاس بالبنية لا بالنصّ.** فأوّلُ نصٍّ جرّبتُه كان `/^رجوع/`، ولا
+   * يطابق إلّا الفاتورة: نصُّ الآخرين «مشترياتي» و«مبيعاتي» — فيمرّ الفحصُ
+   * فارغًا ولو رُفعت العلامةُ عنهما. والقاعدةُ البنيويّة تصدق على الثلاثة:
+   * **أوّلُ رابطٍ داخل `#main` هو مَخرجُ الرجوع**، وشريطُ الأقسام أخٌ
+   * لـ`#main` لا ابنٌ فيه، فلا تلتقطه.
+   *
+   * ويُقاس حضورُ السمة لا الإخفاءُ نفسُه: الإخفاءُ قاعدةُ CSS لا تقع إلّا
+   * مع `data-native` على الجذر، وهي من وضع الغلاف.
+   */
+  test('وكلُّ رابطِ رجوعٍ في أعلى الصفحات معلَّمٌ للويب', async ({ page }) => {
+    // ماجد صاحبُ الصفقات المبذورة — منتظِرةٍ ومكتملة، وله فواتير
+    await loginUser(page, USERS.majed)
+
+    await page.goto('/account/purchases')
+    const orderHref = await page
+      .locator('li[data-row^="S"] a[href^="/account/orders/"]')
+      .first()
+      .getAttribute('href')
+    const checkoutHref = await page.locator('a[href^="/checkout/"]').first().getAttribute('href')
+    expect(orderHref, 'لا صفقةَ في المشتريات يُفتح تفصيلُها').toBeTruthy()
+    expect(checkoutHref, 'لا صفقةَ تنتظر سدادًا — فلا صفحةَ سدادٍ تُفحص').toBeTruthy()
+
+    /*
+     * **والفاتورةُ لوليدٍ لا لماجد.**
+     *
+     * فالمبذورُ منها `seller_commission`: عميلُها البائعُ لا المشتري. وأوّلُ
+     * قراءةٍ هنا طلبتها من ماجد فوجدت قائمةً فارغة، فعلق الفحصُ إلى المهلة.
+     * وتبديلُ المستخدم في السياق نفسه مدعومٌ — انظر `reuse` في `session.ts`.
+     */
+    await loginUser(page, USERS.waleed)
+    await page.goto('/account/invoices')
+    const invoiceHref = await page
+      .locator('a[href^="/account/invoices/"]')
+      .first()
+      .getAttribute('href')
+    expect(invoiceHref, 'لا فاتورةَ لوليدٍ تُفتح').toBeTruthy()
+
+    /* الصفقةُ والسدادُ لماجدٍ — فيُعاد إليه قبل فتحهما */
+    await loginUser(page, USERS.majed)
+
+    for (const path of [orderHref!, checkoutHref!]) {
+      await page.goto(path)
+      const back = page.locator('#main a').first()
+      await expect(back, `لا رابطَ في ${path}`).toBeVisible()
+      // تعبيرٌ يَقبل أيَّ قيمة: الحضورُ هو المقصود — وReact يُصيّرها "true"
+      await expect(back, `مَخرجُ الرجوع بلا علامةِ الويب في ${path}`).toHaveAttribute(
+        'data-web-only',
+        /.*/,
+      )
+    }
+
+    await loginUser(page, USERS.waleed)
+    await page.goto(invoiceHref!)
+    const invoiceBack = page.locator('#main a').first()
+    await expect(invoiceBack, `لا رابطَ في ${invoiceHref}`).toBeVisible()
+    await expect(
+      invoiceBack,
+      `مَخرجُ الرجوع بلا علامةِ الويب في ${invoiceHref}`,
+    ).toHaveAttribute('data-web-only', /.*/)
   })
 })
 

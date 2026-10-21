@@ -62,8 +62,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="space-y-5">
       <div>
+        {/* للويب وحده: الغلافُ له زرُّ رجوعٍ في هيدره — انظر `AppBackButton` */}
         <Link
           href={backHref}
+          data-web-only
           className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-paper"
         >
           <ArrowRight className="size-4" />
