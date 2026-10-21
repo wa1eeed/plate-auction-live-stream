@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { Gavel, ImageUp, Loader2, Palette, Save, Trash2, Type } from 'lucide-react'
@@ -55,7 +55,7 @@ const ASSETS: {
  * أوّل ما يبدّل: اسمه، ولونه، وما يُقرأ عنه أوّل ما تُفتح الصفحة.
  */
 export function BrandSettingsForm({ settings }: { settings: BrandSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState<Draft>(settings)
   const [busy, setBusy] = useState(false)
   /*
@@ -131,7 +131,7 @@ export function BrandSettingsForm({ settings }: { settings: BrandSettings }) {
       }
       toast.success('حُفظت هويّة المنصّة')
       setTouched({})
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

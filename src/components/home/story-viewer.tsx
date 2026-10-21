@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -163,7 +164,20 @@ export function StoryViewer({
 
   if (!story || !slide) return null
 
-  return (
+  /*
+   * **يُصيَّر في `body` لا في موضعه من الشجرة.**
+   *
+   * وكان يسكن `<div className="space-y-4 …">` في الرئيسية، و`space-y-4`
+   * تضع `margin-top` على كلّ ابنٍ بعد الأوّل — **والعارضُ ابنٌ منها**. فمع
+   * `top: 0; bottom: 0` يدخل الهامشُ في معادلة الارتفاع فيُنقصه ستّةَ عشرَ
+   * بكسلًا: قِيس فخرج ٧٩٦ في شاشةٍ ٨١٢. فتظهر الرئيسيةُ من تحته شريطًا —
+   * وهو ما رآه صاحبُ المنصّة «فوتر» داخل شاشة الستوري.
+   *
+   * **والبوّابةُ تحسم البابَ كلَّه لا هذه الحالة وحدها**: أيُّ `transform`
+   * أو `filter` أو `contain` على أيّ جَدٍّ يجعل `fixed` يُقاس إليه لا إلى
+   * الشاشة. وما يملأ الشاشة لا يُترك لتخطيطِ من يحتويه.
+   */
+  return createPortal(
     <div
       role="dialog"
       aria-modal
@@ -288,7 +302,8 @@ export function StoryViewer({
           <StoryLink href={story.linkUrl} onNavigate={onClose} />
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
 

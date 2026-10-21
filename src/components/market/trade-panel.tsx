@@ -10,6 +10,8 @@ import {
   HandCoins,
   Loader2,
   LogIn,
+  Receipt,
+  ShieldCheck,
   ShoppingCart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -123,8 +125,14 @@ export function TradePanel({
         if (successMessage) toast.success(successMessage)
         play('bid')
         if (data.extended) toast.info(`تم تمديد المزاد ${data.addedSeconds} ثانية`)
+        /*
+         * **وجلبُ الصفحة لنفسها يكفي.**
+         *
+         * فصفحةُ اللوحة تقرأ حالَها كلَّه من `useListing`، و`onDone` هو
+         * جلبُها. وكان الإنعاشُ يتبعه فيُعيد بناء الشجرة من الخادم بلا خبرٍ
+         * جديد — رحلةٌ ثانيةٌ تُحسّ «تحديثًا للصفحة» بعد كلّ عرضٍ ومزايدة.
+         */
         await onDone()
-        router.refresh()
         return true
       } catch {
         toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
@@ -134,7 +142,7 @@ export function TradePanel({
         setBusy(false)
       }
     },
-    [onDone, router, play],
+    [onDone, play],
   )
 
   if (detail.isMine) {
@@ -211,20 +219,52 @@ export function TradePanel({
   if (detail.saleType === 'fixed') {
     return (
       <Panel title="الشراء">
+        {/*
+          * **ولا يُعاد السعرُ هنا.**
+          *
+          * فبطاقةُ «سعر البيع» فوق هذه اللوحة تحمله بحجمه، وشريطُ الجوال
+          * يحمله في زرّه. فثالثٌ في المنتصف يُقرأ سعرًا آخر لا تأكيدًا —
+          * جُرّب فخرجت ثلاثةُ أرقامٍ متطابقةٍ على شاشةٍ واحدة.
+          *
+          * فما يبقى لهذه اللوحة ما لا يقوله غيرُها: ما تُؤخذ عليه عمولةً،
+          * وما يقع بعد الضغطة.
+          */}
         <CommissionNotice detail={detail} />
+
+        {/*
+          * **والزرُّ للحاسوب وحده.**
+          *
+          * فشريطُ الجوال الثابت (`MobileBidBar`، وهو `lg:hidden`) يحمل زرَّ
+          * الشراء بسعره — فكان الزرّان معًا على شاشةٍ واحدة، أحدُهما يلاحق
+          * التمرير والآخرُ يسكن في اللوحة. وهو تكرارٌ يُربك: أيُّهما يشتري؟
+          * فبقي في الجوّال ما لا يغيب عن الإبهام، وبقي في الحاسوب ما في
+          * موضعه — ولا شاشةَ فيها اثنان.
+          */}
         <Button
           size="xl"
-          className="w-full"
+          className="mt-3 hidden w-full lg:inline-flex"
           disabled={busy}
           onClick={() => void buyNow()}
         >
           {busy ? <Loader2 className="size-5 animate-spin" /> : <ShoppingCart className="size-5" />}
-          اشترِ الآن بـ {formatAmount(detail.price)} ريال
+          اشترِ الآن
         </Button>
-        <p className="mt-2 text-center text-xs leading-relaxed text-muted">
-          ننتقل بك إلى صفحة السداد لمراجعة التفاصيل واختيار وسيلة الدفع — لا يُخصم شيء قبل
-          تأكيدك.
-        </p>
+
+        <ul className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted">
+          <li className="flex items-start gap-1.5">
+            <ShieldCheck className="mt-px size-3.5 shrink-0 text-success" />
+            <span>
+              مالُك محفوظٌ لدى المنصّة حتى <b className="text-paper">تنتقل اللوحة باسمك</b>.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <Receipt className="mt-px size-3.5 shrink-0 text-muted" />
+            <span>
+              ننتقل بك إلى صفحة السداد لمراجعة التفاصيل واختيار وسيلتك —{' '}
+              <b className="text-paper">لا يُخصم شيء قبل تأكيدك</b>.
+            </span>
+          </li>
+        </ul>
       </Panel>
     )
   }
@@ -261,7 +301,6 @@ export function TradePanel({
                 }
                 toast.success('تم سحب عرضك')
                 await onDone()
-                router.refresh()
               } finally {
                 setBusy(false)
               }

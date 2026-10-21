@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -38,7 +38,7 @@ export function OrderActions({
   /** العربون المحجوز على الصفقة — يتحرّك بالقرار */
   depositAmount: number
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
 
   async function setStatus(status: 'completed' | 'cancelled') {
@@ -55,7 +55,7 @@ export function OrderActions({
         return
       }
       toast.success(status === 'completed' ? 'أُتمّت الصفقة' : 'أُلغيت الصفقة')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

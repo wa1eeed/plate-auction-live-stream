@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, CreditCard, Building2, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
@@ -26,7 +26,7 @@ export function PaymentSettingsForm({
   /** هل مفتاح كل بيئة مضبوط في متغيّرات البيئة؟ */
   tap: Record<TapMode, boolean>
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState({
     tapEnabled: settings.tapEnabled,
     tapMode: settings.tapMode,
@@ -59,7 +59,7 @@ export function PaymentSettingsForm({
         return
       }
       toast.success('حُفظت إعدادات الدفع')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

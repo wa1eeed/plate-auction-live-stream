@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Info, Loader2, Percent, Receipt, Save, Store, Tag, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -47,7 +47,7 @@ const toDomain = (side: SideForm) => ({
 })
 
 export function CommissionSettingsForm({ settings }: { settings: CommissionSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [seller, setSeller] = useState<SideForm>(toForm(settings.seller))
   const [buyer, setBuyer] = useState<SideForm>(toForm(settings.buyer))
   const [vatEnabled, setVatEnabled] = useState(settings.vatEnabled)
@@ -75,7 +75,7 @@ export function CommissionSettingsForm({ settings }: { settings: CommissionSetti
         return
       }
       toast.success('حُفظت إعدادات العمولة')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

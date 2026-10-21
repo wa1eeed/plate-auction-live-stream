@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { Check, Loader2, ShieldCheck, TriangleAlert, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import { arabicCount, cn, formatRelative } from '@/lib/utils'
  * يكتبه محفوظٌ وملزِم، وأنّ المساومة لا تُساق خارج المنصّة.
  */
 export function OfferThread({ offer, side }: { offer: AccountOffer; side: 'buyer' | 'seller' }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState<string | null>(null)
   const [countering, setCountering] = useState(false)
   /** بالهللة كبقيّة المبالغ في الواجهة — والتحويل إلى الريال عند الإرسال وحده. */
@@ -47,7 +47,7 @@ export function OfferThread({ offer, side }: { offer: AccountOffer; side: 'buyer
         return
       }
       setCountering(false)
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

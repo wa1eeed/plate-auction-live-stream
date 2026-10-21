@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,7 +33,7 @@ const ICON_LABELS: Record<OnboardingIcon, string> = {
  * من مكتبة المنصّة نفسها فتتّسق مع بقيّتها وتظهر بلا شبكة.
  */
 export function OnboardingSettingsForm({ settings }: { settings: OnboardingSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [enabled, setEnabled] = useState(settings.enabled)
   const [tagline, setTagline] = useState(settings.splashTagline)
   const [slides, setSlides] = useState<OnboardingSlide[]>(settings.slides)
@@ -68,7 +68,7 @@ export function OnboardingSettingsForm({ settings }: { settings: OnboardingSetti
         return
       }
       toast.success('حُفظت المقدّمة')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

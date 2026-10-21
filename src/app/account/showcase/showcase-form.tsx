@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { AtSign, Check, Copy, ExternalLink, Loader2, Save, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -32,7 +32,7 @@ export function ShowcaseForm({
   /** لوحاته المنشورة كما يراها الزائر — تُبنى على الخادم وتُمرَّر */
   preview: React.ReactNode
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [handle, setHandle] = useState(initialHandle ?? '')
   const [usesHandle, setUsesHandle] = useState(initialUses)
   const [busy, setBusy] = useState(false)
@@ -81,7 +81,7 @@ export function ShowcaseForm({
         return
       }
       toast.success('حُفظت إعدادات المعرض')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

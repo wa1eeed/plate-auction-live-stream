@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Loader2, LogIn, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatAmount } from '@/lib/domain/money'
+import { muteNextSoldToast } from '@/lib/sold-announcement'
 import { isClosedListing, type ListingDetail } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
 import { CompactCountdown } from './auction-countdown'
@@ -130,6 +131,8 @@ export function MobileBidBar({
                  * في مكانه، وقد صار مرتبطًا بصفقة ومهلتها تجري — وكل ما رآه
                  * توست يختفي بعد ثوانٍ. والحاسوب يفعل الصواب منذ البداية.
                  */
+                /* البثُّ يصل هذا التبويبَ أيضًا — ولا يُخبَر المشتري ببيعٍ هو سببُه */
+                muteNextSoldToast(detail.id)
                 router.push(`/checkout/${data.orderId}`)
               } finally {
                 setBusy(false)

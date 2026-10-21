@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Gavel, HandCoins, Info, Loader2, Save, Send, ShieldCheck, Tag } from 'lucide-react'
@@ -60,6 +61,18 @@ const SALE_ICONS: Record<SaleType, typeof Gavel> = { auction: Gavel, fixed: Tag,
 
 /** لوحة الدراجة مقاسٌ واحد — لا طويلة ولا رياضية. */
 const MOTORCYCLE_FORMATS: readonly PlateFormat[] = ['standard']
+
+/**
+ * ارتفاعُ معاينة كلّ إصدارٍ في بطاقات الاختيار.
+ *
+ * ويُقارَب به **العرضُ** لا الارتفاع: 186 و167 و128 بكسلًا بدل 186 و152
+ * و80. فلا تبدو الاعتياديّةُ قزمًا إلى جانب الطويلة.
+ */
+const FORMAT_PREVIEW_HEIGHT: Record<PlateFormat, string> = {
+  long: 'h-10',
+  sport: 'h-11',
+  standard: 'h-16',
+}
 
 /**
  * **مراحلُ الإضافة — على الجوّال وحده.**
@@ -136,6 +149,7 @@ export function ListingForm({
   commission: CommissionSettings
 }) {
   const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [emblem, setEmblem] = useState<PlateEmblem>(listing?.emblem ?? 'palm-swords-black')
   const [customEmblemUrl, setCustomEmblemUrl] = useState(listing?.customEmblemUrl ?? '')
   /*
@@ -280,7 +294,7 @@ export function ListingForm({
       if (intent === 'draft') {
         toast.success(listing ? 'حُفظت التعديلات' : 'أُضيفت اللوحة كمسودة — انشرها لتظهر في السوق')
         router.push('/account/listings')
-        router.refresh()
+        await refresh()
         return
       }
 
@@ -301,11 +315,11 @@ export function ListingForm({
       if (!publish.ok) {
         toast.error(result?.error?.message ?? 'حُفظت اللوحة ولم تُنشر — انشرها من إدارة لوحاتك')
         router.push('/account/listings')
-        router.refresh()
+        await refresh()
         return
       }
       setPublished(result.listing as Listing)
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     }
@@ -371,6 +385,23 @@ export function ListingForm({
           * (الطويلة، ٤٫٦٥:١) وإلّا حدّها العرض فانكمشت وحدها وبدت حروف
           * الدراجة أكبر من المعتاد إلى جانبها.
           */}
+        {/*
+          * **ظلٌّ يُجلس اللوحةَ على الصفحة لا يُلصقها بها.**
+          *
+          * واللوحةُ قطعةٌ معدنيّةٌ لها سُمك، وبلا ظلٍّ تبدو رسمًا مطبوعًا على
+          * الخلفية — وهو ما يفرّق معاينةً من لوحةٍ في بطاقات السوق، وتلك
+          * تجلس في صندوقٍ بحافّةٍ وخلفيّةٍ تفصلها.
+          *
+          * و`drop-shadow` لا `box-shadow`: الثانية تظلّل **صندوق** العنصر،
+          * واللوحةُ مستديرةُ الزوايا وما حولها شفّاف — فيخرج ظلٌّ مستطيلٌ
+          * حول فراغ. والأولى تتبع شكل ما رُسم.
+          *
+          * وطبقتان: قريبةٌ ضيّقة تحدّ الحافّة، وبعيدةٌ واسعة ترفعها.
+          *
+          * وتُمرَّر على اللوحة نفسِها لا على الصندوق: `[&>svg]` لا يُطابق —
+          * المكوّن يلفّ الرسمَ في `span`، فالـ`svg` حفيدٌ لا ابن. قِيس
+          * فخرجت `filter: none` والصنفُ مكتوب.
+          */}
         <div className="mx-auto flex h-[72px] w-full max-w-[560px] items-center justify-center sm:h-[96px]">
           <SaudiLicensePlate
             plateType={plateType}
@@ -382,6 +413,11 @@ export function ListingForm({
             customEmblemUrl={customEmblemUrl || null}
             size="fill"
             showReflection={false}
+            /*
+             * طبقتان في خاصّيّةٍ واحدة: صنفا `drop-shadow` يتدافعان — أداةٌ
+             * واحدةٌ فيبقى آخرُهما. قِيس فخرجت الضيّقةُ محذوفة.
+             */
+            className="[filter:drop-shadow(0_1px_1px_rgba(10,13,18,0.32))_drop-shadow(0_10px_20px_rgba(10,13,18,0.42))]"
           />
         </div>
         <p className="mt-2.5 text-center text-[11px] leading-relaxed text-muted">
@@ -466,7 +502,18 @@ export function ListingForm({
                       : 'border-ink-600 bg-ink-900/40 hover:border-gold-600/40',
                   )}
                 >
-                  <span className="mb-2 flex h-10 items-center justify-center">
+                  {/*
+                    * **ارتفاعٌ لكلّ نسبةٍ لا ارتفاعٌ واحدٌ للجميع.**
+                    *
+                    * ونسبُ الإصدارات متباعدة: الطويلة 4.65:1 والرياضية 3.8:1
+                    * والاعتياديّة **2:1**. فارتفاعٌ واحد (`h-10`) يعطيها
+                    * عروضًا 186 و152 و**80** — فتبدو الاعتياديّةُ أقلَّ من
+                    * نصف أختها، وهي في الواقع أكبرُ قطعةً منها.
+                    *
+                    * فيُقارَب حجمُها المرئيّ: تعلو الاعتياديّةُ حتى يقترب
+                    * عرضُها من عرضهما. والصندوقُ ثابتٌ فلا تتفاوت البطاقات.
+                    */}
+                  <span className="mb-2 flex h-16 items-center justify-center">
                     <SaudiLicensePlate
                       plateType={plateType}
                       plateFormat={format}
@@ -476,7 +523,7 @@ export function ListingForm({
                       emblem={emblem}
                       size="fill"
                       showReflection={false}
-                      className="h-10"
+                      className={FORMAT_PREVIEW_HEIGHT[format]}
                     />
                   </span>
                   <span className="block text-xs font-bold">{PLATE_FORMAT_LABELS[format]}</span>

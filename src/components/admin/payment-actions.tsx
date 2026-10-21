@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -74,7 +74,7 @@ function DecisionDialog({
   reference: string
   forOrder: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState(decision === 'reject' ? 'لم يُعثر على الحوالة' : '')
   const [busy, setBusy] = useState(false)
@@ -96,7 +96,7 @@ function DecisionDialog({
       }
       toast.success(confirming ? 'أُضيف الرصيد للمستخدم' : 'رُفضت العملية')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

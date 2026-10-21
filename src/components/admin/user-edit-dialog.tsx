@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { Loader2, Pencil, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ import type { User } from '@/lib/domain/types'
  * بعدها — و**الرصيد**، له مساره المحاسبيّ بقيدٍ ومرجع لا بتحرير حقل.
  */
 export function UserEditDialog({ user }: { user: User }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({
@@ -66,7 +66,7 @@ export function UserEditDialog({ user }: { user: User }) {
       }
       toast.success('حُفظت بيانات المستخدم')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Crown, Gavel, Loader2, LogIn, Minus, Plus, TrendingUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -44,7 +43,6 @@ export function AuctionBidBox({
   /** `bar` مضغوطة لشريط الجوال الثابت، و`panel` للعمود الجانبي */
   variant?: 'panel' | 'bar'
 }) {
-  const router = useRouter()
   const { play } = useSound()
   const [amount, setAmount] = useState<number>(detail.nextBidAmount)
   const [busy, setBusy] = useState(false)
@@ -140,7 +138,7 @@ export function AuctionBidBox({
          */
         toast.error(data?.error?.message ?? FAILURE_TEXT[classifyStatus(response.status)])
         /* تبدّلُ الحالة عند الخادم يُوجب جلبها: 409 تعني أنّ ما نراه قديم */
-        if (response.status === 409 || response.status === 404) router.refresh()
+        if (response.status === 409 || response.status === 404) void onDone()
         return
       }
       play('bid')
@@ -148,8 +146,15 @@ export function AuctionBidBox({
       haptic('success')
       toast.success('سُجّلت مزايدتك')
       if (data.extended) toast.info(`مُدّد المزاد ${data.addedSeconds} ثانية`)
+      /*
+       * **جلبُ الصفحة لنفسها يكفي — ولا يُنعَش المسار فوقه.**
+       *
+       * فصفحةُ اللوحة تقرأ حالَها كلَّه من `useListing`: السعرُ وأعلى مزايدٍ
+       * وعربونُ المزايد ومهلتُه. وكان `router.refresh()` يتبع الجلبَ فيُعيد
+       * بناءَ الشجرة كلِّها من الخادم بلا خبرٍ جديد — رحلةٌ ثانيةٌ تُحسّ
+       * «تحديثًا للصفحة» بعد كلّ مزايدة.
+       */
       await onDone()
-      router.refresh()
     } catch (error) {
       /*
        * **حالةٌ غير مؤكّدة — لا فشلٌ.**
@@ -167,7 +172,6 @@ export function AuctionBidBox({
         toast.warning(FAILURE_TEXT.uncertain)
         /* المصالحة: الخادم يقول ما وقع، لا الذاكرة */
         await Promise.resolve(onDone()).catch(() => undefined)
-        router.refresh()
       } else {
         toast.error(FAILURE_TEXT[failure])
       }

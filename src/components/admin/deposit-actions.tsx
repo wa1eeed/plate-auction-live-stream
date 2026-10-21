@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { RotateCcw, ShieldX, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -111,7 +111,7 @@ function DecisionDialog({
   userName: string
   amount: string
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const copy = COPY[decision]
   const [reason, setReason] = useState(copy.defaultReason)
@@ -135,7 +135,7 @@ function DecisionDialog({
       }
       toast.success(copy.success)
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -57,7 +57,7 @@ const EMPTY: Draft = {
 
 /** إدارة الأسئلة الشائعة: إضافة وتعديل وحذف، وتحديد ما يظهر أسفل صفحة المزاد. */
 export function FaqManager({ items }: { items: FaqItem[] }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [editing, setEditing] = useState<{ id: string | null; draft: Draft } | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -78,7 +78,7 @@ export function FaqManager({ items }: { items: FaqItem[] }) {
       }
       toast.success(id ? 'حُدّث السؤال' : 'أُضيف السؤال')
       setEditing(null)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }
@@ -92,7 +92,7 @@ export function FaqManager({ items }: { items: FaqItem[] }) {
       return
     }
     toast.success('حُذف السؤال')
-    router.refresh()
+    await refresh()
   }
 
   return (

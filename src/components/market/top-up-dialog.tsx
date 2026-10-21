@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Building2, CreditCard, Loader2, Plus, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,7 +27,7 @@ const QUICK_AMOUNTS = [500, 1_000, 5_000, 10_000]
  * لا يُعرض إلا ما هو مفعّل ومهيّأ فعلًا: زرّ دفع يفشل حتمًا أسوأ من غيابه.
  */
 export function TopUpDialog({ options, triggerClassName }: { options: PublicPaymentOptions; triggerClassName?: string }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
   const [method, setMethod] = useState<PaymentMethod | null>(
@@ -66,7 +66,7 @@ export function TopUpDialog({ options, triggerClassName }: { options: PublicPaym
       }
       toast.success('أُنشئت عملية التحويل — حوّل المبلغ ثم أرفق رقم العملية')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

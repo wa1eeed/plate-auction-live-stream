@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { Loader2, Save, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ import { BRAND_ASSET_LIMITS, type BrandAsset } from '@/lib/domain/types'
  * لشاشة الإقلاع — فتلزمها مربّعةً معتمةً إلى أطرافها.
  */
 export function AppIconForm({ asset }: { asset: BrandAsset | null }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [current, setCurrent] = useState(asset)
   const [pending, setPending] = useState<BrandAsset | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
@@ -72,7 +72,7 @@ export function AppIconForm({ asset }: { asset: BrandAsset | null }) {
       setCurrent(data?.appIcon ?? null)
       setPending(undefined)
       toast.success('حُفظت أيقونة التطبيق')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

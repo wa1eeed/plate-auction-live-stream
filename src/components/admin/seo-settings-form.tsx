@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Bot, CheckCircle2, Globe, Loader2, Save, Search, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,7 +27,7 @@ const DESCRIPTION_MAX = 155
  * اكتشافه بعد أسبوع من الأرشفة.
  */
 export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState(settings)
   const [busy, setBusy] = useState(false)
 
@@ -66,7 +66,7 @@ export function SeoSettingsForm({ settings }: { settings: BrandSettings }) {
         return
       }
       toast.success('حُفظت إعدادات الأرشفة')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

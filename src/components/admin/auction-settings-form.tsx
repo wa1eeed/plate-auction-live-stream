@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Gavel, Info, Loader2, Percent, Save, ShieldCheck, ShieldX, Timer } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,7 +16,7 @@ import { formatAmount, halalasToRiyals, riyalsToHalalas } from '@/lib/domain/mon
 const PREVIEW_PRICES = [10_000, 50_000, 250_000]
 
 export function AuctionSettingsForm({ settings }: { settings: AuctionSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState({
     depositMode: settings.depositMode,
     depositFixed: halalasToRiyals(settings.depositFixed),
@@ -65,7 +65,7 @@ export function AuctionSettingsForm({ settings }: { settings: AuctionSettings })
         return
       }
       toast.success('حُفظت قواعد المزاد')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

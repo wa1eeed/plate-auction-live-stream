@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,7 @@ const GROUPS = [
  * يرسل الأربعة معًا — فلا يُنشر نصفُ تعديل.
  */
 export function PagesSettingsForm({ settings }: { settings: PageSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState<Draft>(settings)
   const [busy, setBusy] = useState(false)
 
@@ -65,7 +65,7 @@ export function PagesSettingsForm({ settings }: { settings: PageSettings }) {
         return
       }
       toast.success('حُفظت صفحات المنصّة')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

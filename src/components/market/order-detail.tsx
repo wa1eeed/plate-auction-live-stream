@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { CreditCard, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -42,7 +42,7 @@ export function OrderDetail({
   side: 'buyer' | 'seller'
   serverTime: string
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
   const stage = currentOrderStage(order.timeline, order, side)
   const yours = stage.audience === 'you' && stage.step.state !== 'done'
@@ -61,7 +61,7 @@ export function OrderDetail({
         return
       }
       toast.success('أُلغيت الصفقة، وعادت اللوحة إليك')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

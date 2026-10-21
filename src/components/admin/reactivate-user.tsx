@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { UserCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 /** يعيد تفعيل حسابٍ عطّله صاحبُه أو الإدارة — والقرارُ للإدارة في الحالين. */
 export function ReactivateUser({ userId }: { userId: string }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
 
   return (
@@ -25,7 +25,7 @@ export function ReactivateUser({ userId }: { userId: string }) {
             return
           }
           toast.success('أُعيد تفعيل الحساب')
-          router.refresh()
+          await refresh()
         } catch {
           toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
         } finally {

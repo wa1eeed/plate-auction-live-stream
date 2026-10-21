@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Loader2, ShieldAlert, Truck } from 'lucide-react'
 import { toast } from 'sonner'
@@ -120,7 +120,7 @@ function StandingDispute({ order, side }: { order: AccountOrder; side: 'buyer' |
 }
 
 function TransferProofDialog({ orderId }: { orderId: string }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -132,7 +132,7 @@ function TransferProofDialog({ orderId }: { orderId: string }) {
       await post(`/api/orders/${orderId}/transfer`, { note: note.trim() })
       toast.success('وصل إثباتك — بانتظار تحقّق الإدارة')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'تعذّر الرفع')
     } finally {
@@ -194,7 +194,7 @@ function DisputeDialog({
   /** المثال يتبع صاحبه: ما يشكو منه المشتري ليس ما يشكو منه البائع */
   side: 'buyer' | 'seller'
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -206,7 +206,7 @@ function DisputeDialog({
       await post(`/api/orders/${orderId}/dispute`, { reason: reason.trim() })
       toast.success('سُجّل اعتراضك — توقّف تحويل المبلغ حتى تفصل الإدارة')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'تعذّر تسجيل الاعتراض')
     } finally {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Building2, CircleCheckBig, Loader2, Save, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,7 +20,7 @@ import { isValidCrNumber, isValidVatNumber } from '@/lib/domain/zatca'
  * تُكتشف في ثانيتها لا بعد مئة فاتورة.
  */
 export function TaxSettingsForm({ settings }: { settings: TaxSettings }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState(settings)
   const [busy, setBusy] = useState(false)
 
@@ -58,7 +58,7 @@ export function TaxSettingsForm({ settings }: { settings: TaxSettings }) {
         return
       }
       toast.success('حُفظت بيانات المنشأة الضريبية')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

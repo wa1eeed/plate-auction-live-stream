@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,11 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
   const reduceMotion = useReducedMotion()
   /** يدٌ لمست الشريحة — فلا يُبدَّل تحتها */
   const touched = useRef(false)
+  /*
+   * ونسخةٌ في الحالة لا في المِعلاق وحده: شريطُ المهلة في النقطة يُرسم،
+   * والمِعلاقُ لا يُعيد الرسم. فاللمسةُ توقف العدّ **وتُرى** واقفًا.
+   */
+  const [held, setHeld] = useState(false)
 
   const scrollTo = useCallback((index: number) => {
     const node = trackRef.current
@@ -74,6 +79,9 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
     return () => clearInterval(timer)
   }, [banners.length, reduceMotion, scrollTo])
 
+  /* لا عدَّ مع تقليل الحركة، ولا بعد أن تُمسك الشريحةُ بيد */
+  const paused = held || Boolean(reduceMotion)
+
   if (banners.length === 0) return null
 
   return (
@@ -86,18 +94,51 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
          */
         onTouchStart={() => {
           touched.current = true
+          setHeld(true)
         }}
-        className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+        /*
+          * **وتُطلّ المجاورةُ من الحافّة.**
+          *
+          * وشريحةٌ بعرض الشاشة كاملًا تُخفي ما بعدها، فلا يُعرف أنّ ثَمّ
+          * غيرَها إلّا من النقاط تحتها — ولا يدعو شيءٌ إلى السحب. وطرفٌ
+          * ظاهرٌ من التالية يقول «ثَمّ مزيد» ويُغري باليد، وهو ما تفعله
+          * الشرائحُ في التطبيقات.
+          *
+          * والهامشُ `7%` من الجانبين مع عرضِ `86%`: به تستقرّ الشريحةُ في
+          * منتصف الشاشة تمامًا عند الالتقاط، وتبقى للأولى والأخيرة مساحةٌ
+          * تتوسّطان فيها.
+          */
+        className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-[7%] scroll-px-[7%]"
       >
+        {/*
+          * **الحاضرةُ وحدها بكامل حجمها.**
+          *
+          * وشريطٌ تنزلق فيه بطاقاتٌ متساويةٌ يُقرأ قائمةً مسطّحة. وانكماشُ
+          * ما لم يحضر وبهتانُه يصنع عمقًا: تُحسّ البطاقةُ قادمةً من خلف
+          * أختها، وهو ما يفرّق شريحةً حيّةً من صفٍّ يُمرَّر.
+          *
+          * وبـ`transform` و`opacity` وحدهما: كلتاهما تُرسمان في المُركِّب
+          * بلا إعادة تخطيط، فلا تهتزّ الصفحةُ مع كلّ تمريرة.
+          */}
         {banners.map((banner, index) => (
-          <li key={banner.id} className="w-full shrink-0 snap-center px-4 sm:px-6">
+          <li
+            key={banner.id}
+            className={cn(
+              'w-[86%] shrink-0 snap-center transition-[scale,opacity] duration-500 ease-out',
+              index === active ? 'scale-100 opacity-100' : 'scale-[0.93] opacity-55',
+            )}
+          >
             <BannerCard banner={banner} priority={index === 0} />
           </li>
         ))}
       </ul>
 
       {banners.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5" aria-hidden>
+        <div
+          className="flex items-center justify-center gap-1.5"
+          aria-hidden
+          style={{ '--banner-rotate': `${ROTATE_MS}ms` } as CSSProperties}
+        >
           {banners.map((banner, index) => (
             <button
               key={banner.id}
@@ -106,13 +147,32 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
               aria-label={`الإعلان ${index + 1}`}
               onClick={() => {
                 touched.current = true
+                setHeld(true)
                 scrollTo(index)
               }}
               className={cn(
-                'h-1.5 rounded-full transition-all duration-300',
-                index === active ? 'w-5 bg-gold-500' : 'w-1.5 bg-ink-600',
+                'h-1.5 overflow-hidden rounded-full transition-all duration-300',
+                index === active ? 'w-7 bg-ink-600' : 'w-1.5 bg-ink-600',
               )}
-            />
+            >
+              {/*
+                * **النقطةُ الحاضرة تمتلئ بمقدار ما بقي.**
+                *
+                * فشريحةٌ تتبدّل كلّ ستّ ثوانٍ بلا إشارةٍ إلى موعدها تبدّلُ
+                * نفسَها فجأةً تحت العين. والامتلاءُ يقول متى — وهو ما تفعله
+                * القصصُ في التطبيقات.
+                *
+                * ويقف مع التبديل: من لمس الشريحة ملكها، فلا عدٌّ يُلاحقه.
+                */}
+              <span
+                key={`${banner.id}-${active}-${String(paused)}`}
+                className={cn(
+                  'block h-full rounded-full bg-gold-500',
+                  index === active && !paused ? 'banner-tick' : 'w-full',
+                  index === active ? '' : 'hidden',
+                )}
+              />
+            </button>
           ))}
         </div>
       )}
@@ -145,8 +205,9 @@ function BannerCard({ banner, priority }: { banner: BannerView; priority: boolea
     />
   )
 
+  /* `frame-sheen` شعاعٌ يطوف بالحافّة — تعريفُه وعلّتُه في `globals.css` */
   const frame =
-    'relative block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
+    'frame-sheen block overflow-hidden rounded-2xl border border-ink-600/70 bg-ink-800 aspect-[2/1]'
 
   if (!banner.linkUrl) {
     return <div className={frame}>{image}</div>

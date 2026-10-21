@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Loader2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 
 /** تحصيل عمولة مستحقّة بعد أن صار في محفظة المستخدم ما يكفيها. */
 export function SettleEntryButton({ entryId }: { entryId: string }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
 
   async function settle() {
@@ -21,7 +21,7 @@ export function SettleEntryButton({ entryId }: { entryId: string }) {
         return
       }
       toast.success('حُصّلت العمولة')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { BellOff, BellRing, Loader2, Save, ShieldAlert, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ export function MobileSettingsForm({
   /** iOS عبر APNs مباشرةً — قناةٌ مستقلّة لا تمرّ بـFCM */
   applePushReady: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [form, setForm] = useState<Draft>({
     pushTypes: settings.pushTypes,
     minVersion: settings.minVersion,
@@ -80,7 +80,7 @@ export function MobileSettingsForm({
         return
       }
       toast.success('حُفظت إعدادات التطبيق')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — أعد المحاولة')
     } finally {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Building2, Check, Copy, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -55,7 +55,7 @@ function PendingCard({
   payment: Payment
   options: PublicPaymentOptions
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const awaiting = payment.status === 'awaiting_transfer'
@@ -70,7 +70,7 @@ function PendingCard({
         return
       }
       toast.success(success)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

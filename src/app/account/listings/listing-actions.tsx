@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import { Loader2, Pencil, RotateCcw, Send, ShieldAlert, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ export function ListingActions({
   status: ListingStatus
   canEdit: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState<string | null>(null)
 
   const act = async (action: 'publish' | 'cancel' | 'relist', successMessage: string) => {
@@ -44,7 +44,7 @@ export function ListingActions({
         return
       }
       toast.success(successMessage)
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {
@@ -62,7 +62,7 @@ export function ListingActions({
         return
       }
       toast.success('تم حذف اللوحة')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(null)
     }

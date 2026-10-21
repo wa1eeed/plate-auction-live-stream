@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { MinusCircle, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -43,7 +43,7 @@ export function WalletActions({ userId }: { userId: string }) {
 }
 
 function WalletDialog({ userId, kind }: { userId: string; kind: Kind }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
@@ -73,7 +73,7 @@ function WalletDialog({ userId, kind }: { userId: string; kind: Kind }) {
       setOpen(false)
       setAmount('')
       setNote('')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

@@ -92,6 +92,27 @@ export function PlateCarousel({
     sky: 'text-sky-500 bg-sky-500/12 border-sky-500/40',
   }[accent]
 
+  /*
+   * **خطٌّ يبدأ بلون القسم ويخفت — فتُفصل الأقسامُ بلا حواجز.**
+   *
+   * وثلاثةُ كاروسيلاتٍ متتابعةٍ بالمسافة وحدها تُقرأ كتلةً واحدةً تطول،
+   * فلا يُعرف أين انتهى «مزادات جارية» وأين بدأ «بيع مباشر» — وهو ما قاله
+   * صاحبُ المنصّة: «فوق بعض بدون تمييز».
+   *
+   * وصندوقٌ حول كلّ قسمٍ كان أثقل: البطاقاتُ صناديقُ أصلًا، فصندوقٌ يضمّها
+   * يصير صندوقًا في صندوق. والخطُّ يكفي — ولونُه لونُ القسم فيربط العنوانَ
+   * بما تحته، ويخفت إلى اللاشيء فلا يصير حدًّا يقطع.
+   *
+   * **وتُكتب الأصناف حرفًا لا تُركَّب**: ماسحُ Tailwind يقرأ نصًّا ولا
+   * ينفّذ، فـ`from-${accent}` لا يُولَّد — عطبٌ صامتٌ بلا تحذير.
+   */
+  const RULE = {
+    gold: 'bg-[linear-gradient(to_left,var(--color-gold-500)_0_2.75rem,color-mix(in_oklab,var(--color-ink-600)_80%,transparent)_7rem,transparent_100%)]',
+    success:
+      'bg-[linear-gradient(to_left,var(--color-success)_0_2.75rem,color-mix(in_oklab,var(--color-ink-600)_80%,transparent)_7rem,transparent_100%)]',
+    sky: 'bg-[linear-gradient(to_left,var(--color-sky-500)_0_2.75rem,color-mix(in_oklab,var(--color-ink-600)_80%,transparent)_7rem,transparent_100%)]',
+  }[accent]
+
   return (
     <section aria-labelledby={`carousel-${accent}`} className="py-2">
       {/*
@@ -101,7 +122,7 @@ export function PlateCarousel({
         * أربعةً وتسعين بكسلًا تحت العنوان، ورأسُ القسم مئةً وستّةً وعشرين —
         * أي ثلثَ الشاشة قبل أوّل بطاقة. فصارا متقابلين، والوصفُ تحتهما.
         */}
-      <header className="mb-3 flex items-start justify-between gap-3">
+      <header className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h2
             id={`carousel-${accent}`}
@@ -122,7 +143,6 @@ export function PlateCarousel({
               </span>
             )}
           </h2>
-          <p className="mt-1 text-[0.8rem] leading-relaxed text-muted sm:text-sm">{description}</p>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
@@ -143,6 +163,27 @@ export function PlateCarousel({
           </Button>
         </div>
       </header>
+
+      {/*
+        * **الوصفُ تحت الصفّ كلِّه، سطرًا واحدًا.**
+        *
+        * وكان داخل عمود العنوان، فيُقاس عرضُه بما بقي بعد «عرض الكل»
+        * والأسهم — فينكسر سطرين على الجوّال، ويزيد رأسُ القسم بسطرٍ قبل
+        * أوّل بطاقة. وهنا يأخذ العرض كلَّه، و`truncate` تحفظه سطرًا:
+        * وصفٌ يُقرأ بلمحة، وما زاد تقوله البطاقاتُ نفسُها.
+        */}
+      <p className="mt-1 truncate text-[0.8rem] leading-relaxed text-muted sm:text-sm">
+        {description}
+      </p>
+
+      {/*
+        * قطعةٌ صلبةٌ بلون القسم ثمّ خفوتٌ إلى اللاشيء — لا خطٌّ متساوٍ.
+        * فالمتساوي حدٌّ يقطع، وهذا بدايةٌ تُشير إلى ما تحتها.
+        *
+        * **وخارج الترويسة**: هي `flex` بصفٍّ، فابنٌ ثالثٌ فيها يُعصر إلى
+        * عرضٍ لا يُرى. جُرّب فاختفى — والخلفيّةُ محسوبةٌ صحيحةً في الحساب.
+        */}
+      <span aria-hidden className={cn('mt-2.5 mb-3.5 block h-[2px] rounded-full', RULE)} />
 
       {cards.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-ink-600 bg-ink-800/40 p-10 text-center text-sm text-muted">

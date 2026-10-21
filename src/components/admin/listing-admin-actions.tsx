@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Ban, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -33,7 +33,7 @@ export function ListingAdminActions({
   /** موقوف الآن؟ فيُعرض رفع الإيقاف بدل الإيقاف */
   suspended?: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -57,7 +57,7 @@ export function ListingAdminActions({
       toast.success(suspended ? 'رُفع الإيقاف — عاد الإعلان مسودّة' : 'أُوقف الإعلان')
       setOpen(false)
       setReason('')
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

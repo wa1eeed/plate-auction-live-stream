@@ -439,6 +439,91 @@ html[data-transparent='true'] {
    و`conic-gradient` يدور بـ`rotate` على عنصرٍ زائف: الحلقةُ كلُّها تدور
    والغلافُ في وسطها ثابت، فلا تدور الصورةُ معها. */
 
+/**
+ * شريطُ مهلة النقطة — يمتلئ بمقدار ما بقي قبل التبديل.
+ *
+ * والمدّةُ تأتي من الكود (`--banner-rotate`) لا تُكتب هنا مرّتين: مدّةٌ في
+ * JS وأخرى في CSS تفترقان في أوّل تعديل، فيمتلئ الشريطُ قبل التبديل أو بعده.
+ */
+@keyframes banner-tick {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@utility banner-tick {
+  animation: banner-tick var(--banner-rotate, 6s) linear forwards;
+}
+
+/* ==========================================================================
+   لمعانُ إطار البنر — شعاعٌ يدور على الحافّة
+   ========================================================================== */
+
+/**
+ * **شعاعٌ يمرّ على الإطار، لا وميضٌ يغشى الصورة.**
+ *
+ * والبنرُ إعلانٌ مدفوع، وما حوله من الصفحة ساكن — فيحتاج ما يجذب العين
+ * إليه بلا أن يحجب ما فيه. والحافّةُ موضعُ ذلك: شعاعٌ ذهبيٌّ يطوف بها
+ * فيُحسّ معدنًا يلمع لا لافتةً تومض.
+ *
+ * **وطريقتُه قناعٌ لا حدّ**: تدرّجٌ مخروطيٌّ يدور خلف البطاقة، ويُقصّ إلى
+ * حلقةٍ رفيعةٍ بـ`mask` — فلا يُرى منه إلّا ما وقع على الإطار. والبديلُ
+ * `border-image` لا يقبل الاستدارة، و`@property --angle` لا تعمل في كلّ
+ * متصفّح — والدورانُ بـ`rotate` يعمل في كلّها.
+ *
+ * ومربّعُه `150%` من أطول ضلع: دائرةُ التدرّج يجب أن تغطّي قُطر البطاقة،
+ * وإلّا انكشفت الزوايا عند الدوران فظهر الشعاعُ يقفز.
+ */
+@keyframes frame-sheen-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@utility frame-sheen {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 62%,
+      color-mix(in oklab, var(--color-gold-500) 70%, transparent) 76%,
+      var(--color-gold-400) 82%,
+      color-mix(in oklab, var(--color-gold-500) 70%, transparent) 88%,
+      transparent 96% 100%
+    );
+    /* الحلقةُ وحدها: الخارجُ ناقصًا الداخل */
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    animation: frame-sheen-spin 6s linear infinite;
+    pointer-events: none;
+  }
+}
+
+/**
+ * ومن طلب تقليل الحركة يُترك له الإطارُ ساكنًا لا أن يُحرم منه.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .frame-sheen::before {
+    animation: none;
+  }
+}
+
 @keyframes story-halo {
   to {
     rotate: 1turn;

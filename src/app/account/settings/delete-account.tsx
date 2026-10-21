@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { Loader2, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ type Blocker = { kind: string; detail: string }
  */
 export function DeleteAccount() {
   const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [blockers, setBlockers] = useState<Blocker[] | null>(null)
   const [checking, setChecking] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -60,7 +62,7 @@ export function DeleteAccount() {
       }
       toast.success('عُطّل حسابك — نأسف لمغادرتك')
       router.push('/')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

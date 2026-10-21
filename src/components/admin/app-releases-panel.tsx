@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
 import {
   Apple,
@@ -166,7 +166,7 @@ function ChannelRow({
   /** نسخةُ الاختبار المرشَّحةُ للإثبات — أو `null` فلا زرّ */
   promote: ReleaseView | null
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
   const channelMeta = CHANNEL_META[channel]
 
@@ -184,7 +184,7 @@ function ChannelRow({
         return
       }
       toast.success(success)
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     } finally {

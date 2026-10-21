@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { AlertTriangle, Loader2, RefreshCcw, ShieldX } from 'lucide-react'
 import { toast } from 'sonner'
@@ -45,7 +45,7 @@ type Context = {
  * في حالة نصفية إن نُسيت خطوة.
  */
 export function ReawardDialog({ orderId }: { orderId: string }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [context, setContext] = useState<Context | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -91,7 +91,7 @@ export function ReawardDialog({ orderId }: { orderId: string }) {
           : 'أُعيد الإرساء — بلا مصادرة، وعاد العربون إلى صاحبه',
       )
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { HandCoins, Loader2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -85,7 +85,7 @@ function Decision({
   title: string
   body: string
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -107,7 +107,7 @@ function Decision({
       }
       toast.success(releasing ? 'وصل المبلغ إلى البائع' : 'عاد المبلغ إلى المشتري')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

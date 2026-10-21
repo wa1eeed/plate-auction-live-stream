@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Clock, Eye, EyeOff, Image as ImageIcon, Pencil, Plus, Trash2, Video } from 'lucide-react'
 import { toast } from 'sonner'
@@ -289,7 +289,7 @@ const EMPTY_BANNER: BannerDraft = {
 }
 
 export function BannerManager({ items }: { items: (Banner & { imageUrl: string })[] }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [editing, setEditing] = useState<{ id: string | null; draft: BannerDraft } | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -322,7 +322,7 @@ export function BannerManager({ items }: { items: (Banner & { imageUrl: string }
       if (!done) return
       toast.success(id ? 'حُدّث البنر' : 'أُضيف البنر')
       setEditing(null)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }
@@ -393,7 +393,7 @@ export function BannerManager({ items }: { items: (Banner & { imageUrl: string }
                     onConfirm={async () => {
                       if (await submit(`/api/admin/banners/${item.id}`, 'DELETE')) {
                         toast.success('حُذف البنر')
-                        router.refresh()
+                        await refresh()
                       }
                     }}
                   />
@@ -663,7 +663,7 @@ export function StoryManager({
     slides: (StorySlide & { mediaUrl: string; posterUrl: string | null })[]
   })[]
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [editing, setEditing] = useState<{ id: string | null; draft: StoryDraft } | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -717,7 +717,7 @@ export function StoryManager({
       if (!done) return
       toast.success(id ? 'حُدّث الستوري' : 'أُضيف الستوري')
       setEditing(null)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }
@@ -806,7 +806,7 @@ export function StoryManager({
                     onConfirm={async () => {
                       if (await submit(`/api/admin/stories/${item.id}`, 'DELETE')) {
                         toast.success('حُذف الستوري')
-                        router.refresh()
+                        await refresh()
                       }
                     }}
                   />

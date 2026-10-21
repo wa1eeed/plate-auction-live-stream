@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useState } from 'react'
 import { Landmark, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -71,7 +71,7 @@ function PayDialog({
   iban: string | null
   payable: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [paymentReference, setPaymentReference] = useState('')
   const [busy, setBusy] = useState(false)
@@ -100,7 +100,7 @@ function PayDialog({
       }
       toast.success('أُقفل أمر الصرف وخُصم من محفظة المستفيد')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }
@@ -163,7 +163,7 @@ function CancelDialog({
   reference: string
   beneficiaryName: string
 }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -184,7 +184,7 @@ function CancelDialog({
       }
       toast.success('أُلغي أمر الصرف — ورصيد المستفيد باقٍ في محفظته')
       setOpen(false)
-      router.refresh()
+      await refresh()
     } finally {
       setBusy(false)
     }

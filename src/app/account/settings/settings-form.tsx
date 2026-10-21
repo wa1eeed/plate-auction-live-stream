@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Loader2, Save } from 'lucide-react'
@@ -23,7 +23,7 @@ type FormValues = {
 }
 
 export function SettingsForm({ user }: { user: User }) {
-  const router = useRouter()
+  const { refresh } = useRouteRefresh()
   const form = useForm<FormValues>({
     defaultValues: {
       displayName: user.displayName,
@@ -55,7 +55,7 @@ export function SettingsForm({ user }: { user: User }) {
         return
       }
       toast.success('حُفظت بياناتك')
-      router.refresh()
+      await refresh()
     } catch {
       toast.error('تعذّر الاتصال — تحقّق من الشبكة وأعد المحاولة')
     }

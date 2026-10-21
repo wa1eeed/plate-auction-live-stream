@@ -84,7 +84,7 @@ test.describe('سوق تداول اللوحات', () => {
     // الدخول على إعلان: التداول يطلب حسابًا ولا يظهر زر تنفيذ مباشر
     await cards.first().getByRole('link').first().click()
     await page.waitForURL(/\/market\/lst_[a-z0-9]+$/)
-    await expect(page.getByRole('button', { name: /^زايد بـ|^اشترِ الآن بـ/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^زايد بـ|^اشترِ الآن/ })).toHaveCount(0)
     await expect(page.getByRole('link', { name: /سجّل و/ })).toBeVisible()
 
     // لا يتسرّب السعر الاحتياطي إلى صفحة عامة
@@ -108,6 +108,11 @@ test.describe('سوق تداول اللوحات', () => {
     await expect(page.getByText('أنت أعلى مزايد').first()).toBeVisible({ timeout: 15_000 })
   })
 
+  /*
+   * ومحدِّدُ الزرّ `/^اشترِ الآن/` لا `/^اشترِ الآن بـ/`: السعرُ خرج من نصّ
+   * زرّ الحاسوب — تحمله بطاقةُ «سعر البيع» فوقه وشريطُ الجوال في زرّه —
+   * فبقي في أحدهما وغاب عن الآخر. والبادئةُ تكفي للتمييز في الحالين.
+   */
   test('الشراء المباشر ينشئ صفقة تظهر في مشترياتي ومبيعات البائع', async ({ browser }) => {
     const buyerContext = await browser.newContext()
     const buyer = await buyerContext.newPage()
@@ -116,7 +121,7 @@ test.describe('سوق تداول اللوحات', () => {
     const listingId = await findListing(buyer, 'fixed', USERS.majed.name)
     await buyer.goto(`/market/${listingId}`)
 
-    const buyButton = buyer.getByRole('button', { name: /^اشترِ الآن بـ/ })
+    const buyButton = buyer.getByRole('button', { name: /^اشترِ الآن/ })
     await expect(buyButton).toBeVisible({ timeout: 15_000 })
     await buyButton.click()
 
@@ -126,7 +131,7 @@ test.describe('سوق تداول اللوحات', () => {
 
     // الإعلان لم يعد متاحًا للشراء
     await buyer.goto(`/market/${listingId}`)
-    await expect(buyer.getByRole('button', { name: /^اشترِ الآن بـ/ })).toHaveCount(0)
+    await expect(buyer.getByRole('button', { name: /^اشترِ الآن/ })).toHaveCount(0)
 
     await buyerContext.close()
   })
@@ -155,7 +160,7 @@ test.describe('سوق تداول اللوحات', () => {
     await watcher.goto(`/market/${listingId}`)
     await buyer.goto(`/market/${listingId}`)
 
-    const buyButton = buyer.getByRole('button', { name: /^اشترِ الآن بـ/ })
+    const buyButton = buyer.getByRole('button', { name: /^اشترِ الآن/ })
     await expect(buyButton).toBeVisible({ timeout: 15_000 })
     await buyButton.click()
     await buyer.waitForURL(/\/checkout\/ord_/, { timeout: 20_000 })
