@@ -52,19 +52,58 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
     if (!node) return
 
     let frame = 0
+
+    /**
+     * **كلُّ شريحةٍ تعرف بعدَها عن مركز الشاشة — فتتحرّك بقدره.**
+     *
+     * وشريطٌ تنزلق فيه بطاقاتٌ متساويةٌ يُحسّ صفًّا يُجرّ. وما يجعله يُحسّ
+     * عمقًا أن تتحرّك الصورةُ داخل إطارها **أبطأ من الإطار** — فيُقرأ
+     * الإطارُ نافذةً وما خلفها بعيد. وهو ما تفعله الشرائحُ في التطبيقات
+     * المعروفة، ويُسمّى اختلافَ المنظر.
+     *
+     * والقياسُ من `getBoundingClientRect` بالبكسل الفيزيائيّ: يصحّ في
+     * الاتّجاهين معًا بلا شرطٍ على RTL، ويتبع الإصبعَ لحظةً بلحظة لأنّه
+     * يُحسب في كلّ إطارِ تمرير.
+     *
+     * و`--p` موقَّعة (قبل المركز أو بعده) تُحرّك الصورة، و`--near` قربٌ من
+     * صفرٍ إلى واحد يُكبّر البطاقة ويُجلّيها. وكلتاهما تُقرآن في CSS
+     * بخاصّيّتي `translate` و`scale` وحدهما — فالرسمُ في المُركِّب بلا
+     * إعادة تخطيط.
+     */
+    const paint = () => {
+      const box = node.getBoundingClientRect()
+      const middle = box.left + box.width / 2
+      for (const child of node.children) {
+        const slide = child as HTMLElement
+        const rect = slide.getBoundingClientRect()
+        const offset = rect.left + rect.width / 2 - middle
+        /* نسبةُ البعد إلى عرض الشريحة: واحدٌ يعني شريحةً كاملةً جانبًا */
+        const p = Math.max(-1.5, Math.min(1.5, offset / (rect.width || 1)))
+        slide.style.setProperty('--p', p.toFixed(4))
+        slide.style.setProperty('--near', Math.max(0, 1 - Math.abs(p)).toFixed(4))
+      }
+    }
+
     const onScroll = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
         const width = node.clientWidth || 1
         setActive(Math.round(Math.abs(node.scrollLeft) / width))
+        paint()
       })
     }
+
+    paint()
     node.addEventListener('scroll', onScroll, { passive: true })
+    /* والعرضُ يتبدّل بالدوران، فتُعاد القياسات */
+    const observer = new ResizeObserver(paint)
+    observer.observe(node)
     return () => {
       cancelAnimationFrame(frame)
+      observer.disconnect()
       node.removeEventListener('scroll', onScroll)
     }
-  }, [])
+  }, [banners.length])
 
   useEffect(() => {
     if (banners.length < 2 || reduceMotion) return
@@ -111,23 +150,11 @@ export function BannerSlider({ banners }: { banners: BannerView[] }) {
         className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-[7%] scroll-px-[7%]"
       >
         {/*
-          * **الحاضرةُ وحدها بكامل حجمها.**
-          *
-          * وشريطٌ تنزلق فيه بطاقاتٌ متساويةٌ يُقرأ قائمةً مسطّحة. وانكماشُ
-          * ما لم يحضر وبهتانُه يصنع عمقًا: تُحسّ البطاقةُ قادمةً من خلف
-          * أختها، وهو ما يفرّق شريحةً حيّةً من صفٍّ يُمرَّر.
-          *
-          * وبـ`transform` و`opacity` وحدهما: كلتاهما تُرسمان في المُركِّب
-          * بلا إعادة تخطيط، فلا تهتزّ الصفحةُ مع كلّ تمريرة.
+          * الحجمُ والجلاءُ والمنظرُ كلُّها تتبع البعدَ عن المركز لحظةً
+          * بلحظة — انظر `paint` أعلاه و`banner-slide` في `globals.css`.
           */}
         {banners.map((banner, index) => (
-          <li
-            key={banner.id}
-            className={cn(
-              'w-[86%] shrink-0 snap-center transition-[scale,opacity] duration-500 ease-out',
-              index === active ? 'scale-100 opacity-100' : 'scale-[0.93] opacity-55',
-            )}
-          >
+          <li key={banner.id} className="banner-slide w-[86%] shrink-0 snap-center">
             <BannerCard banner={banner} priority={index === 0} />
           </li>
         ))}
@@ -202,6 +229,7 @@ function BannerCard({ banner, priority }: { banner: BannerView; priority: boolea
        * حتى يُحسب التخطيط — فيبدأ طلبُه متأخّرًا بلا مكسب.
        */
       priority={priority}
+      className="banner-media"
     />
   )
 
