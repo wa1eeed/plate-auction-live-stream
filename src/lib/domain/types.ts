@@ -166,6 +166,38 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
  */
 export const RESERVED_LISTING_LABEL = 'محجوزة بانتظار الدفع'
 
+/**
+ * **نتيجةُ الجولة في كلمتين — لا اسمُ الحالة الخام.**
+ *
+ * و`LISTING_STATUS_LABELS` تُسمّي ما في قاعدة البيانات: `sold` فيها «مُباع».
+ * فيُقال «مُباع» على مزادٍ خبرُه «تمت الترسية»، و«لم يبلغ السعر الاحتياطي»
+ * جملةٌ تفيض عن شارةٍ في بطاقة.
+ *
+ * وهذه تُقرأ من **البطاقة** في السوق، ومن شارة صفحة اللوحة — فيُقال اللفظُ
+ * نفسُه في الموضعين. والمزادُ يُفرَّق عمّا سواه: نهايتُه حدثٌ له اسم،
+ * والبيعُ المباشر صفقةٌ تمّت.
+ */
+export function listingOutcomeLabel(
+  status: ListingStatus,
+  saleType: SaleType,
+): string | null {
+  const auction = saleType === 'auction'
+  switch (status) {
+    case 'sold':
+      return auction ? 'تمت الترسية' : 'بِيعت'
+    case 'reserve_not_met':
+      return 'لم يحقق سعر البيع'
+    case 'no_bids':
+      return 'لم تصل أيّ مزايدة'
+    case 'cancelled':
+      return 'أُلغي العرض'
+    case 'suspended':
+      return 'موقوف من الإدارة'
+    default:
+      return null
+  }
+}
+
 export const CLOSED_LISTING_STATUSES: readonly ListingStatus[] = [
   'sold',
   'reserve_not_met',

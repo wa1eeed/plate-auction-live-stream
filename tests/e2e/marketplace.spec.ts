@@ -179,7 +179,15 @@ test.describe('سوق تداول اللوحات', () => {
      * فيتناقض رأسُ الصفحة مع خبرها: شارةٌ تقول بِيعت وخبرٌ يقول بانتظار
      * الدفع. فيُقاس الاثنان: حضورُ الاسم الصحيح **وغيابُ** الخام.
      */
-    await expect(buyer.getByText(RESERVED_LISTING_LABEL).first()).toBeVisible({ timeout: 15_000 })
+    /*
+     * **وخاتمةُ الصفحة طبقتان**: ما جرى بخطٍّ عريض، ونتيجتُه في شارة.
+     * فـ«محجوزة» وحدها لا تقول لماذا، و«بانتظار سداد المشتري» وحدها لا
+     * تقول عمّن. ويُقاسان معًا، ومعهما **غيابُ** ما كان يُقال قبلهما.
+     */
+    await expect(buyer.getByText('محجوزة', { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(buyer.getByText('بانتظار سداد المشتري').first()).toBeVisible()
     await expect(buyer.getByText('بِيعت اللوحة')).toHaveCount(0)
     await expect(buyer.getByText('مُباع', { exact: true })).toHaveCount(0)
 

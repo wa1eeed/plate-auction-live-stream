@@ -436,6 +436,43 @@ describe('صفحات الحساب', () => {
     ).toBe(true)
   })
 
+  /**
+   * **والحجزُ للبيع المباشر واستقبال العروض — لا للمزاد.**
+   *
+   * فاللوحتان تُشترى إحداهما بضغطة ويُقبل سومُ الأخرى ثمّ تبقيان في مهلة
+   * سداد، وبقاؤهما معروضتين «محجوزتين» يقول للمشترين الآخرين إنّهما قد
+   * تعودان. **والمزادُ ليس كذلك**: نهايتُه معلنةٌ بوقتها، وخبرُه «تمت
+   * الترسية» يُقال مرّةً — ولوحةٌ انتهى مزادُها تبقى في السوق «محجوزةً»
+   * تُغري بانتظارِ جولةٍ لا موعد لها وتزاحم المزاداتِ الجارية.
+   *
+   * ويُقاس الوجهان في فحصٍ واحد: المزادُ لا يُوسَم، والبيعُ المباشر يُوسَم
+   * — فحذفُ الشرط يُسقط الأوّل، وحذفُ الوسم كلِّه يُسقط الثاني.
+   */
+  it('المزادُ المرسى لا يُوسَم محجوزًا، والبيعُ المباشر يُوسَم', async () => {
+    /*
+     * **ويُختار مزادٌ عليه صفقةٌ تنتظر السداد فعلًا.**
+     *
+     * وأوّلُ صياغةٍ أخذت أيَّ مزادٍ `sold`، ومزادُ البذور المرسى صفقتُه
+     * مكتملة — فـ`reserved` لا تحمله أصلًا، ويمرّ الفحصُ بشرطٍ أو بلا شرط.
+     * جُرّب بحذف `saleType !== 'auction'` فبقي أخضر: **فحصٌ فارغ**.
+     */
+    const pending = db.orders.find(
+      (row) => row.source === 'auction' && row.status === 'awaiting_settlement',
+    )
+    expect(pending, 'لا مزادَ ينتظر سدادًا في البذور').toBeTruthy()
+    const auction = db.listings.find((l) => l.id === pending!.listingId)!
+    expect(auction.status, 'لوحةُ المزاد المنتظِر ليست مرساة').toBe('sold')
+
+    const auctionCard = (await getMarketListings()).find((card) => card.id === auction.id)!
+    expect(auctionCard.settlementPending, 'المزادُ المرسى وُسم محجوزًا').toBe(false)
+
+    const fixed = findBy((l) => l.saleType === 'fixed' && l.status === 'active')
+    const buyer = db.users.find((u) => u.id !== fixed.sellerId)!
+    await buyNow({ listingId: fixed.id, buyerId: buyer.id, clientRequestId: 'ord-hold' })
+    const fixedCard = (await getMarketListings()).find((card) => card.id === fixed.id)!
+    expect(fixedCard.settlementPending, 'البيعُ المباشر لم يُوسَم محجوزًا').toBe(true)
+  })
+
   /** ولا يعدل بعد السداد: المالُ صار أمانةً، ومخرجُه الاعتراضُ لا الإلغاء. */
   it('العدول ممنوعٌ بعد أن يصل المال', async () => {
     const fixed = findBy((l) => l.saleType === 'fixed' && l.status === 'active')

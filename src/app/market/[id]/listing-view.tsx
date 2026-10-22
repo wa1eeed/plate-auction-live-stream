@@ -24,7 +24,7 @@ import { OverdueTag } from '@/components/market/overdue-tag'
 import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
-  RESERVED_LISTING_LABEL,
+  listingOutcomeLabel,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
   isClosedListing,
@@ -96,18 +96,18 @@ export function ListingView({
         </Link>
         {/* البثّ والمشاهدون في المسرح نفسه — حيث يُقرآن مع ما يصفانه */}
         {/*
-          * **وشارةُ الرأس تقول «محجوزة» لا «مُباع».**
+          * **وشارةُ الرأس تقول نتيجةَ الجولة لا اسمَ الحالة.**
           *
-          * و`LISTING_STATUS_LABELS` تُسمّي الحالةَ الخام، و`sold` فيها
-          * «مُباع» — فكانت الشارةُ تُعلن البيعَ في أعلى صفحةٍ يقول خبرُها
-          * تحتها إنّها بانتظار الدفع: خبران متناقضان في شاشةٍ واحدة. وأوّلُ
-          * من يقرؤها المشتري نفسُه وهو في طريقه إلى السداد.
+          * و`LISTING_STATUS_LABELS` أسماءٌ خام: `sold` فيها «مُباع» — فكانت
+          * تُعلن البيعَ فوق صفحةٍ يقول خبرُها تحتها «بانتظار الدفع»، وتقول
+          * «مُباع» على مزادٍ خبرُه «تمت الترسية». **خبران في شاشة.**
+          *
+          * فصارت تقرأ من `closingView` نفسِه الذي يبني الخاتمة تحتها —
+          * مصدرٌ واحدٌ لا ينحرف أحدُ طرفيه عن الآخر.
           */}
-        {!isLiveAuction && (closed || detail.settlementPending) && (
-          <Badge variant={detail.settlementPending ? 'gold' : 'muted'}>
-            {detail.settlementPending
-              ? RESERVED_LISTING_LABEL
-              : LISTING_STATUS_LABELS[detail.status]}
+        {!isLiveAuction && closingView(detail) && (
+          <Badge variant={CLOSING_BADGE[closingView(detail)!.tone]}>
+            {closingView(detail)!.outcome}
           </Badge>
         )}
       </div>
@@ -174,12 +174,14 @@ export function ListingView({
             <Badge variant="muted">{PLATE_TYPE_LABELS[detail.plate.plateType]}</Badge>
             {/* الوسم نفسه الذي في كعب البطاقة — لفظًا واحدًا لمعنًى واحد */}
             {detail.isMine && <OwnerTag />}
-            {closed && !detail.settlementPending && (
-              <Badge variant="muted">{LISTING_STATUS_LABELS[detail.status]}</Badge>
-            )}
-            {detail.settlementPending && (
-              <Badge variant="gold">{RESERVED_LISTING_LABEL}</Badge>
-            )}
+            {/*
+              * **ولا نتيجةَ هنا — قيلت مرّتين فوقه.**
+              *
+              * فشارةُ الرأس تُقرأ بالمسح من أعلى، والخاتمةُ تحتها تُقرأ
+              * بالقصد. وثالثةٌ في صفٍّ يصف **اللوحة** — طريقتَها ونوعَها
+              * ورقمَها — تُقحم خبرًا بين أوصافٍ، فيصير اللفظُ نفسُه ثلاثًا
+              * في شاشةٍ واحدة. وتكرارٌ بهذا القدر يُفقد اللفظَ وزنَه.
+              */}
             <ReferenceChip reference={detail.reference} />
 
             <button
@@ -325,46 +327,167 @@ export function ListingView({
  * بيعٌ مباشر بسعره، أو استقبال عروض بحدّه الأدنى، أو جولةٌ انتهت بنتيجتها.
  * ولا عدّاد ولا نبض: ما لا يتحرّك لا يُعطى واجهة ما يتحرّك.
  */
-function ClosedSummary({ detail }: { detail: ListingDetail }) {
+/**
+ * **خاتمةُ اللوحة — عنوانٌ يُقرأ من بعيد، ونتيجةٌ تحته، ثمّ الرقم.**
+ *
+ * وثلاثُ طبقاتٍ ثابتةٍ مهما اختلف ما وقع:
+ *
+ * 1. **ما جرى** بخطٍّ عريض: «انتهى المزاد» · «محجوزة» · «بِيعت اللوحة».
+ * 2. **نتيجتُه** في شارةٍ ملوّنة: «تمت الترسية» · «لم يحقق سعر البيع» ·
+ *    «بانتظار سداد المشتري». فالأوّلُ يقول إنّ البابَ أُغلق، والثاني يقول
+ *    كيف أُغلق — وهما سؤالان يُسألان معًا ويُجابان في سطرين لا في جملةٍ
+ *    واحدةٍ تحمل الاثنين فتطول ولا تُقرأ.
+ * 3. **الرقمُ وتسميتُه**: «رست عند» غير «أعلى مزايدة» غير «السعر الافتتاحي»
+ *    — ورقمٌ بلا اسمٍ على لوحةٍ انتهت يُقرأ ثمنًا وقع، وقد لا يكون وقع.
+ *
+ * **والمزادُ لا يُحجز**: نهايتُه معلنةٌ بوقتها، وخبرُها يُقال مرّةً.
+ * و«محجوزة» للبيع المباشر واستقبال العروض وحدهما — انظر `awaitingSettlement`.
+ */
+type ClosingTone = 'success' | 'gold' | 'muted'
+
+function closingView(detail: ListingDetail): {
+  tone: ClosingTone
+  icon: typeof Award
+  headline: string
+  outcome: string
+  amountLabel: string
+  amount: number
+  note?: string
+} | null {
+  const auction = detail.saleType === 'auction'
+
   if (detail.status === 'sold') {
     /*
      * **«محجوزة» قبل السداد، و«بِيعت» بعده.**
      *
-     * وحالةُ `sold` تقع لحظةَ الطلب: تخرج اللوحةُ من السوق ويبقى السدادُ في
-     * مهلته. فكان يُقال «بِيعت» — ويقرؤها **المشتري نفسُه** وهو في طريقه
-     * إلى الدفع، فيظنّ أنّه دفع. وإن انقضت المهلةُ بلا سدادٍ عادت اللوحةُ
-     * إلى السوق — وهو ما لا يحتمله لفظُ «بِيعت».
-     *
-     * وما يَهمّ المشاهدَ في الحالين أنّها لم تعد تُشترى، وهذا مقولٌ في
-     * اللفظين. والفرقُ أنّ الأوّل لا يؤكّد مالًا لم يصل.
+     * وحالةُ `sold` تقع لحظةَ الطلب: يبقى السدادُ في مهلته. فكان يُقال
+     * «بِيعت» — ويقرؤها **المشتري نفسُه** وهو في طريقه إلى الدفع فيظنّ
+     * أنّه دفع. وإن انقضت المهلةُ بلا سدادٍ عادت اللوحة إلى السوق.
      */
-    const pending = detail.settlementPending
+    if (detail.settlementPending) {
+      return {
+        tone: 'gold',
+        icon: Clock3,
+        headline: 'محجوزة',
+        outcome: 'بانتظار سداد المشتري',
+        amountLabel: detail.saleType === 'offers' ? 'قُبل العرض عند' : 'سعر البيع',
+        amount: detail.soldAmount,
+        note: 'لم يصل المال بعد — وإن لم يُسدَّد في مهلته عادت اللوحةُ إلى السوق.',
+      }
+    }
+    return {
+      tone: 'success',
+      icon: Award,
+      headline: auction ? 'انتهى المزاد' : 'بِيعت اللوحة',
+      outcome: auction ? 'تمت الترسية' : 'تمّت الصفقة',
+      amountLabel: auction ? 'رست عند' : 'بِيعت بـ',
+      amount: detail.soldAmount,
+    }
+  }
+
+  /* انتهت الجولةُ دون بيع — والسببُ هو الخبر، لا انتهاؤها */
+  if (detail.status === 'reserve_not_met') {
+    return {
+      tone: 'muted',
+      icon: Gavel,
+      headline: 'انتهى المزاد',
+      outcome: 'لم يحقق سعر البيع',
+      amountLabel: 'أعلى مزايدة',
+      amount: detail.highestAmount ?? detail.startingPrice,
+      note: 'لم تبلغ المزايداتُ السعرَ الاحتياطيّ الذي حدّده البائع، فلم تُرسَ اللوحة.',
+    }
+  }
+
+  if (detail.status === 'no_bids') {
+    return {
+      tone: 'muted',
+      icon: Gavel,
+      headline: 'انتهى المزاد',
+      outcome: 'لم تصل أيّ مزايدة',
+      amountLabel: 'السعر الافتتاحي',
+      amount: detail.startingPrice,
+    }
+  }
+
+  if (detail.status === 'cancelled' || detail.status === 'suspended') {
+    return {
+      tone: 'muted',
+      icon: Gavel,
+      headline: detail.status === 'cancelled' ? 'أُلغي العرض' : 'أوقفته الإدارة',
+      outcome: listingOutcomeLabel(detail.status, detail.saleType) ?? LISTING_STATUS_LABELS[detail.status],
+      amountLabel: auction ? 'أعلى مزايدة' : 'السعر المعروض',
+      amount: auction ? (detail.highestAmount ?? detail.startingPrice) : detail.price,
+    }
+  }
+
+  return null
+}
+
+/** نغمةُ الشارة في الرأس — تتبع نغمةَ الخاتمة فلا يفترق وصفان لحالٍ واحدة */
+const CLOSING_BADGE: Record<ClosingTone, 'success' | 'gold' | 'muted'> = {
+  success: 'success',
+  gold: 'gold',
+  muted: 'muted',
+}
+
+const CLOSING_SKIN: Record<ClosingTone, { box: string; icon: string; chip: string }> = {
+  success: {
+    box: 'border-success/55 bg-success-soft',
+    icon: 'text-success',
+    chip: 'border-success/45 bg-success/12 text-success',
+  },
+  gold: {
+    box: 'border-gold-600/60 bg-gold-500/[0.07]',
+    icon: 'text-gold-500',
+    chip: 'border-gold-600/45 bg-gold-500/12 text-gold-400',
+  },
+  muted: {
+    box: 'border-ink-600 bg-ink-800',
+    icon: 'text-muted',
+    chip: 'border-ink-600 bg-ink-900/60 text-muted',
+  },
+}
+
+function ClosedSummary({ detail }: { detail: ListingDetail }) {
+  const view = closingView(detail)
+  if (view) {
+    const skin = CLOSING_SKIN[view.tone]
+    const Icon = view.icon
     return (
-      <div
-        className={cn(
-          'rounded-2xl border p-5 text-center',
-          pending ? 'border-gold-600/60 bg-gold-500/[0.07]' : 'border-success/60 bg-success-soft',
-        )}
-      >
-        {pending ? (
-          <Clock3 className="mx-auto mb-2 size-9 text-gold-500" />
-        ) : (
-          <Award className="mx-auto mb-2 size-9 text-success" />
-        )}
-        <p
-          className={cn(
-            'text-lg font-extrabold',
-            pending ? 'text-gold-500' : 'text-success',
-          )}
-        >
-          {pending ? RESERVED_LISTING_LABEL : 'بِيعت اللوحة'}
-        </p>
-        <p className="mt-1 text-3xl font-extrabold tabular-nums text-gold-500">
-          {formatAmount(detail.soldAmount)} <span className="text-base">ريال</span>
-        </p>
-        {pending && (
-          <p className="mt-2 text-xs leading-relaxed text-muted">
-            لم يصل المال بعد. وإن لم يُسدَّد في مهلته عادت اللوحةُ إلى السوق.
+      <div className={cn('overflow-hidden rounded-2xl border text-center', skin.box)}>
+        <div className="px-5 pt-5">
+          <Icon className={cn('mx-auto mb-2.5 size-9', skin.icon)} />
+          {/* ما جرى — أعرضُ خطٍّ في الصفحة، يُقرأ قبل أيّ رقم */}
+          <p className="text-xl font-extrabold leading-tight sm:text-2xl">{view.headline}</p>
+          {/* وكيف جرى — شارةٌ لا جملة: تُمسح بالعين ولا تُقرأ سطرًا */}
+          <p
+            className={cn(
+              'mx-auto mt-2 inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold',
+              skin.chip,
+            )}
+          >
+            {view.outcome}
+          </p>
+        </div>
+
+        {/*
+          * والرقمُ في قاعٍ مستقلّ — باسمه فوقه.
+          *
+          * فرقمٌ عارٍ على لوحةٍ انتهت يُقرأ ثمنًا وقع، و«أعلى مزايدة» على
+          * مزادٍ لم يبلغ سعرَه ليست ثمنًا. والفصلُ بخلفيّةٍ أغمق يجعل
+          * الخبرَ طبقةً والرقمَ طبقة.
+          */}
+        <div className="mt-4 border-t border-inherit bg-ink-950/15 px-5 py-3.5">
+          <p className="text-[11px] font-semibold text-muted">{view.amountLabel}</p>
+          <p className="mt-0.5 text-3xl font-extrabold leading-none tabular-nums text-gold-500">
+            {formatAmount(view.amount)}
+            <span className="ms-1.5 text-sm font-bold">ريال</span>
+          </p>
+        </div>
+
+        {view.note && (
+          <p className="border-t border-inherit px-5 py-3 text-[11px] leading-relaxed text-muted">
+            {view.note}
           </p>
         )}
       </div>

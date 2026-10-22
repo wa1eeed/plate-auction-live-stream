@@ -4,15 +4,10 @@ import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Check, Clock3, Loader2, LogIn, Receipt, ShieldCheck, ShoppingCart } from 'lucide-react'
+import { Check, Loader2, LogIn, Receipt, ShieldCheck, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatAmount } from '@/lib/domain/money'
-import {
-  LISTING_STATUS_LABELS,
-  OFFER_STATUS_LABELS,
-  isClosedListing,
-  type ListingDetail,
-} from '@/lib/domain/types'
+import { OFFER_STATUS_LABELS, isClosedListing, type ListingDetail } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
 import { muteNextSoldToast } from '@/lib/sold-announcement'
 import { AuctionBidBox } from './auction-bid-box'
@@ -95,20 +90,30 @@ export function TradePanel({
     )
   }
 
+  /*
+   * **لوحةٌ أُغلقت: لا لوحةَ تداولٍ تُعيد الخبر.**
+   *
+   * وكانت تُصيَّر صندوقًا عنوانُه «التداول» ونصُّه اسمُ الحالة الخام —
+   * «مُباع» — تحت خاتمةٍ تقول «محجوزة · بانتظار سداد المشتري» أو «انتهى
+   * المزاد · تمت الترسية». **فثلاثةُ أصواتٍ لحالٍ واحدة**: شارةُ الرأس،
+   * والخاتمة، وهذا. وأضعفُها أخشنُها لفظًا.
+   *
+   * فما بقي هنا ما **يُفعل** لا ما يُخبَر: من رست عليه يُساق إلى صفقته.
+   * ومن لا فعلَ له لا يُعرض عليه صندوقٌ فارغ — الخاتمةُ فوقه قالت كلَّ شيء.
+   */
   if (isClosedListing(detail.status)) {
+    if (!detail.soldToMe) return null
     return (
-      <Panel title="التداول">
-        <p className="flex items-center justify-center gap-2 rounded-xl border border-ink-600 bg-ink-900/60 p-4 text-sm text-muted">
-          <Clock3 className="size-4" />
-          {detail.status === 'sold' && detail.soldToMe
-            ? 'رست عليك هذه اللوحة — تابعها من مشترياتي'
-            : LISTING_STATUS_LABELS[detail.status]}
+      <Panel title="صفقتك">
+        <p className="text-sm text-muted">
+          رست عليك هذه اللوحة — تابِع سدادَها ونقلَ ملكيّتها من صفحة صفقتك.
         </p>
-        {detail.soldToMe && (
-          <Button asChild className="mt-3 w-full">
-            <Link href="/account/purchases">مشترياتي</Link>
-          </Button>
-        )}
+        <Button asChild className="mt-3 w-full">
+          <Link href="/account/purchases">
+            <Receipt className="size-4" />
+            تابِعها في مشترياتي
+          </Link>
+        </Button>
       </Panel>
     )
   }

@@ -572,7 +572,9 @@ export async function getMarketListings(
       sellerName: seller?.displayName ?? 'مستخدم',
       isMine: Boolean(viewerId) && listing.sellerId === viewerId,
       createdAt: listing.createdAt,
-      settlementPending: listing.status === 'sold' && reserved.has(listing.id),
+      /* والمزادُ لا يُحجز — انظر `awaitingSettlement` */
+      settlementPending:
+        listing.status === 'sold' && listing.saleType !== 'auction' && reserved.has(listing.id),
     })
   }
 
@@ -1469,8 +1471,21 @@ export async function releaseListingAfterDeadOrder(
   return true
 }
 
+/**
+ * **والحجزُ للبيع المباشر واستقبال العروض — لا للمزاد.**
+ *
+ * فاللوحتان تُشترى إحداهما بضغطة ويُقبل سومُ الأخرى، ثمّ تبقى في مهلة سداد:
+ * وبقاؤها معروضةً «محجوزةً» يقول للمشترين الآخرين إنّها قد تعود، فيبقون
+ * عليها.
+ *
+ * **والمزادُ ليس كذلك**: له نهايةٌ معلنةٌ بوقتها، وينتهي بترسيةٍ أو بعدم
+ * بلوغِ سعرٍ — وهذا خبرٌ يُقال مرّةً ويُقفل الباب. ولوحةٌ انتهى مزادُها
+ * تبقى في السوق «محجوزةً» تُغري بانتظارِ جولةٍ لا موعد لها، وتزاحم مزادات
+ * جارية في صفٍّ واحد. فإن تخلّف من رست عليه، فالإدارةُ تُعيد الإرساء على من
+ * يليه أو يُعاد عرضُه — بإعلانٍ جديدٍ لا بانتظارٍ صامت.
+ */
 async function awaitingSettlement(store: AuctionStore, listing: Listing): Promise<boolean> {
-  if (listing.status !== 'sold') return false
+  if (listing.status !== 'sold' || listing.saleType === 'auction') return false
   const orders = await store.listOrders({ listingId: listing.id })
   return orders.some((order) => order.status === 'awaiting_settlement')
 }

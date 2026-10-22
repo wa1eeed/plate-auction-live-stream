@@ -8,6 +8,7 @@ import { formatAmount } from '@/lib/domain/money'
 import {
   LISTING_STATUS_LABELS,
   RESERVED_LISTING_LABEL,
+  listingOutcomeLabel,
   PLATE_FORMAT_LABELS,
   PLATE_TYPE_LABELS,
   SALE_TYPE_LABELS,
@@ -187,7 +188,7 @@ export function ListingCard({
               dot
             >
               {closed
-                ? LISTING_STATUS_LABELS[card.status]
+                ? (listingOutcomeLabel(card.status, card.saleType) ?? LISTING_STATUS_LABELS[card.status])
                 : reserved
                   ? RESERVED_LISTING_LABEL
                   : SALE_TYPE_LABELS[card.saleType]}
@@ -230,7 +231,11 @@ export function ListingCard({
             {card.plate.plateFormat === 'sport' && (
               <Badge variant="default">{PLATE_FORMAT_LABELS.sport}</Badge>
             )}
-            {closed && <Badge variant="muted">{LISTING_STATUS_LABELS[card.status]}</Badge>}
+            {closed && (
+              <Badge variant="muted">
+                {listingOutcomeLabel(card.status, card.saleType) ?? LISTING_STATUS_LABELS[card.status]}
+              </Badge>
+            )}
             {reserved && <Badge variant="gold">{RESERVED_LISTING_LABEL}</Badge>}
           </div>
 
