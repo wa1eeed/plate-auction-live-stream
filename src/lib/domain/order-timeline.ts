@@ -502,6 +502,68 @@ export function orderTurn(status: Order['status']): OrderSide | null {
  * «في أي مرحلة أنا؟». وثلاثة أقسام ثابتة لا تزيد بزيادة الحالات — وتاب لكل حالة
  * يعني ثمانية تابات أكثرها فارغ، وصفقةٌ تنتظر صاحبها تختبئ في تابٍ لا يفتحه.
  */
+/**
+ * **لماذا لم تكتمل هذه الصفقة — جملةٌ صريحةٌ لا حالةٌ تُؤوَّل.**
+ *
+ * و«أُغلقت لعدم السداد» اسمُ حالةٍ لا سبب: لا يقول من أغلقها، ولا ما صار
+ * إلى العربون، ولا أين ذهبت اللوحة. ومن يفتح «المعاملات المكتملة» بعد شهرٍ
+ * يسأل هذه الثلاثة بعينها.
+ *
+ * ويُشتقّ ممّا هو مسجَّلٌ فعلًا — الحالةُ وحالُ العربون — لا من حقلٍ جديدٍ
+ * يُملأ بالنصّ: حقلٌ حرٌّ يُكتب مرّةً ويُنسى، والمشتقُّ يصدق دائمًا.
+ *
+ * ويعود `null` لما اكتمل: لا سببَ يُطلب لنجاح.
+ */
+export type OrderClosure = {
+  /** عنوانٌ قصير — سببُ الإغلاق */
+  reason: string
+  /** ما صار إلى المال واللوحة بعده */
+  effects: string[]
+}
+
+export function orderClosure(
+  order: Pick<Order, 'status' | 'paidAt'>,
+  settlement: Pick<OrderSettlement, 'deposit' | 'depositStatus'>,
+  side: OrderSide,
+): OrderClosure | null {
+  const buyer = side === 'buyer'
+  const forfeited = settlement.depositStatus === 'forfeited'
+  const released = settlement.depositStatus === 'released'
+
+  /** أثرُ العربون — يُقال لصاحبه بصوته، وللطرف الآخر بصوت الخبر. */
+  const depositEffect = (): string | null => {
+    if (settlement.deposit <= 0) return null
+    if (forfeited) return buyer ? 'صودر عربونك' : 'صودر عربون المشتري'
+    if (released) return buyer ? 'عاد عربونك إلى رصيدك' : 'عاد عربون المشتري إلى رصيده'
+    return buyer ? 'عربونك ما زال محجوزًا بانتظار قرار الإدارة' : 'عربون المشتري محجوز بانتظار قرار الإدارة'
+  }
+
+  /** واللوحةُ تعود إلى السوق متى ماتت الصفقةُ قبل السداد — انظر `releaseListingAfterDeadOrder`. */
+  const plateEffect = buyer ? 'عادت اللوحة إلى السوق لغيرك' : 'عادت لوحتك إلى السوق معروضة'
+
+  switch (order.status) {
+    case 'defaulted': {
+      const effects = [plateEffect]
+      const deposit = depositEffect()
+      if (deposit) effects.push(deposit)
+      return { reason: 'لم يصل السداد قبل انقضاء مهلته', effects }
+    }
+    case 'cancelled': {
+      const effects = [plateEffect]
+      const deposit = depositEffect()
+      if (deposit) effects.push(deposit)
+      return { reason: 'أُلغيت الصفقة قبل السداد', effects }
+    }
+    case 'refunded':
+      return {
+        reason: 'أُعيد المبلغ إلى المشتري',
+        effects: [buyer ? 'عاد مبلغك إلى رصيدك' : 'لم يصلك مبلغ هذه الصفقة'],
+      }
+    default:
+      return null
+  }
+}
+
 export type OrderBucket = 'you' | 'running' | 'done'
 
 export function orderBucket(order: Pick<Order, 'status'>, side: OrderSide): OrderBucket {

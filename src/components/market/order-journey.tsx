@@ -189,9 +189,23 @@ export function OrderJourney({
                * صغيرة على خيط طويل. والمساحة الفائضة تُملأ بما ينفع: ختمُ كل
                * محطّة يصيّرها خطًّا زمنيًّا يُقرأ، لا صفًّا منتظرًا.
                */}
+              {/*
+                * **ختمُ المحطّة: تاريخٌ ووقت، وعلى الشاشتين.**
+                *
+                * وكان `hidden lg:block` وبـ`mode="date"` — فصاحبُ الجوّال لا
+                * يرى متى وقع شيءٌ من صفقته أصلًا، وصاحبُ الحاسوب يرى يومًا
+                * بلا ساعة. وسجلُّ معاملةٍ ماليّة يُسأل فيه عن اللحظة: «متى
+                * وصل المال؟» و«متى رُفع الإثبات؟» — ويومٌ وحده لا يُجيب.
+                *
+                * والوقتُ تحت التاريخ لا بجانبه: العمودُ ضيّقٌ تحت كلّ نقطة،
+                * وسطرٌ واحدٌ بهما يُقصّ أو يُكسّر الشريط.
+                */}
               {step.at && (
-                <p className="mt-1 hidden text-center text-[10px] tabular-nums text-muted lg:block">
+                <p className="mt-1 text-center text-[10px] leading-tight tabular-nums text-muted">
                   <LocalTime iso={step.at} mode="date" />
+                  <span className="block opacity-80">
+                    <LocalTime iso={step.at} mode="time" />
+                  </span>
                 </p>
               )}
             </li>

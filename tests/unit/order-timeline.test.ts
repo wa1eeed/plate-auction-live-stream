@@ -5,6 +5,7 @@ import {
   buildOrderTimeline,
   currentOrderStage,
   orderBucket,
+  orderClosure,
   orderMoneyMarker,
 } from '@/lib/domain/order-timeline'
 import { riyalsToHalalas } from '@/lib/domain/money'
@@ -628,5 +629,51 @@ describe('العمولة معطّلة', () => {
 
     expect(settlement.commission).toEqual(fee)
     expect(settlement.net).toBe(settled.amount - fee.total)
+  })
+})
+
+/**
+ * **سببُ عدم الاكتمال — جملةٌ صريحةٌ لا اسمُ حالة.**
+ *
+ * و«أُغلقت لعدم السداد» اسمُ حالةٍ لا سبب: لا يقول ما صار إلى العربون ولا
+ * أين ذهبت اللوحة. ومن يفتح «المعاملات المكتملة» بعد شهرٍ يسأل هذين بعينهما.
+ */
+describe('سبب عدم اكتمال الصفقة', () => {
+  const settlement = (depositStatus: 'held' | 'released' | 'forfeited' | null, deposit = riyalsToHalalas(1_000)) =>
+    ({ deposit, depositStatus }) as Parameters<typeof orderClosure>[1]
+
+  it('لا سببَ لما اكتمل — ولا لما هو جارٍ', () => {
+    expect(orderClosure(order({ status: 'completed' }), settlement(null, 0), 'seller')).toBeNull()
+    expect(
+      orderClosure(order({ status: 'awaiting_settlement' }), settlement('held'), 'buyer'),
+    ).toBeNull()
+  })
+
+  it('التخلّف يقول سببَه وأثرَه في العربون واللوحة', () => {
+    const closed = order({ status: 'defaulted' })
+
+    const buyer = orderClosure(closed, settlement('forfeited'), 'buyer')!
+    expect(buyer.reason).toBe('لم يصل السداد قبل انقضاء مهلته')
+    expect(buyer.effects).toContain('صودر عربونك')
+    expect(buyer.effects).toContain('عادت اللوحة إلى السوق لغيرك')
+
+    /* والبائعُ يقرأ الواقعةَ نفسَها بصوته هو */
+    const seller = orderClosure(closed, settlement('forfeited'), 'seller')!
+    expect(seller.effects).toContain('صودر عربون المشتري')
+    expect(seller.effects).toContain('عادت لوحتك إلى السوق معروضة')
+  })
+
+  it('والعربونُ المعلَّق يُقال معلّقًا لا مصادَرًا', () => {
+    const closed = order({ status: 'defaulted' })
+    const held = orderClosure(closed, settlement('held'), 'buyer')!
+    expect(held.effects.some((line) => line.includes('محجوز'))).toBe(true)
+    expect(held.effects.some((line) => line.includes('صودر'))).toBe(false)
+  })
+
+  it('وصفقةٌ بلا عربونٍ لا تُقحم سطرًا عنه', () => {
+    const closed = order({ status: 'cancelled' })
+    const none = orderClosure(closed, settlement(null, 0), 'buyer')!
+    expect(none.reason).toBe('أُلغيت الصفقة قبل السداد')
+    expect(none.effects.some((line) => line.includes('عربون'))).toBe(false)
   })
 })

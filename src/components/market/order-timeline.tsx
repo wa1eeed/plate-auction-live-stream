@@ -2,7 +2,7 @@ import { Check, CircleDot, Clock3, X } from 'lucide-react'
 import { LocalTime } from './local-time'
 import { formatAmount } from '@/lib/domain/money'
 import type { OrderSettlement, OrderTimelineStep } from '@/lib/domain/order-timeline'
-import type { Order } from '@/lib/domain/types'
+import { DEPOSIT_STATUS_LABELS, type Order } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
 
 const ICONS = {
@@ -42,7 +42,7 @@ export function OrderSettlementCard({
   /** بلا إطار — داخل بطاقة الصفقة يحمله شريطها، وإطارٌ داخل إطار حشو */
   bare?: boolean
 }) {
-  const { side, amount, deposit, depositApplied, commission, net, settled } = settlement
+  const { side, amount, deposit, depositStatus, commission, net, settled } = settlement
   const seller = side === 'seller'
   const released = status === 'completed'
   /*
@@ -61,14 +61,39 @@ export function OrderSettlementCard({
   return (
     <dl className={cn('text-xs', !bare && 'rounded-xl border border-ink-600 bg-ink-900/50 p-3')}>
       <Line label="قيمة الصفقة" value={formatAmount(amount)} />
-      {/* عربون المشتري شأن المشتري: للبائع سطرٌ لا يغيّر ما يقبض، ويُقرأ خصمًا عليه */}
-      {!seller && deposit > 0 && (
+      {/*
+        * **العربون يُقرأ من الطرفين — ومصيرُه بالكلمة.**
+        *
+        * وكان للمشتري وحده، بحجّة أنّه «لا يغيّر ما يقبض البائع». وهو يغيّر
+        * ما يطمئنّ إليه: البائعُ الذي خرجت لوحتُه من السوق ينتظر مشتريًا قد
+        * لا يسدّد، وضمانُه الوحيد هذا العربون — فأن يعرف أهو موجودٌ ومحجوز
+        * أم لا، وما صار إليه إن تخلّف المشتري، **هو أهمّ ما يخصّه** في
+        * صفقةٍ لم تكتمل.
+        *
+        * **والمصيرُ من `DEPOSIT_STATUS_LABELS`** لا من اشتقاقٍ هنا: كان
+        * السطرُ يعرف حالين — «خُصم» و«محجوز» — والعربون ينتهي بأربع،
+        * فيُقرأ المصادَرُ «محجوزًا يُخصم عند الإتمام» على صفقةٍ أُغلقت.
+        */}
+      {deposit > 0 && (
         <Line
-          label={depositApplied > 0 ? 'العربون (خُصم)' : 'العربون المحجوز (يُخصم عند الإتمام)'}
-          value={`− ${formatAmount(deposit)}`}
-          tone="success"
+          label={`العربون · ${DEPOSIT_STATUS_LABELS[depositStatus ?? 'held']}`}
+          /*
+           * وإشارةُ الخصم للمشتري ما دام العربونُ ينقص ما يدفع — محجوزًا
+           * كان أو مخصومًا. و`buildOrderSettlement` تطرح الاثنين معًا من
+           * «المطلوب سداده»، فرقمٌ بلا إشارةٍ يترك الفرقَ بين ٣٨٬٠٠٠
+           * و٣٤٬٠٠٠ بلا تفسير. وللبائع بلا إشارة: ليس مالَه ولا يُنقص ما
+           * يقبض — يُقرأ ضمانًا لا خصمًا.
+           */
+          value={
+            !seller && (depositStatus === 'held' || depositStatus === 'applied')
+              ? `− ${formatAmount(deposit)}`
+              : formatAmount(deposit)
+          }
+          tone={depositStatus === 'forfeited' ? 'danger' : 'success'}
         />
       )}
+      {/* ولا عربونَ على هذه الصفقة — يُقال صراحةً لا يُترك فراغًا يُؤوَّل */}
+      {deposit === 0 && <Line label="العربون" value="لا عربون على هذه الصفقة" tone="muted" />}
       {commission && commission.base > 0 && (
         <Line label="عمولة المنصّة" value={`${sign} ${formatAmount(commission.base)}`} />
       )}
@@ -152,7 +177,7 @@ function Line({
 }: {
   label: string
   value: string
-  tone?: 'success' | 'muted'
+  tone?: 'success' | 'muted' | 'danger'
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-0.5">
@@ -160,7 +185,13 @@ function Line({
       <dd
         className={cn(
           'tabular-nums',
-          tone === 'success' ? 'text-success' : tone === 'muted' ? 'text-muted' : 'font-semibold',
+          tone === 'success'
+            ? 'text-success'
+            : tone === 'danger'
+              ? 'text-danger'
+              : tone === 'muted'
+                ? 'text-muted'
+                : 'font-semibold',
         )}
       >
         {value}

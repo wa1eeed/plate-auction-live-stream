@@ -10,7 +10,7 @@ import { CardTag, type CardTagTone } from './card-tag'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { cn, formatDate } from '@/lib/utils'
 import { OverdueTag } from './overdue-tag'
-import { currentOrderStage, orderDeadline } from '@/lib/domain/order-timeline'
+import { currentOrderStage, orderClosure, orderDeadline } from '@/lib/domain/order-timeline'
 
 const SOURCE_LABELS: Record<AccountOrder['source'], string> = {
   auction: 'رست بمزاد',
@@ -113,6 +113,7 @@ function OrderRow({
   const stage = currentOrderStage(order.timeline, order, side)
   const yours = stage.audience === 'you' && stage.step.state !== 'done'
   const action = rowAction(order, side)
+  const closure = orderClosure(order, order.settlement, side)
 
   return (
     <li
@@ -162,6 +163,19 @@ function OrderRow({
         * وهو ما يجعل الصفَّ يُقرأ بلا فتحه: «بانتظار ردّك · متأخّر ٣ أيام»
         * أنفعُ من شارةِ حالةٍ وحدها.
         */}
+      {/*
+        * **وسببُ عدم الاكتمال في الصفّ — لا خلف فتحه.**
+        *
+        * فالشارةُ تقول «أُغلقت لعدم السداد» وهو اسمُ حالةٍ لا سبب، ومن يمسح
+        * «المعاملات المكتملة» يريد أن يعرف لماذا بلا أن يفتح كلَّ صفّ.
+        * والتفصيلُ كلُّه — وما صار إلى العربون واللوحة — في صفحة الصفقة.
+        */}
+      {closure && (
+        <p className="border-t border-ink-600/70 px-3 pt-2 text-[11px] text-muted sm:px-3.5">
+          <span className="font-bold text-danger">لم تكتمل:</span> {closure.reason}
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 border-t border-ink-600/70 px-3 py-2.5 sm:px-3.5">
         <CardTag tone={STATUS_TONE[order.status]} dot>
           {ORDER_STATUS_LABELS[order.status]}

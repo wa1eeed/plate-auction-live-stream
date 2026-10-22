@@ -746,7 +746,6 @@ export async function getListingDetail(
     soldAmount: listing.soldAmount,
     soldToMe: Boolean(viewerId && listing.soldToUserId === viewerId),
     settlementPending: await awaitingSettlement(store, listing),
-    myOrder: await viewerOrder(store, listing, viewerId),
 
     ledger: bids.map((bid) => ({
       id: bid.id,
@@ -1476,17 +1475,3 @@ async function awaitingSettlement(store: AuctionStore, listing: Listing): Promis
   return orders.some((order) => order.status === 'awaiting_settlement')
 }
 
-async function viewerOrder(
-  store: AuctionStore,
-  listing: Listing,
-  viewerId: string | null,
-): Promise<{ order: AccountOrder; side: 'buyer' | 'seller' } | null> {
-  if (!viewerId) return null
-  const orders = await store.listOrders({ listingId: listing.id })
-  const mine = orders.find((row) => row.buyerId === viewerId || row.sellerId === viewerId)
-  if (!mine) return null
-
-  const side: 'buyer' | 'seller' = mine.buyerId === viewerId ? 'buyer' : 'seller'
-  const [decorated] = await decorateOrders(store, [mine], side)
-  return decorated ? { order: decorated, side } : null
-}

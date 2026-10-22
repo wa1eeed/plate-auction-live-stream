@@ -33,9 +33,6 @@ import {
 } from '@/lib/domain/types'
 import { REFERENCE_LABELS } from '@/lib/domain/reference'
 import { ReferenceChip } from '@/components/market/reference-chip'
-import { OrderJourney, OrderStageCallout } from '@/components/market/order-journey'
-import { OrderEscrowActions } from '@/components/market/order-actions'
-import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
 import { AuctionStage } from '@/components/market/auction-stage'
 import { useListing } from '@/lib/hooks/use-listing'
 import { cn } from '@/lib/utils'
@@ -195,36 +192,17 @@ export function ListingView({
             </button>
           </div>
 
-          {/* صفقتي على هذه اللوحة — حيث ينظر إليها الطرفان فعلًا */}
-          {detail.myOrder && (
-            <section className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-bold">
-                  {detail.myOrder.side === 'buyer' ? 'صفقتك على هذه اللوحة' : 'صفقة بيع لوحتك'}
-                </h2>
-                <ReferenceChip reference={detail.myOrder.order.reference} kind="order" />
-              </div>
-
-              <OrderStageCallout
-                {...currentOrderStage(
-                  detail.myOrder.order.timeline,
-                  detail.myOrder.order,
-                  detail.myOrder.side,
-                )}
-                serverTime={detail.serverTime}
-                action={
-                  <OrderEscrowActions order={detail.myOrder.order} side={detail.myOrder.side} />
-                }
-              />
-
-              <div className="mt-4">
-                <OrderJourney
-                  steps={detail.myOrder.order.timeline}
-                  money={orderMoneyMarker(detail.myOrder.order, detail.myOrder.side)}
-                />
-              </div>
-            </section>
-          )}
+          {/*
+            * **ولا صندوقَ صفقةٍ هنا.**
+            *
+            * كان في صفحة اللوحة مربّعٌ يعرض صفقةَ صاحبها — مرحلتَها وسكّتَها
+            * وأفعالَها. وصفحةُ اللوحة صفحةُ **سلعةٍ تُعرض**، يقرؤها الغريب
+            * والطرفان معًا؛ فصندوقُ صفقةٍ فيها يخلط سجلًّا خاصًّا بعرضٍ عامّ،
+            * ويُكرّر ما في صفحة الصفقة كاملًا.
+            *
+            * وموضعُ السجلّ «المعاملات المكتملة» في مشترياتي ومبيعاتي: فيها
+            * المرجعُ والتفصيلُ وسببُ عدم الاكتمال — انظر `OrderTabs`.
+            */}
 
           {detail.description && (
             <p className="rounded-xl border border-ink-600 bg-ink-800 p-4 text-sm leading-relaxed text-muted">

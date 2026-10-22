@@ -33,6 +33,14 @@ export default async function SalesPage() {
   )
   const awaiting = sum(orders.filter((order) => order.status === 'awaiting_settlement'))
   const pending = orders.filter((order) => order.status === 'awaiting_settlement').length
+  /*
+   * **وما أُغلق لعدم السداد لا يُعدّ صفقة بيع.**
+   *
+   * سجلُّه باقٍ في «المعاملات المكتملة» بمرجعه وسببه — لكنّه لا يدخل عدّ
+   * العنوان: بائعٌ له صفقتان قائمتان وثلاثٌ تخلّف مشتروها لا يُقال له
+   * «خمس صفقات». والإجمالاتُ الثلاثة تُرشَّح بالحالة أصلًا فلا تضمّه.
+   */
+  const dealCount = orders.filter((order) => order.status !== 'defaulted').length
 
   return (
     <div className="space-y-5">
@@ -40,7 +48,7 @@ export default async function SalesPage() {
         <div>
           <h1 className="text-2xl font-extrabold">مبيعاتي</h1>
           <p className="mt-1 text-sm text-muted">
-            {arabicCount(orders.length, {
+            {arabicCount(dealCount, {
               zero: 'لا مبيعات بعد',
               one: 'صفقة واحدة',
               two: 'صفقتان',

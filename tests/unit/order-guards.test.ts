@@ -8,6 +8,7 @@ import { startOrderPayment } from '@/lib/server/checkout-service'
 import { markPaymentFailed, markPaymentPaid } from '@/lib/server/payment-service'
 import { finalizeDueAuctions } from '@/lib/server/market-service'
 import { getPurchases, getSales } from '@/lib/server/order-service'
+import { orderBucket, orderClosure } from '@/lib/domain/order-timeline'
 import type { Order, Payment } from '@/lib/domain/types'
 
 let db: MemoryDatabase
@@ -164,10 +165,11 @@ describe('ردّ دفعة عالقة', () => {
    * و`canSellerRelist` تستثني `sold` فلا يُعيد صاحبُها عرضَها. فتُغلق
    * الإدارةُ الصفقةَ وتبقى اللوحةُ محبوسةً إلى الأبد.
    *
-   * **وصفٌّ لا مالَ فيه ليس بيعًا**: يبقى في «مشترياتي» لأنّ المشتري طرفٌ
-   * فيه، ويخرج من «مبيعاتي» لأنّ البائع لم يبع.
+   * **وسجلُّه يبقى لطرفيه**: في «المعاملات المكتملة» — وهو ما تُسلّمه إليه
+   * `orderBucket` لأنّ حالتَه نهائيّة — بمرجعه وسببِ عدم اكتماله. ولا يدخل
+   * أرقامَ «مبيعاتي»: الإجمالاتُ تُرشَّح بالحالة، وعدُّ العنوان يستثنيه.
    */
-  it('إعلان التخلّف يُعيد اللوحة معروضة ويُخرج الصفقة من مبيعات البائع', async () => {
+  it('إعلان التخلّف يُعيد اللوحة معروضة، وسجلُّه في المعاملات المكتملة', async () => {
     const order = pendingOrder()
     expect((await store.getListing(order.listingId))!.status).toBe('sold')
 
@@ -178,18 +180,19 @@ describe('ردّ دفعة عالقة', () => {
     expect(listing.soldToUserId, 'بقي اسمُ مشترٍ على لوحةٍ لم تُبَع').toBeNull()
     expect(listing.soldAmount, 'بقي مبلغُ بيعٍ لم يقع').toBe(0)
 
-    const sales = await getSales(order.sellerId)
-    expect(
-      sales.some((row) => row.id === order.id),
-      'صفقةٌ لم يصل مالُها ما زالت تُعدّ بيعًا',
-    ).toBe(false)
-
-    /* وتبقى عند المشتري: عربونُه قد يكون صودر، وله أن يقرأ لماذا أُغلقت */
-    const purchases = await getPurchases(order.buyerId)
-    expect(
-      purchases.some((row) => row.id === order.id),
-      'غابت الصفقةُ عن طرفها الذي يعنيه أمرُها',
-    ).toBe(true)
+    /* سجلُّه باقٍ للطرفين — وفي «المعاملات المكتملة» لا في تابٍ ينتظر فعلًا */
+    for (const [label, rows, side] of [
+      ['مبيعاتي', await getSales(order.sellerId), 'seller'],
+      ['مشترياتي', await getPurchases(order.buyerId), 'buyer'],
+    ] as const) {
+      const row = rows.find((candidate) => candidate.id === order.id)
+      expect(row, `غاب سجلُّ الصفقة عن ${label}`).toBeTruthy()
+      expect(orderBucket(row!, side), `${label}: الصفقةُ ليست في المعاملات المكتملة`).toBe('done')
+      expect(
+        orderClosure(row!, row!.settlement, side)?.reason,
+        `${label}: لا سببَ مكتوبًا لعدم الاكتمال`,
+      ).toBe('لم يصل السداد قبل انقضاء مهلته')
+    }
   })
 
   it('لا يُرفض ما سُوّي فعلًا ولو كان بلا قيد محفظة', async () => {

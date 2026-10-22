@@ -11,8 +11,8 @@ import { formatAmount } from '@/lib/domain/money'
 import { orderDeadline } from '@/lib/domain/order-timeline'
 import { ORDER_STATUS_LABELS, PLATE_TYPE_LABELS, type AccountOrder } from '@/lib/domain/types'
 import { getAccountOrder } from '@/lib/server/market-service'
-import { requireUserId } from '@/lib/server/require-user'
-import { formatTimestamp } from '@/lib/utils'
+import { getCurrentUser, requireUserId } from '@/lib/server/require-user'
+import { LocalTime } from '@/components/market/local-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'تفاصيل الصفقة' }
@@ -55,6 +55,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const found = await getAccountOrder(id, userId)
   if (!found) notFound()
 
+  /* اسمُ القارئ — ليُسمّى الطرفان معًا لا الطرفُ الآخر وحده */
+  const viewer = await getCurrentUser()
+  const userName = viewer?.displayName ?? 'أنت'
   const { order, side } = found
   const backHref = side === 'seller' ? '/account/sales' : '/account/purchases'
   const serverTime = new Date().toISOString()
@@ -106,11 +109,28 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <CardTag tone="muted">{PLATE_TYPE_LABELS[order.plate.plateType]}</CardTag>
               <OverdueTag deadline={orderDeadline(order)} serverTime={serverTime} />
             </div>
-            <p className="text-xs text-muted">
-              {side === 'buyer' ? 'البائع' : 'المشتري'}:{' '}
-              <span className="font-semibold text-paper">{order.counterpartName}</span>
+            {/*
+              * **الطرفان مُسمَّيان — لا الطرفُ الآخر وحده.**
+              *
+              * وكان يُقال «البائع: فلان» ويُترك الطرفُ الثاني مفهومًا من
+              * موضع القارئ. وهذه صفحةُ سجلٍّ يُفتح بعد شهور ويُلتقط منه
+              * صورةٌ ويُراسَل به الدعم — فمن يقرؤه لا يعرف أيَّ الطرفين
+              * كان. و«(أنت)» تُثبت موضعَ القارئ بلا أن تُسقط الاسمَ الآخر.
+              */}
+            <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs">
+              <dt className="text-muted">البائع</dt>
+              <dd className="min-w-0 truncate font-semibold text-paper">
+                {side === 'seller' ? `${userName} (أنت)` : order.counterpartName}
+              </dd>
+              <dt className="text-muted">المشتري</dt>
+              <dd className="min-w-0 truncate font-semibold text-paper">
+                {side === 'buyer' ? `${userName} (أنت)` : order.counterpartName}
+              </dd>
+            </dl>
+            {/* ووقتُ النشأة بالساعة لا باليوم — سجلٌّ يُراجَع يحتاج اللحظة */}
+            <p className="text-[11px] text-muted">
+              أُنشئت <LocalTime iso={order.createdAt} mode="datetime" />
             </p>
-            <p className="text-[11px] text-muted">{formatTimestamp(order.createdAt)}</p>
           </div>
 
           <div className="shrink-0 text-end">

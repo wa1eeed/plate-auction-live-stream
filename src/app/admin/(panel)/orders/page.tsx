@@ -5,6 +5,7 @@ import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { OrderActions } from '@/components/admin/order-actions'
 import { ReawardDialog } from '@/components/admin/reaward-dialog'
 import { DisputeActions } from '@/components/admin/dispute-actions'
+import { OrderChronology } from '@/components/admin/order-chronology'
 import { formatAmount } from '@/lib/domain/money'
 import { Badge } from '@/components/ui/badge'
 import { DEPOSIT_STATUS_LABELS, ORDER_STATUS_LABELS } from '@/lib/domain/types'
@@ -200,6 +201,18 @@ export default async function AdminOrdersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {/*
+                    * **زمنُ كلّ إجراءٍ — مطويًّا لا غائبًا.**
+                    *
+                    * والصفُّ كان يحمل المهلَ وحدها: متى تنتهي مهلةُ السداد،
+                    * ومتى مهلةُ النقل. ولا يقول **متى وقع** شيءٌ ممّا وقع
+                    * فعلًا — متى أُنشئت، ومتى وصل المال، ومتى رُفع الإثبات،
+                    * ومتى أُفرج. وهي أوّلُ ما يُسأل عنه حين يُشتكى من صفقة.
+                    *
+                    * وتُطوى في `details` فلا تُثقل جدولًا يُمسح بالعين،
+                    * وتُفتح على من يُحقّق في صفقةٍ بعينها.
+                    */}
+                  <OrderChronology order={row} />
                   {row.status === 'awaiting_settlement' && (
                     <OrderActions
                       orderId={row.id}

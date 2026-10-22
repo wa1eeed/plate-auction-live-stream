@@ -243,6 +243,18 @@ export default async function WalletPage() {
                   <Badge variant={deposit.status === 'forfeited' ? 'danger' : 'muted'}>
                     {DEPOSIT_STATUS_LABELS[deposit.status]}
                   </Badge>
+                  {/*
+                    * **ومتى صار ذلك.**
+                    *
+                    * فالسجلّ كان يقول «مُصادَر» ولا يقول متى — وصاحبُ المال
+                    * يسأل عن اللحظة قبل أن يسأل عن الحال: «متى صودر؟» و«متى
+                    * عاد إلى رصيدي؟». وسطرٌ بلا ختمٍ لا يُراجَع ولا يُحتجّ به.
+                    */}
+                  {deposit.resolvedAt && (
+                    <span className="text-[11px] tabular-nums text-muted">
+                      {formatTimestamp(deposit.resolvedAt)}
+                    </span>
+                  )}
                   {deposit.reason && (
                     <span className="w-full text-[11px] text-muted">{deposit.reason}</span>
                   )}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
-import { CreditCard, Loader2, X } from 'lucide-react'
+import { CircleSlash, CreditCard, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -19,7 +19,7 @@ import {
 import { OrderSettlementCard } from './order-timeline'
 import { OrderJourney, OrderStageCallout } from './order-journey'
 import { OrderEscrowActions } from './order-actions'
-import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
+import { currentOrderStage, orderClosure, orderMoneyMarker } from '@/lib/domain/order-timeline'
 import type { AccountOrder } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
 
@@ -44,6 +44,7 @@ export function OrderDetail({
 }) {
   const { refresh } = useRouteRefresh()
   const [busy, setBusy] = useState(false)
+  const closure = orderClosure(order, order.settlement, side)
   const stage = currentOrderStage(order.timeline, order, side)
   const yours = stage.audience === 'you' && stage.step.state !== 'done'
 
@@ -118,6 +119,33 @@ export function OrderDetail({
           }
         />
       </section>
+
+      {/*
+        * **ولماذا لم تكتمل — جملةٌ صريحةٌ قبل السكّة.**
+        *
+        * فشارةُ «أُغلقت لعدم السداد» اسمُ حالةٍ لا سبب: لا تقول ما صار إلى
+        * العربون ولا أين ذهبت اللوحة. ومن يفتح «المعاملات المكتملة» بعد شهرٍ
+        * يسأل هذين بعينهما — والسكّةُ تحتها تروي الرحلة، وهذا يروي خاتمتها.
+        */}
+      {closure && (
+        <section className="rounded-2xl border border-danger/35 bg-danger/[0.06] p-4">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-danger">
+            <CircleSlash className="size-4 shrink-0" />
+            لم تكتمل الصفقة
+          </h2>
+          <p className="mt-1.5 text-sm font-semibold text-paper">{closure.reason}</p>
+          {closure.effects.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs leading-relaxed text-muted">
+              {closure.effects.map((effect) => (
+                <li key={effect} className="flex items-start gap-1.5">
+                  <span aria-hidden className="mt-1.5 size-1 shrink-0 rounded-full bg-muted" />
+                  {effect}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* أين وصلت */}
       <section className="rounded-2xl border border-ink-600 bg-ink-800 px-4 pb-4 pt-5">
