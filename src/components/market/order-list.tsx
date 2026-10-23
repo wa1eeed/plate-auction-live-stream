@@ -87,6 +87,16 @@ function rowAction(
   if (order.disputedAt !== null) return null
 
   const detail = `/account/orders/${order.id}`
+
+  /*
+   * **والمشتري يُدعى إلى تأكيد بياناته — لا يُترك ينتظر.**
+   *
+   * فالبائعُ لا يملك أن ينقل قبل أن تصله هويّتُه وتاريخُ ميلاده، والصفُّ
+   * بلا فعلٍ يُقرأ «لا شيء عليك» — فتقف الصفقةُ وكلاهما ينتظر الآخر.
+   */
+  if (side === 'buyer' && order.status === 'escrow_held' && !order.transferIdentity) {
+    return { label: 'أكّد بياناتك', href: detail }
+  }
   /* ويُختصر في الصفّ ويُبسط في الصفحة: «أكّد نقل الملكية» يزيح شاراتِ الحال */
   if (side === 'seller' && order.status === 'escrow_held') {
     return { label: 'أكّد النقل', href: detail }

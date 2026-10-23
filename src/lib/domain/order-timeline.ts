@@ -136,6 +136,8 @@ export function buildOrderTimeline(
     | 'disputedAt'
     | 'disputeReason'
     | 'disputedBy'
+    /* المحطّةُ الثالثة تُسمّى بما تنتظره: بياناتُ المشتري أو النقلُ نفسُه */
+    | 'transferIdentity'
   >,
   settlement: Pick<OrderSettlement, 'deposit' | 'depositStatus' | 'depositApplied' | 'commission'>,
   nowMs: number,
@@ -276,17 +278,39 @@ export function buildOrderTimeline(
                   ? 'لم يرفع البائع إثباتًا — لك أن تطلب استرداد مبلغك'
                   : 'انقلها الآن — وللمشتري أن يطلب استرداد مبلغه',
               )
-            : step(
-                'transfer',
-                'نقل',
-                'نقل الملكية',
-                order.transferDueAt,
-                'current',
-                buyer
-                  ? 'ينقلها البائع ويرفع إثباتها، ومبلغك محجوز حتى ذلك'
-                  : 'انقلها عبر القنوات الرسمية وارفع إثباتها لتتحقّق منها الإدارة',
-                elapsedRatio(order.paidAt, order.transferDueAt, nowMs),
-              )
+            : /*
+               * **ولا يُقال «بانتظار نقل الملكية» قبل أن تصل البيانات.**
+               *
+               * فالبائعُ لا يملك أن ينقل بدونها: أبشر يطلب هويّةَ المشتري
+               * وتاريخَ ميلاده، والخادمُ يردّ إثباتَ نقلٍ بدونهما. فمحطّةٌ
+               * تقول «ينقلها البائع» والمشتري لم يؤكّد بعدُ **تُلقي الدورَ
+               * على من لا يملكه**، ويقرؤها المشتري «لا شيء عليّ».
+               *
+               * فتُقال المحطّةُ باسم ما ينتظره فعلًا، وبصوت صاحبها.
+               */
+              !order.transferIdentity
+              ? step(
+                  'transfer',
+                  'نقل',
+                  buyer ? 'بانتظارك لتأكيد بياناتك' : 'بانتظار بيانات المشتري',
+                  order.transferDueAt,
+                  'current',
+                  buyer
+                    ? 'أبشر يطلب رقم هويتك وتاريخ ميلادك لينقلها البائع باسمك — أكّدها من هذه الصفحة'
+                    : 'طُلبت منه في صفحة صفقته، ولا يمكنك النقل في أبشر قبل وصولها',
+                  elapsedRatio(order.paidAt, order.transferDueAt, nowMs),
+                )
+              : step(
+                  'transfer',
+                  'نقل',
+                  'نقل الملكية',
+                  order.transferDueAt,
+                  'current',
+                  buyer
+                    ? 'ينقلها البائع ويرفع إثباتها، ومبلغك محجوز حتى ذلك'
+                    : 'انقلها عبر القنوات الرسمية وارفع إثباتها لتتحقّق منها الإدارة',
+                  elapsedRatio(order.paidAt, order.transferDueAt, nowMs),
+                )
 
   // ---- (٤) التأكيد: إذن المشتري بالإفراج، أو اعتراضه
   const confirmStep = disputed
@@ -491,8 +515,24 @@ export function orderMoneyMarker(
  * وتُفرج**. فما بعد رفع الإثبات لا دور فيه لطرف: لا يُطالَب المشتري بتأكيد،
  * ولا يُفرج المال بسكوته — يُفرج بقرارٍ من الإدارة بعد تحقّقها.
  */
-export function orderTurn(status: Order['status']): OrderSide | null {
-  return status === 'awaiting_settlement' ? 'buyer' : status === 'escrow_held' ? 'seller' : null
+export function orderTurn(
+  status: Order['status'],
+  /**
+   * **وبياناتُ المشتري جزءٌ من الدور لا تفصيلٌ جانبيّ.**
+   *
+   * فحالةُ `escrow_held` كانت تُقرأ «الدور على البائع» دائمًا — والبائعُ لا
+   * يملك أن ينقل قبل أن تصله هويّةُ المشتري وتاريخُ ميلاده: أبشر يطلبهما،
+   * والخادمُ يردّ إثباتَ نقلٍ بدونهما. فكان المشتري يجد لوحتَه في «تحت
+   * الإجراء» — أي «لا شيء عليك» — وعليه في الحقيقة قرار، والبائعُ ينتظره
+   * ولا أحدَ يقول له ذلك. **فتقف الصفقةُ وكلاهما يظنّ الدورَ على الآخر.**
+   *
+   * فإن لم تصل البيانات فالدورُ على المشتري، وإن وصلت فعلى البائع.
+   */
+  transferIdentity: Order['transferIdentity'] = null,
+): OrderSide | null {
+  if (status === 'awaiting_settlement') return 'buyer'
+  if (status === 'escrow_held') return transferIdentity ? 'seller' : 'buyer'
+  return null
 }
 
 /**
@@ -566,9 +606,12 @@ export function orderClosure(
 
 export type OrderBucket = 'you' | 'running' | 'done'
 
-export function orderBucket(order: Pick<Order, 'status'>, side: OrderSide): OrderBucket {
+export function orderBucket(
+  order: Pick<Order, 'status' | 'transferIdentity'>,
+  side: OrderSide,
+): OrderBucket {
   if (isFinalOrderStatus(order.status)) return 'done'
-  return orderTurn(order.status) === side ? 'you' : 'running'
+  return orderTurn(order.status, order.transferIdentity) === side ? 'you' : 'running'
 }
 
 /**
@@ -688,7 +731,10 @@ export function adminOrderTask(
 
 export function currentOrderStage(
   steps: OrderTimelineStep[],
-  order: Pick<Order, 'status' | 'paymentDueAt' | 'transferDueAt' | 'confirmDueAt'>,
+  order: Pick<
+    Order,
+    'status' | 'paymentDueAt' | 'transferDueAt' | 'confirmDueAt' | 'transferIdentity'
+  >,
   side: OrderSide,
 ): { step: OrderTimelineStep; audience: 'you' | 'other'; deadline: string | null } {
   const step =
@@ -696,7 +742,7 @@ export function currentOrderStage(
     steps.find((row) => row.state === 'failed') ??
     steps[steps.length - 1]
 
-  const turn = orderTurn(order.status)
+  const turn = orderTurn(order.status, order.transferIdentity)
 
   return { step, audience: turn === side ? 'you' : 'other', deadline: orderDeadline(order) }
 }

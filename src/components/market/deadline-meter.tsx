@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Clock3 } from 'lucide-react'
 import { useSignedCountdown } from '@/lib/hooks/use-countdown'
-import { compactCountdown, countdownUrgency } from '@/lib/domain/countdown'
+import { compactCountdown, countdownUrgency, preciseCountdown } from '@/lib/domain/countdown'
 import { cn } from '@/lib/utils'
 
 /**
@@ -21,6 +21,7 @@ export function DeadlineMeter({
   serverTime,
   label = 'يتبقّى للسداد',
   overdueLabel = 'تأخّر السداد منذ',
+  precise = false,
   className,
 }: {
   deadline: string
@@ -28,13 +29,21 @@ export function DeadlineMeter({
   serverTime: string
   label?: string
   overdueLabel?: string
+  /**
+   * عدٌّ بالثواني ولو بقيت أيّام — لصفحةٍ فيها عدّادٌ واحد.
+   *
+   * وبطاقةُ السوق تعرض عشراتِ اللوحات، فعدٌّ يتبدّل كلَّ ثانيةٍ في كلٍّ
+   * منها ضجيج. أمّا مهلةٌ يتبعها اقتطاعُ عربونٍ فتُعدّ بدقّتها.
+   */
+  precise?: boolean
   className?: string
 }) {
-  const signed = useSignedCountdown(deadline, serverTime)
+  /* يعدّ بعد الصفر: «تأخّر منذ …» يجب أن يتقدّم لا أن يتجمّد */
+  const signed = useSignedCountdown(deadline, serverTime, null, true)
   const overdue = signed <= 0
   const magnitude = Math.abs(signed)
   const urgency = countdownUrgency(Math.max(0, signed))
-  const text = compactCountdown(magnitude)
+  const text = precise ? preciseCountdown(magnitude) : compactCountdown(magnitude)
 
   return (
     <span

@@ -27,7 +27,8 @@ export function OverdueTag({
   className?: string
   label?: string
 }) {
-  const signed = useSignedCountdown(deadline, serverTime)
+  /* يعدّ بعد الصفر — شارةُ التأخّر تُقرأ حاضرًا لا لحظةَ فتح الصفحة */
+  const signed = useSignedCountdown(deadline, serverTime, null, true)
   if (!deadline || signed > 0) return null
 
   return (

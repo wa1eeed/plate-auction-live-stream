@@ -163,11 +163,18 @@ test.describe('مسار الصفقة في الواجهة', () => {
       plateNumbers: '7411',
     })
 
-    // المشتري يرى المبلغ محجوزًا، ومساره خمس محطّات — والدور على البائع فالقسم «تحت الإجراء»
+    /*
+     * **والمشتري يجدها في «بانتظار ردّك» — لا في «تحت الإجراء».**
+     *
+     * فالبائعُ لا يملك أن ينقل قبل أن تصله هويّةُ المشتري، والدورُ عليه هو
+     * حتى يؤكّدها. وكانت تقع في «تحت الإجراء» — أي «لا شيء عليك» — وعليه
+     * قرار، والبائعُ ينتظره ولا أحدَ يقول له: فتقف الصفقةُ وكلاهما يظنّ
+     * الدورَ على الآخر.
+     */
     await buyerPage.goto('/account/purchases')
-    await openStage(buyerPage, 'تحت الإجراء')
+    await openStage(buyerPage, 'بانتظار ردّك')
     const purchase = buyerPage.locator(`li[data-row="${order.reference}"]`)
-    await expect(purchase.getByText(/المبلغ محجوز/).first()).toBeVisible()
+    await expect(purchase.getByRole('link', { name: 'أكّد بياناتك' })).toBeVisible()
 
     await openOrder(buyerPage, order.reference)
     // الشريط خمس محطّات باسم كلمةٍ لكلٍّ — لا خمس جمل تحت خمس نقاط

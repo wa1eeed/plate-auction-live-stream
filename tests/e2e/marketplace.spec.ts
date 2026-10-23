@@ -134,6 +134,17 @@ test.describe('سوق تداول اللوحات', () => {
     await expect(buyButton).toBeVisible({ timeout: 15_000 })
     await buyButton.click()
 
+    /*
+     * **ومعرّفُ الصفقة يُلتقط من مقصد الشراء — لا يُخمَّن من أوّل صفّ.**
+     *
+     * فالشراءُ يسوق المشتري إلى `/checkout/{id}`، والمعرّفُ هناك صريح.
+     * وكان الفحصُ يأخذ أوّلَ صفٍّ في «مشترياتي» ويفترضه الصفقةَ الجديدة —
+     * وللمشتري صفقاتٌ مبذورةٌ أخرى، فيقع على واحدةٍ سُدّدت فيسقط بعبارةٍ
+     * تقول «لا مخرجَ له» وهو مخرجٌ لا يُطلب أصلًا.
+     */
+    await buyer.waitForURL(/\/checkout\/ord_/, { timeout: 15_000 })
+    const orderId = buyer.url().split('/checkout/')[1].split(/[?#]/)[0]
+
     await buyer.goto('/account/purchases')
     await expect(buyer.getByRole('heading', { name: 'مشترياتي' })).toBeVisible()
     await expect(buyer.getByText('بانتظار السداد').first()).toBeVisible({ timeout: 15_000 })
@@ -148,12 +159,7 @@ test.describe('سوق تداول اللوحات', () => {
      * عليه: لا مالَ محجوزًا، ومخرجُ من عدل العدولُ لا بابُ الإدارة. ويبقى
      * الزرُّ بعد السداد، و`escrow.spec.ts` تحرس ذلك في الحالين.
      */
-    const orderHref = await buyer
-      .locator('li[data-row^="S"] a[href^="/account/orders/"]')
-      .first()
-      .getAttribute('href')
-    expect(orderHref, 'الصفّ لا يُفضي إلى صفحة الصفقة').toBeTruthy()
-    await buyer.goto(orderHref!)
+    await buyer.goto(`/account/orders/${orderId}`)
     await expect(
       buyer.getByRole('button', { name: 'أعدل عن الشراء' }),
       'لا مخرجَ للمشتري من صفقةٍ لم يدفعها',

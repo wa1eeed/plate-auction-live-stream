@@ -7,7 +7,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { SaudiLicensePlate } from '@/components/plate/SaudiLicensePlate'
 import { OrderSettlementCard } from '@/components/market/order-timeline'
 import { OrderJourney, OrderStageCallout } from '@/components/market/order-journey'
-import { currentOrderStage, orderMoneyMarker } from '@/lib/domain/order-timeline'
+import { currentOrderStage, orderBucket, orderMoneyMarker } from '@/lib/domain/order-timeline'
 import { PendingPayments } from '@/components/market/pending-payments'
 import { ReferenceChip } from '@/components/market/reference-chip'
 import { Button } from '@/components/ui/button'
@@ -140,12 +140,23 @@ export default async function ThanksPage({
           {/*
             * الرابط يحمل القسم الذي صارت فيه المعاملة.
             *
-            * من سدّد للتوّ تنتقل صفقته إلى «تحت الإجراء»، فلو فُتحت الصفحة على
-            * «بانتظار ردّك» لبحث عنها ولم يجدها — والعدّاد وحده لا يكفي لمن
-            * جاء من صفحة الشكر يتوقّع أن يراها.
+            * من سدّد للتوّ تنتقل صفقته إلى قسمٍ آخر، فلو فُتحت الصفحة على
+            * غيره لبحث عنها ولم يجدها — والعدّاد وحده لا يكفي لمن جاء من
+            * صفحة الشكر يتوقّع أن يراها.
+            *
+            * **والقسمُ يُحسب لا يُكتب**: كان `stage=running` مكتوبًا بيده،
+            * وصار الدورُ بعد السداد يتبع بياناتِ النقل — فمن لم يؤكّدها
+            * تقع صفقتُه في «بانتظار ردّك» لا «تحت الإجراء». وقيمةٌ مكتوبةٌ
+            * بيدٍ تنحرف أوّلَ ما تتغيّر قاعدةُ الدور.
             */}
           <Button asChild size="lg">
-            <Link href={captured ? '/account/purchases?stage=running' : '/account/purchases'}>
+            <Link
+              href={
+                captured
+                  ? `/account/purchases?stage=${orderBucket(order, 'buyer')}`
+                  : '/account/purchases'
+              }
+            >
               <Receipt className="size-4" />
               عرض الطلب
             </Link>

@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  compactCountdown,
-  countdownUrgency,
-  elapsedRatio,
-  splitCountdown,
-  visibleUnits,
-} from '@/lib/domain/countdown'
+import { compactCountdown, countdownUrgency, elapsedRatio, preciseCountdown, splitCountdown, visibleUnits } from '@/lib/domain/countdown'
 
 const SEC = 1_000
 const MIN = 60 * SEC
@@ -93,5 +87,40 @@ describe('النصّ المضغوط', () => {
 
   it('يعلن الانتهاء بلا أرقام', () => {
     expect(compactCountdown(0)).toBe('انتهى')
+  })
+})
+
+/**
+ * **عدٌّ دقيقٌ لصفحةٍ فيها عدّادٌ واحد.**
+ *
+ * و`compactCountdown` تُخفي الثواني ما دام أمامك أيّام، عمدًا: بطاقةُ السوق
+ * تعرض عشراتِ اللوحات، وعدٌّ يتبدّل كلَّ ثانيةٍ في كلٍّ منها ضجيج.
+ *
+ * **ومهلةُ الصفقة غيرُ ذلك**: «يومان و٥ س» لا يتبدّل إلّا كلَّ ساعة، فيُقرأ
+ * نصًّا جامدًا — ومن فتح الصفحةَ مرّتين رآه كما هو فظنّه معطوبًا.
+ */
+describe('العدّ الدقيق', () => {
+  const H = 3_600_000
+  const M = 60_000
+
+  it('يُظهر الساعة والدقيقة والثانية ولو بقيت أيّام', () => {
+    expect(preciseCountdown(2 * 24 * H + 5 * H + 23 * M + 41_000)).toBe('يومان · 05:23:41')
+    expect(preciseCountdown(5 * 24 * H + 1 * H)).toBe('5 أيام · 01:00:00')
+    expect(preciseCountdown(24 * H + 9 * M)).toBe('يوم · 00:09:00')
+  })
+
+  it('ودون اليوم ساعةٌ كاملة', () => {
+    expect(preciseCountdown(2 * H + 3 * M + 4_000)).toBe('02:03:04')
+    expect(preciseCountdown(45_000)).toBe('00:00:45')
+  })
+
+  it('وما انقضى يُقال «انتهى» لا صفرًا', () => {
+    expect(preciseCountdown(0)).toBe('انتهى')
+    expect(preciseCountdown(-5_000)).toBe('انتهى')
+  })
+
+  /** والمضغوطةُ على حالها — بطاقاتُ السوق لا تُثقَل بالثواني. */
+  it('ولا تتغيّر المضغوطة', () => {
+    expect(compactCountdown(2 * 24 * H + 5 * H)).toBe('2 يومان و5 س')
   })
 })

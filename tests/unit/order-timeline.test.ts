@@ -7,6 +7,7 @@ import {
   orderBucket,
   orderClosure,
   orderMoneyMarker,
+  orderTurn,
 } from '@/lib/domain/order-timeline'
 import { riyalsToHalalas } from '@/lib/domain/money'
 import type { Order } from '@/lib/domain/types'
@@ -213,7 +214,18 @@ describe('المرحلة الراهنة ولمن الدور', () => {
   })
 
   it('بعد الحجز: الدور على البائع، ومهلته مهلة النقل', () => {
-    const o = order({ status: 'escrow_held', paidAt: AT, transferDueAt: DUE })
+    /* وبياناتُ المشتري واصلة — وإلّا فالدورُ عليه هو، انظر الوصف أسفل الملفّ */
+    const o = order({
+      status: 'escrow_held',
+      paidAt: AT,
+      transferDueAt: DUE,
+      transferIdentity: {
+        nationalId: '1098765432',
+        birthDate: '1990-05-04',
+        birthCalendar: 'gregorian',
+        confirmedAt: AT,
+      },
+    })
     expect(stage(o, 'seller').audience).toBe('you')
     expect(stage(o, 'buyer').audience).toBe('other')
     expect(stage(o, 'seller').deadline).toBe(DUE)
@@ -433,14 +445,25 @@ describe('كوم الصفقات', () => {
    * التقسيم بالدور لا بالمرحلة: ثلاث كوم ثابتة لا تزيد بزيادة الحالات.
    */
   it('كل حالة مفتوحة تقع عند صاحب دورها، والطرف الآخر يراها «ماشية»', () => {
+    /*
+     * و`escrow_held` ببياناتٍ واصلة: بدونها يكون الدورُ على المشتري ليؤكّدها
+     * — فالبائعُ لا يملك أن ينقل. وهو مقيسٌ في وصفٍ مستقلٍّ أسفل الملفّ.
+     */
+    const identity = {
+      nationalId: '1098765432',
+      birthDate: '1990-05-04',
+      birthCalendar: 'gregorian',
+      confirmedAt: AT,
+    } as const
     const cases = [
       ['awaiting_settlement', 'buyer'],
       ['escrow_held', 'seller'],
     ] as const
     for (const [status, turn] of cases) {
       const other = turn === 'buyer' ? 'seller' : 'buyer'
-      expect(orderBucket(order({ status }), turn), status).toBe('you')
-      expect(orderBucket(order({ status }), other), status).toBe('running')
+      const row = order({ status, transferIdentity: status === 'escrow_held' ? identity : null })
+      expect(orderBucket(row, turn), status).toBe('you')
+      expect(orderBucket(row, other), status).toBe('running')
     }
   })
 
@@ -675,5 +698,65 @@ describe('سبب عدم اكتمال الصفقة', () => {
     const none = orderClosure(closed, settlement(null, 0), 'buyer')!
     expect(none.reason).toBe('أُلغيت الصفقة قبل السداد')
     expect(none.effects.some((line) => line.includes('عربون'))).toBe(false)
+  })
+})
+
+/**
+ * **الدورُ يتبع ما ينتظره فعلًا — لا الحالةَ وحدها.**
+ *
+ * وحالةُ `escrow_held` كانت تُقرأ «الدور على البائع» دائمًا. والبائعُ لا
+ * يملك أن ينقل قبل أن تصله هويّةُ المشتري وتاريخُ ميلاده: أبشر يطلبهما،
+ * والخادمُ يردّ إثباتَ نقلٍ بدونهما.
+ *
+ * فكان المشتري يجد لوحتَه في «تحت الإجراء» — أي «لا شيء عليك» — وعليه في
+ * الحقيقة قرار؛ والبائعُ ينتظره ولا أحدَ يقول له ذلك. **فتقف الصفقةُ
+ * وكلاهما يظنّ الدورَ على الآخر.**
+ */
+describe('الدور في مرحلة النقل يتبع بيانات المشتري', () => {
+  const held = (identity: Order['transferIdentity']) =>
+    order({ status: 'escrow_held', paidAt: AT, transferDueAt: DUE, transferIdentity: identity })
+
+  const confirmed = {
+    nationalId: '1098765432',
+    birthDate: '1990-05-04',
+    birthCalendar: 'gregorian' as const,
+    confirmedAt: AT,
+  }
+
+  it('بلا بيانات: الدورُ على المشتري وتقع في «بانتظار ردّك»', () => {
+    const row = held(null)
+    expect(orderTurn(row.status, row.transferIdentity)).toBe('buyer')
+    expect(orderBucket(row, 'buyer')).toBe('you')
+    expect(orderBucket(row, 'seller')).toBe('running')
+  })
+
+  it('وبها: ينتقل الدورُ إلى البائع', () => {
+    const row = held(confirmed)
+    expect(orderTurn(row.status, row.transferIdentity)).toBe('seller')
+    expect(orderBucket(row, 'seller')).toBe('you')
+    expect(orderBucket(row, 'buyer')).toBe('running')
+  })
+
+  /**
+   * **ولا يُقال «نقل الملكية» قبل أن تصل البيانات.**
+   *
+   * فمحطّةٌ تقول «ينقلها البائع» والمشتري لم يؤكّد بعدُ تُلقي الدورَ على من
+   * لا يملكه، ويقرؤها المشتري «لا شيء عليّ».
+   */
+  it('ومحطّةُ المسار تُسمّى بما تنتظره', () => {
+    const settlement = { deposit: 0, depositStatus: null, depositApplied: 0, commission: null }
+    const nowMs = Date.parse(AT) + 1_000
+
+    const before = buildOrderTimeline(held(null), settlement, nowMs, 'buyer')
+    const beforeStep = before.find((row) => row.key === 'transfer')!
+    expect(beforeStep.label).toBe('بانتظارك لتأكيد بياناتك')
+    expect(beforeStep.state).toBe('current')
+
+    /* والبائعُ يقرأ الواقعةَ نفسَها بصوته: ينتظر لا يُطالَب */
+    const sellerView = buildOrderTimeline(held(null), settlement, nowMs, 'seller')
+    expect(sellerView.find((row) => row.key === 'transfer')!.label).toBe('بانتظار بيانات المشتري')
+
+    const after = buildOrderTimeline(held(confirmed), settlement, nowMs, 'buyer')
+    expect(after.find((row) => row.key === 'transfer')!.label).toBe('نقل الملكية')
   })
 })

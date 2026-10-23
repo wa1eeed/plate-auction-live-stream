@@ -79,6 +79,28 @@ export function elapsedRatio(remainingMs: number, totalDurationMs: number): numb
  * الدقّة تتبع القرب: مزاد أمامه أيام يُعرض بالأيام والساعات — عدّ الثواني فيه
  * ضجيج على بطاقة تعرض عشرات اللوحات. وما دون اليوم تظهر الثواني لأنها تُحسب.
  */
+/**
+ * **عدٌّ دقيقٌ لصفحةٍ واحدة — لا لبطاقةٍ في شبكة.**
+ *
+ * و`compactCountdown` تُخفي الثواني ما دام أمامك أيّام، عمدًا: بطاقةُ السوق
+ * تعرض عشراتِ اللوحات، وعدٌّ يتبدّل كلَّ ثانيةٍ في كلٍّ منها ضجيجٌ يسحب
+ * العينَ عن اللوحة نفسِها.
+ *
+ * **وصفحةُ الصفقة غيرُ ذلك**: عدّادٌ واحدٌ على مهلةٍ يتبعها اقتطاعٌ من
+ * عربونٍ أو إعادةُ إرساء. و«يومان و٥ س» لا يتبدّل إلّا كلَّ ساعة، فيُقرأ
+ * نصًّا جامدًا — ومن فتح الصفحةَ مرّتين رآه كما هو فظنّه معطوبًا. والثواني
+ * تقول إنّه حيٌّ يعدّ.
+ */
+export function preciseCountdown(ms: number): string {
+  const { days, hours, minutes, seconds } = splitCountdown(ms)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  if (ms <= 0) return 'انتهى'
+  const clock = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+  if (days === 0) return clock
+  const dayLabel = days === 1 ? 'يوم' : days === 2 ? 'يومان' : 'أيام'
+  return `${days > 2 ? `${days} ${dayLabel}` : dayLabel} · ${clock}`
+}
+
 export function compactCountdown(ms: number): string {
   const { days, hours, minutes, seconds } = splitCountdown(ms)
   const pad = (n: number) => String(n).padStart(2, '0')

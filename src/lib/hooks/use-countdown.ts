@@ -25,6 +25,19 @@ export function useSignedCountdown(
   endsAt: string | null,
   serverTime: string | null,
   frozenMs?: number | null,
+  /**
+   * **يعدّ بعد الصفر — لعدّادِ التأخّر وحده.**
+   *
+   * وكان الجدولُ يقف عند الصفر دائمًا، فيتجمّد «تأخّر منذ ٠٢:٠٠:٢١» على
+   * القيمة التي قُرئت ساعةَ فتح الصفحة ولا يتقدّم — ومن تركها مفتوحةً
+   * يقرأ تأخّرًا قديمًا ويحسبه الحاضر. **ومقدارُ التأخّر هو مقدارُ الخطر**:
+   * يتبعه اقتطاعٌ من عربونٍ أو إعادةُ إرساء.
+   *
+   * ويبقى واقفًا لمن يَقصر على ما قبل الصفر (`useCountdown`): بطاقةُ مزادٍ
+   * انتهى لا تحتاج نبضةً في الثانية إلى الأبد، وهو ما قِيس في «العدّاد لا
+   * يستنزف الخيط».
+   */
+  countPastZero = false,
 ) {
   const offsetRef = useRef(0)
 
@@ -70,9 +83,12 @@ export function useSignedCountdown(
     const schedule = () => {
       const remaining = read()
       setRemaining(remaining)
-      if (remaining <= 0) return
+      if (remaining <= 0 && !countPastZero) return
 
-      /* ما يفصلنا عن حافّة الثانية التالية — وبحدٍّ أدنى يمنع دورةً محمومة */
+      /*
+       * ما يفصلنا عن حافّة الثانية التالية — وبحدٍّ أدنى يمنع دورةً محمومة.
+       * والباقي سالبٌ بعد الصفر، فالقسمةُ تُطبَّع بإضافة ألفٍ ثمّ باقٍ ثانٍ.
+       */
       const toEdge = ((remaining % 1000) + 1000) % 1000
       timer = setTimeout(schedule, Math.max(toEdge || 1000, 50))
     }
@@ -103,7 +119,7 @@ export function useSignedCountdown(
       stop()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [endsAt, frozenMs])
+  }, [endsAt, frozenMs, countPastZero])
 
   return remaining
 }

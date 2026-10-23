@@ -148,9 +148,15 @@ test.describe('صفحة السداد', () => {
     const toOrder = buyerPage.getByRole('link', { name: 'عرض الطلب' })
     await expect(toOrder).toBeVisible()
     await toOrder.click()
-    // الرابط يحمل القسم الذي صارت فيه المعاملة، فلا يبحث عنها من سدّد للتوّ
-    await buyerPage.waitForURL(/\/account\/purchases\?stage=running/)
-    await expect(buyerPage.getByText(/المبلغ محجوز/).first()).toBeVisible()
+    /*
+     * الرابط يحمل القسم الذي صارت فيه المعاملة، فلا يبحث عنها من سدّد للتوّ.
+     *
+     * **و«بانتظار ردّك» لا «تحت الإجراء»**: بعد السداد يبقى على المشتري
+     * قرارٌ — تأكيدُ بياناته لنقل اللوحة — فالدورُ عليه هو، والبائعُ لا
+     * يملك أن ينقل قبلها.
+     */
+    await buyerPage.waitForURL(/\/account\/purchases\?stage=you/)
+    await expect(buyerPage.getByRole('link', { name: 'أكّد بياناتك' }).first()).toBeVisible()
 
     await adminContext.close()
     await buyerContext.close()

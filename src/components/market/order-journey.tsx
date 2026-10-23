@@ -308,15 +308,27 @@ export function OrderStageCallout({
         * كان «يتبقّى ٠٠:٠٠» بعد انقضائها — ومن تأخّر لا يعرف أساعةً تأخّر أم
         * ثلاثة أيام، والفرق بينهما هو الفرق بين تنبيهٍ ومصادرةِ عربون.
         */}
+      {/*
+        * **والمهلةُ القصوى مكتوبةٌ بتاريخها — لا عدًّا وحده.**
+        *
+        * فـ«يتبقّى يومان» لا يقول متى تنتهي: من قرأه يحسب بيده، ومن فتح
+        * الصفحةَ غدًا يقرأ رقمًا آخر ولا مرجعَ ثابتًا يبني عليه. والمهلةُ
+        * هنا يتبعها اقتطاعُ عربونٍ أو إعادةُ إرساء، فموعدُها الصريح هو ما
+        * يُؤرَّخ به ويُحتجّ. والعدُّ معه يقول كم بقي.
+        */}
       {deadline && (
-        <p className="mt-2.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <DeadlineMeter
             deadline={deadline}
             serverTime={serverTime}
             label="يتبقّى"
             overdueLabel="تأخّر منذ"
+            precise
           />
-        </p>
+          <span className="text-[11px] text-muted">
+            المهلة القصوى <LocalTime iso={deadline} mode="datetime" />
+          </span>
+        </div>
       )}
       </div>
       {action && <div className={cn('flex flex-wrap gap-2', !bare && 'mt-3')}>{action}</div>}
