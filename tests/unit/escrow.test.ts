@@ -3,7 +3,7 @@ import { emptyDatabase, MemoryStore, type MemoryDatabase } from '@/lib/store/mem
 import { seedDatabase } from '@/lib/store/seed'
 import { resetStoreForTests } from '@/lib/store'
 import { resetRateLimits } from '@/lib/server/rate-limit'
-import { settleOrderForTest } from '../support/settle'
+import { confirmIdentityForTest, settleOrderForTest } from '../support/settle'
 import {
   openDispute,
   releaseOrderEscrow,
@@ -84,6 +84,7 @@ describe('تحصيل الضمان', () => {
 describe('نقل الملكية وتأكيد المشتري', () => {
   it('البائع يرفع الإثبات فيبدأ مؤقّت التأكيد', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     const after = await submitTransferProof({
       orderId: order.id,
       sellerId: order.sellerId,
@@ -94,8 +95,36 @@ describe('نقل الملكية وتأكيد المشتري', () => {
     expect(after.confirmDueAt).not.toBeNull()
   })
 
+  /**
+   * **ولا إثباتَ نقلٍ قبل أن يؤكّد المشتري بياناته.**
+   *
+   * فأبشر يطلب رقمَ هويته وتاريخَ ميلاده، والنقلُ لا يقع بغيرهما أصلًا.
+   * فمن رفع إثباتًا ولم تصله بياناتٌ إمّا أخذها من خارج المنصّة — فلا
+   * سجلَّ لها عندنا تُراجعه الإدارة حين يُختلف — أو لم ينقل شيئًا.
+   *
+   * **والحارسُ في الخادم لا في إخفاء زرّ**: طلبٌ مباشرٌ يتجاوز الواجهة.
+   */
+  it('ولا يرفعه قبل أن يؤكّد المشتري بياناته', async () => {
+    const order = await held()
+    await expect(
+      submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'بلا بيانات' }),
+    ).rejects.toMatchObject({ code: 'IDENTITY_MISSING' })
+
+    await confirmIdentityForTest(order)
+    const after = await submitTransferProof({
+      orderId: order.id,
+      sellerId: order.sellerId,
+      note: 'نُقلت بعد وصول البيانات',
+    })
+    expect(after.status).toBe('ownership_transferred')
+    /* والمحفوظُ صورةُ ما أُكّد — بختمه، فيُراجَع حين يُختلف */
+    expect(after.transferIdentity?.nationalId).toBe('1098765432')
+    expect(after.transferIdentity?.confirmedAt).toBeTruthy()
+  })
+
   it('لا يرفعه غير البائع، ولا قبل وصول المال', async () => {
     const order = pending()
+    /* ولا تأكيدَ هنا: الفحصُ على حارسٍ يسبق البيانات — الحالةُ لا الهويّة */
     await expect(
       submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'قبل السداد' }),
     ).rejects.toMatchObject({ code: 'ORDER_STATE_INVALID' })
@@ -109,6 +138,7 @@ describe('نقل الملكية وتأكيد المشتري', () => {
   it('تأكيد المشتري يُفرج العائد بعد خصم عمولة البائع وضريبتها', async () => {
     await enableCommission(2.5, 15)
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
 
     const before = (await store.getWallet(order.sellerId)).balance
@@ -142,6 +172,7 @@ describe('نقل الملكية وتأكيد المشتري', () => {
 
   it('لا إفراج مرّتين', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
     await releaseOrderEscrow((await store.getOrder(order.id))!, { by: 'admin', adminId: adminId() })
 
@@ -159,6 +190,7 @@ describe('الإفراج قرار إدارة لا مؤقّت', () => {
    */
   it('انقضاء المهلة لا يُفرج شيئًا', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
 
     db.orders.find((o) => o.id === order.id)!.confirmDueAt = new Date(
@@ -173,6 +205,7 @@ describe('الإفراج قرار إدارة لا مؤقّت', () => {
 
   it('وتُذكَّر بتأخّر المراجعة مرّة واحدة', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
     db.orders.find((o) => o.id === order.id)!.confirmDueAt = new Date(
       Date.now() - 60_000,
@@ -190,6 +223,7 @@ describe('الإفراج قرار إدارة لا مؤقّت', () => {
 
   it('ولا يُفرج إلا بقرار: قرار الإدارة يُتمّها', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
 
     await resolveDispute({
@@ -257,6 +291,7 @@ describe('الاعتراض وفصله', () => {
 
   it('لا فصل في صفقة استقرّ مالها', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
     await releaseOrderEscrow((await store.getOrder(order.id))!, { by: 'admin', adminId: adminId() })
 
@@ -296,6 +331,7 @@ describe('باب السؤال لا يُغلق', () => {
 
   it('وبعد رفع الإثبات كذلك — الباب مفتوح حتى الإفراج', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
     const after = await openDispute({
       orderId: order.id,
@@ -307,6 +343,7 @@ describe('باب السؤال لا يُغلق', () => {
 
   it('ولا اعتراض بعد أن استقرّ المال', async () => {
     const order = await held()
+    await confirmIdentityForTest(order)
     await submitTransferProof({ orderId: order.id, sellerId: order.sellerId, note: 'نُقلت' })
     await releaseOrderEscrow((await store.getOrder(order.id))!, { by: 'admin', adminId: adminId() })
 

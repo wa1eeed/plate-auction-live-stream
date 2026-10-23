@@ -17,6 +17,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { isFinalOrderStatus, type AccountOrder } from '@/lib/domain/types'
+import { ABSHER_PLATES_URL } from '@/lib/domain/absher-transfer'
+import { BuyerIdentityPanel } from './buyer-identity-panel'
 import { LocalTime } from './local-time'
 
 async function post(url: string, body?: Record<string, unknown>) {
@@ -74,7 +76,7 @@ export function OrderEscrowActions({
   return (
     <>
       {side === 'seller' && order.status === 'escrow_held' && (
-        <TransferProofDialog orderId={order.id} />
+        <TransferProofDialog orderId={order.id} identity={order.transferIdentity} />
       )}
 
       {/*
@@ -144,7 +146,13 @@ function StandingDispute({ order, side }: { order: AccountOrder; side: 'buyer' |
   )
 }
 
-function TransferProofDialog({ orderId }: { orderId: string }) {
+function TransferProofDialog({
+  orderId,
+  identity,
+}: {
+  orderId: string
+  identity: AccountOrder['transferIdentity']
+}) {
   const { refresh } = useRouteRefresh()
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState('')
@@ -182,6 +190,36 @@ function TransferProofDialog({ orderId }: { orderId: string }) {
               تتحقّق الإدارة منه، وعندها يصلك المبلغ في محفظتك.
             </DialogDescription>
           </DialogHeader>
+
+          {/*
+            * **وبياناتُ المشتري في النافذة نفسِها.**
+            *
+            * فهذه الشاشةُ هي التي يفتحها البائعُ وهو ينقل — بل يفتحها
+            * وأبشر مفتوحٌ بجانبها. فأن يُطلب منه رقمُ الهوية وهو هنا، ثمّ
+            * يُترك يبحث عنه في محادثة، هو موضعُ الخطأ بعينه.
+            */}
+          <BuyerIdentityPanel identity={identity} className="mt-3" />
+
+          {/*
+            * **ولا يُطلب إثباتُ فعلٍ لم يُشرح.**
+            *
+            * فالنافذةُ تقول «انقل الملكية عبر أبشر أولًا» وتفترض أنّه يعرف
+            * كيف. وخطواتُه مبسوطةٌ في الصفحة خلف النافذة — فمن فتحها قبل أن
+            * ينقل يجد الطريقَ إليها هنا لا بإغلاقها والبحث.
+            */}
+          <p className="mt-3 rounded-xl border border-ink-600 bg-ink-900/50 p-3 text-[11px] leading-relaxed text-muted">
+            لم تنقلها بعد؟ خطواتُ النقل في أبشر مكتوبةٌ في هذه الصفحة تحت «كيف تنقل اللوحة
+            في أبشر» —{' '}
+            <a
+              href={ABSHER_PLATES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-gold-500 underline-offset-4 hover:underline"
+            >
+              أو افتح أبشر مباشرةً
+            </a>
+            .
+          </p>
 
           <div className="space-y-2 py-4">
             <Label htmlFor={`proof-${orderId}`}>بيان النقل</Label>

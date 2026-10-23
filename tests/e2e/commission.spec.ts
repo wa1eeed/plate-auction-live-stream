@@ -176,8 +176,29 @@ test.describe('عمولة المنصّة', () => {
     expect(paid.ok, paid.body).toBe(true)
 
     /*
+     * **والمشتري يؤكّد بياناته قبل أن ينقل البائع.**
+     *
+     * فأبشر يطلب رقمَ هويته وتاريخَ ميلاده، والنقلُ لا يقع بغيرهما — فالخادم
+     * يردّ إثباتَ نقلٍ بلا بيانات (`IDENTITY_MISSING`). والفحصُ يمرّ بما
+     * يمرّ به المستخدم لا بمختصرٍ يتجاوز حارسًا قائمًا.
+     */
+    const identified = await buyerPage.evaluate(async (id) => {
+      const response = await fetch(`/api/orders/${id}/identity`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          nationalId: '1098765432',
+          birthDate: '1990-05-04',
+          birthCalendar: 'gregorian',
+        }),
+      })
+      return { ok: response.ok, body: await response.text() }
+    }, orderId)
+    expect(identified.ok, identified.body).toBe(true)
+
+    /*
      * والمسار كاملًا: السداد يحجز، وعمولة البائع تُخصم من عائده لحظة الإفراج.
-     * فالبائع يرفع إثبات النقل، والمشتري يؤكّد، فيُفرَج.
+     * فالبائع يرفع إثبات النقل، والإدارة تتحقّق فتُفرج.
      */
     const transferred = await sellerPage.evaluate(async (id) => {
       const response = await fetch(`/api/orders/${id}/transfer`, {

@@ -11,6 +11,7 @@ import {
 import { riyalsToHalalas } from '@/lib/domain/money'
 import { finalizeDueAuctions, getListingDetail } from '@/lib/server/market-service'
 import type { Order } from '@/lib/domain/types'
+import { confirmIdentityForTest } from '../support/settle'
 import { getRevenue } from '@/lib/server/admin-service'
 import { startOrderPayment } from '@/lib/server/checkout-service'
 import { releaseOrderEscrow, submitTransferProof } from '@/lib/server/escrow-service'
@@ -171,6 +172,7 @@ describe('اقتطاع العمولة عند اكتمال الصفقة', () => {
      * والمسار كاملًا: السداد يحجز، وعمولة البائع تُخصم من عائده لحظة الإفراج.
      * فما يختبر «اقتطاع العمولة من الطرفين» يحتاج الإفراج لا التحصيل وحده.
      */
+    await confirmIdentityForTest(order)
     await submitTransferProof({
       orderId: order.id,
       sellerId: order.sellerId,

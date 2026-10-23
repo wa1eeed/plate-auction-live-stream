@@ -645,6 +645,7 @@ export function seedDatabase(db: MemoryDatabase): void {
     transferDueAt: iso(-3_500_000 + 72 * 3_600_000),
     transferProofNote: 'نُقلت الملكية في أبشر — بيانات تجريبية',
     transferProofAt: iso(-2_400_000),
+    transferIdentity: null,
     confirmDueAt: iso(-2_400_000 + 72 * 3_600_000),
     disputedAt: null,
     disputeReason: null,
@@ -780,6 +781,7 @@ export function seedDatabase(db: MemoryDatabase): void {
     transferDueAt: null,
     transferProofNote: null,
     transferProofAt: null,
+    transferIdentity: null,
     confirmDueAt: null,
     disputedAt: null,
     disputeReason: null,
@@ -831,6 +833,7 @@ export function seedDatabase(db: MemoryDatabase): void {
     transferDueAt: null,
     transferProofNote: null,
     transferProofAt: null,
+    transferIdentity: null,
     confirmDueAt: null,
     disputedAt: null,
     disputeReason: null,
@@ -881,6 +884,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       transferDueAt: null,
       transferProofNote: null,
       transferProofAt: null,
+      transferIdentity: null,
       confirmDueAt: null,
       disputedAt: null,
       disputeReason: null,
@@ -1092,6 +1096,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       transferDueAt: iso(-58 * HOUR + 72 * HOUR),
       transferProofNote: 'نُقلت الملكية في أبشر — رقم العملية 4471209 (بيانات تجريبية)',
       transferProofAt: iso(-36 * HOUR),
+      transferIdentity: null,
       confirmDueAt: iso(-36 * HOUR + 72 * HOUR),
     })
 
@@ -1105,6 +1110,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       transferDueAt: iso(-78 * HOUR + 72 * HOUR),
       transferProofNote: 'إثبات نقل — بيانات تجريبية',
       transferProofAt: iso(-50 * HOUR),
+      transferIdentity: null,
       confirmDueAt: iso(-50 * HOUR + 72 * HOUR),
       disputedAt: iso(-20 * HOUR),
       disputeReason: 'اللوحة لم تُنقل باسمي في أبشر حتى الآن',
@@ -1169,6 +1175,7 @@ export function seedDatabase(db: MemoryDatabase): void {
       transferDueAt: iso(-(hoursAgo - 3) * HOUR + 72 * HOUR),
       transferProofNote: 'نُقلت الملكية في أبشر — بيانات تجريبية',
       transferProofAt: iso(-(hoursAgo - 20) * HOUR),
+      transferIdentity: null,
       releasedAt: iso(-(hoursAgo - 26) * HOUR),
       completedAt: iso(-(hoursAgo - 26) * HOUR),
     })
@@ -1307,6 +1314,51 @@ export function seedDatabase(db: MemoryDatabase): void {
       sortOrder: 11,
       published: true,
       showOnSaleTypes: [],
+    },
+    /*
+     * نقلُ الملكيّة في أبشر — أربعةُ أسئلةٍ تُسأل في كلّ صفقة.
+     *
+     * والمنصّةُ لا تنقل ملكيّةً: النقلُ يقع في أبشر بين الحسابين. فما لا
+     * يُشرح هنا يُبحث عنه في منتدى، ويُفهم خطأً، وتتعثّر الصفقة. وهي
+     * مكتوبةٌ في [`absher-transfer.ts`](../domain/absher-transfer.ts) أيضًا
+     * لأنّها تُعرض خطواتٍ في صفحة الصفقة — والإدارةُ تحرّر هذه من لوحتها
+     * إن تغيّرت الخدمة.
+     */
+    {
+      question: 'كيف أنقل اللوحة للمشتري في أبشر؟ (للبائع)',
+      answer:
+        'بعد أن يصل مبلغ المشتري ويُحجز أمانةً لدى المنصّة يأتي دورك: ادخل أبشر أفراد، ثمّ المركبات ← محفظة لوحات المركبات الرقمية، واختر اللوحة المباعة، ثمّ خدمة «نقل اللوحات» ونوع الطلب «نقل إلى مالك آخر». أدخِل رقم هوية المشتري أو إقامته وتاريخ ميلاده — وراجِعهما قبل الإرسال — ثمّ أكّد الطلب. يصل المشتري إشعارٌ فوريٌّ بطلبٍ معلّقٍ بانتظار موافقته. وبعد قبوله ارفع إثبات النقل في صفحة صفقتك لتتحقّق منه الإدارة ويُحوَّل إليك المبلغ. **والخطوات نفسُها معروضةٌ داخل صفحة صفقتك في وقتها.**',
+      category: 'selling',
+      sortOrder: 12,
+      published: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
+    },
+    {
+      question: 'كيف أستلم اللوحة في أبشر؟ (للمشتري)',
+      answer:
+        'بعد أن يُرسل البائع طلب النقل يصلك إشعارٌ من أبشر. ادخل أبشر أفراد، ثمّ المركبات ← محفظة لوحات المركبات الرقمية، واستعرض الطلبات الواردة أو المعلّقة، ثمّ وافق على طلب نقل اللوحة واقبله — فتدخل اللوحة محفظتك فورًا وتصير مملوكةً لك رسميًّا. ولا يُحوَّل مبلغك إلى البائع إلّا بعد أن ترفع الإدارةُ تحقّقها من النقل.',
+      category: 'payment',
+      sortOrder: 13,
+      published: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
+    },
+    {
+      question: 'هل لا بدّ أن تكون اللوحة في محفظتي الرقمية قبل بيعها؟',
+      answer:
+        'نعم. لا يظهر خيارُ نقل اللوحة مجرّدةً (بلا سيارة) في أبشر إلّا إذا كانت في محفظة لوحات المركبات الرقمية. وتصل محفظتك بإحدى حالتين: أن تكون اشتريتها من مزاد المرور ونزلت إليها مباشرةً، أو أن تكون راكبةً على سيّارتك فتفصلها إليها. والفصل: المركبات ← محفظة لوحات المركبات الرقمية ← «إضافة لوحة من مركبة إلى المحفظة»، ثمّ تحدّد السيّارة وتوافق على سحب اللوحة — وتُصرَف لسيّارتك لوحةٌ تنظيميّةٌ بديلة. **افعل ذلك قبل العرض أو فور رسو الصفقة**، فلوحةٌ ما زالت على سيّارتك لا تُنقل.',
+      category: 'selling',
+      sortOrder: 14,
+      published: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
+    },
+    {
+      question: 'ما رسوم أبشر؟ ومن يدفعها — البائع أم المشتري؟',
+      answer:
+        'رسومٌ حكوميّةٌ تُدفع في سداد ولا تمرّ بالمنصّة ولا تدخل حسابها، وهي غير عمولة المنصّة. وهما رسمان: **تفعيل محفظة اللوحات الرقمية — 402 ريال**، يدفعها كلُّ طرفٍ عن نفسه مرّةً واحدةً فقط (البائع ليحفظ لوحاته ويعرضها، والمشتري ليستقبلها في محفظته)؛ و**نقل ملكية اللوحة — 230 ريال**، يتحمّلها المشتري بالكامل وفق العرف السائد وشروط المنصّة، ما لم يُتّفق على غير ذلك. وهذه أرقامُ تعرفة أبشر الحالية وقد تتغيّر بقرار الجهة.',
+      category: 'payment',
+      sortOrder: 15,
+      published: true,
+      showOnSaleTypes: ['auction', 'fixed', 'offers'],
     },
   ]
   const faqNow = iso(-10 * 86_400_000)

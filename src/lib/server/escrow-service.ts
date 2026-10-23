@@ -6,7 +6,12 @@ import {
   type CommissionBreakdown,
   type Listing,
   type Order,
+  type TransferIdentity,
 } from '@/lib/domain/types'
+import {
+  IDENTITY_ERROR_TEXT,
+  validateTransferIdentity,
+} from '@/lib/domain/absher-transfer'
 import { formatAmount, type Halalas } from '@/lib/domain/money'
 import { getStore } from '@/lib/store'
 import type { AuctionStore } from '@/lib/store/types'
@@ -150,6 +155,64 @@ async function requireOrder(
 }
 
 /** البائع يرفع إثبات نقل الملكية، فتراجعه الإدارة قبل تحويل المبلغ له. */
+/**
+ * **المشتري يؤكّد بياناتِه لنقل اللوحة.**
+ *
+ * وأبشر يطلب من البائع رقمَ هوية المشتري أو إقامته وتاريخَ ميلاده. وكانت
+ * المنصّةُ لا تعرفهما فيتبادلهما الطرفان خارجها — ورقمٌ يُملى في محادثةٍ
+ * يُخطئ فيه حرفٌ فيُردّ الطلبُ في أبشر بلا سببٍ مفهوم.
+ *
+ * **ويُقبل التأكيد من حين تقع الصفقة حتى يُرفع إثباتُ النقل**: قبل السداد
+ * ليملأها وهو ينتظر، وبعده لأنّه وقتُها. ويُعاد كتابتُها ما دام البائع لم
+ * ينقل — فمن أخطأ رقمًا يُصلحه، ومن نُقلت لوحتُه لا يُغيّر ما بُني عليه
+ * نقلٌ وقع.
+ */
+export async function confirmTransferIdentity(input: {
+  orderId: string
+  buyerId: string
+  nationalId: string
+  birthDate: string
+  birthCalendar: TransferIdentity['birthCalendar']
+}): Promise<Order> {
+  const { order, store } = await requireOrder(input.orderId, {
+    userId: input.buyerId,
+    role: 'buyer',
+    statuses: ['awaiting_settlement', 'escrow_held'],
+  })
+
+  const failure = validateTransferIdentity(input)
+  if (failure) throw new ServiceError(IDENTITY_ERROR_TEXT[failure], 422, failure)
+
+  const identity: TransferIdentity = {
+    nationalId: input.nationalId,
+    birthDate: input.birthDate,
+    birthCalendar: input.birthCalendar,
+    confirmedAt: new Date().toISOString(),
+  }
+  const updated = await store.updateOrder(order.id, { transferIdentity: identity })
+
+  /*
+   * ويُخبَر البائع **مرّةً عند أوّل تأكيد** لا عند كلّ تصحيح.
+   *
+   * فالخبرُ النافع «صار بوسعك النقل»، ومن صحّح رقمًا بعده لا يُرسل إشعارًا
+   * ثانيًا بالمعنى نفسه — وإشعارٌ يتكرّر بلا جديد يُدرَّب صاحبُه على تجاهله.
+   */
+  if (!order.transferIdentity) {
+    const listing = await store.getListing(order.listingId)
+    const plate = listing ? `«${listing.arabicLetters} ${listing.plateNumbers}»` : 'اللوحة'
+    await notify(store, {
+      userId: order.sellerId,
+      type: 'order_awaiting_transfer',
+      title: 'أكّد المشتري بياناته',
+      body: `وصلت بيانات مشتري ${plate} — تستطيع نقل اللوحة في أبشر الآن.`,
+      href: `/account/orders/${order.id}`,
+      listingId: order.listingId,
+    })
+  }
+
+  return updated
+}
+
 export async function submitTransferProof(input: {
   orderId: string
   sellerId: string
@@ -160,6 +223,21 @@ export async function submitTransferProof(input: {
     role: 'seller',
     statuses: ['escrow_held'],
   })
+
+  /*
+   * **ولا إثباتَ نقلٍ قبل أن يؤكّد المشتري بياناته.**
+   *
+   * فالنقلُ في أبشر لا يقع بغيرها أصلًا — فمن رفع إثباتًا ولم تصله بياناتٌ
+   * إمّا أخذها من خارج المنصّة (فلا سجلَّ لها عندنا تُراجعه الإدارة) أو لم
+   * ينقل شيئًا. والحارسُ في الخادم لا في إخفاء زرّ.
+   */
+  if (!order.transferIdentity) {
+    throw new ServiceError(
+      'لم يؤكّد المشتري بياناته بعد — لا يمكن نقل اللوحة في أبشر بدونها',
+      409,
+      'IDENTITY_MISSING',
+    )
+  }
 
   const now = Date.now()
   const confirmDueAt = new Date(now + listing.escrowReviewWindowHours * HOUR).toISOString()

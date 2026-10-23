@@ -3,7 +3,11 @@ import { emptyDatabase, MemoryStore, type MemoryDatabase } from '@/lib/store/mem
 import { seedDatabase } from '@/lib/store/seed'
 import { resetStoreForTests } from '@/lib/store'
 import { resetRateLimits } from '@/lib/server/rate-limit'
-import { settleOrderForTest, completeOrderForTest } from '../support/settle'
+import {
+  completeOrderForTest,
+  confirmIdentityForTest,
+  settleOrderForTest,
+} from '../support/settle'
 import { refundOrderEscrow, submitTransferProof } from '@/lib/server/escrow-service'
 import { cancelDisbursement, payDisbursement } from '@/lib/server/disbursement-service'
 import { availableBalance, type Order } from '@/lib/domain/types'
@@ -242,6 +246,7 @@ describe('الفواتير الضريبية', () => {
     )
     if (second) {
       await settleOrderForTest(store, second, adminId())
+      await confirmIdentityForTest(second)
       await submitTransferProof({ orderId: second.id, sellerId: second.sellerId, note: 'نُقلت' })
       const { releaseOrderEscrow } = await import('@/lib/server/escrow-service')
       await releaseOrderEscrow((await store.getOrder(second.id))!, {

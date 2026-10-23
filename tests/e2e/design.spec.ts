@@ -335,7 +335,18 @@ test.describe('مسار الصفقة وتفصيلها', () => {
     await expect(page.getByText(/^(المطلوب سداده|سُدّد المتبقّي)$/)).toBeVisible()
 
     // والمسار سكّة بخمس محطّات ثابتة من النشأة إلى استقرار المال
-    const rail = page.locator('ol').first()
+    /*
+     * **ويُحصر المسارُ بعنوانه لا بـ`ol` الأولى.**
+     *
+     * فصفحةُ الصفقة صار فيها قائمتان مرتّبتان: خطواتُ النقل في أبشر ثمّ
+     * محطّاتُ المسار. و`.first()` تأخذ ترتيبَ العقد لا المقصود، فقِيست
+     * أربعُ خطواتٍ على أنّها خمسُ محطّات.
+     */
+    const rail = page
+      .locator('section')
+      .filter({ hasText: 'مسار الصفقة' })
+      .locator('ol')
+      .first()
     await expect(rail.locator('> li')).toHaveCount(5)
     // باسم كلمةٍ لكل محطّة — فالجملة لا تُقرأ تحت خمس نقاط على عرض الجوال
     await expect(rail.locator('> li').first()).toContainText('طلب')

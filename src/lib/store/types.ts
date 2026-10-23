@@ -58,6 +58,8 @@ export type NewOrder = Omit<
   | 'transferDueAt'
   | 'transferProofNote'
   | 'transferProofAt'
+  /* تُطلب في مرحلة النقل لا عند إنشاء الصفقة */
+  | 'transferIdentity'
   | 'confirmDueAt'
   | 'disputedAt'
   | 'disputeReason'

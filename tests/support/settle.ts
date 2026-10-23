@@ -2,7 +2,11 @@ import type { AuctionStore } from '@/lib/store/types'
 import type { Order } from '@/lib/domain/types'
 import { startOrderPayment } from '@/lib/server/checkout-service'
 import { markPaymentPaid } from '@/lib/server/payment-service'
-import { releaseOrderEscrow, submitTransferProof } from '@/lib/server/escrow-service'
+import {
+  confirmTransferIdentity,
+  releaseOrderEscrow,
+  submitTransferProof,
+} from '@/lib/server/escrow-service'
 
 /**
  * يُتمّ صفقة بالسداد الحقيقي لا باختصار الأدمن.
@@ -38,6 +42,24 @@ export async function settleOrderForTest(
 }
 
 /**
+ * **يؤكّد بيانات المشتري — شرطُ نقل الملكيّة.**
+ *
+ * فأبشر يطلب رقمَ هوية المشتري وتاريخَ ميلاده، والنقلُ لا يقع بغيرهما —
+ * فالخادم يردّ إثباتَ نقلٍ بلا بيانات (`IDENTITY_MISSING`). وكلُّ فحصٍ
+ * يمضي بصفقةٍ إلى النقل يمرّ بما يمرّ به المستخدم، لا بمختصرٍ يتجاوز
+ * حارسًا قائمًا.
+ */
+export async function confirmIdentityForTest(order: Pick<Order, 'id' | 'buyerId'>): Promise<void> {
+  await confirmTransferIdentity({
+    orderId: order.id,
+    buyerId: order.buyerId,
+    nationalId: '1098765432',
+    birthDate: '1990-05-04',
+    birthCalendar: 'gregorian',
+  })
+}
+
+/**
  * يمضي بالصفقة إلى نهايتها: سداد ← نقل ملكية ← تأكيد المشتري ← إفراج.
  *
  * السداد يحجز ولا يُتمّ، فما يختبر «اكتمال الصفقة» يحتاج المسار كاملًا.
@@ -48,6 +70,7 @@ export async function completeOrderForTest(
   adminId: string,
 ): Promise<void> {
   await settleOrderForTest(store, order, adminId)
+  await confirmIdentityForTest(order)
   await submitTransferProof({
     orderId: order.id,
     sellerId: order.sellerId,

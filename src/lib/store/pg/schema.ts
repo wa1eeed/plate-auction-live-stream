@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import type { TransferIdentity } from '@/lib/domain/types'
 import {
   bigint,
   boolean,
@@ -217,6 +218,8 @@ export const orders = pgTable(
     transferDueAt: stamp('transfer_due_at'),
     transferProofNote: text('transfer_proof_note'),
     transferProofAt: stamp('transfer_proof_at'),
+    /** هويّةُ المشتري كما يطلبها أبشر — تُطلب في مرحلة النقل، انظر `TransferIdentity` */
+    transferIdentity: jsonb('transfer_identity').$type<TransferIdentity | null>(),
     confirmDueAt: stamp('confirm_due_at'),
     disputedAt: stamp('disputed_at'),
     disputeReason: text('dispute_reason'),

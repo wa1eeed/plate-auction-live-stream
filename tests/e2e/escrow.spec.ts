@@ -171,7 +171,18 @@ test.describe('مسار الصفقة في الواجهة', () => {
 
     await openOrder(buyerPage, order.reference)
     // الشريط خمس محطّات باسم كلمةٍ لكلٍّ — لا خمس جمل تحت خمس نقاط
-    const rail = buyerPage.locator('ol').first()
+    /*
+     * **ويُحصر المسارُ بعنوانه لا بـ`ol` الأولى.**
+     *
+     * فصفحةُ الصفقة صار فيها قائمتان مرتّبتان: خطواتُ النقل في أبشر ثمّ
+     * محطّاتُ المسار. و`.first()` تأخذ ترتيبَ العقد لا المقصود، فقِيست
+     * أربعُ خطواتٍ على أنّها خمسُ محطّات.
+     */
+    const rail = buyerPage
+      .locator('section')
+      .filter({ hasText: 'مسار الصفقة' })
+      .locator('ol')
+      .first()
     await expect(rail.locator('> li')).toHaveCount(5)
     await expect(rail.locator('> li')).toContainText(['طلب', 'سداد', 'نقل', 'تحقّق', 'تحويل'])
     // وموضع المال معلن **جملةً مرئية** لا كلمةً في رقاقة: محجوز لا عند أحد الطرفين
@@ -181,6 +192,41 @@ test.describe('مسار الصفقة في الواجهة', () => {
     // ولا يُطالَب بفعل — لكنّ باب السؤال مفتوح
     await expect(buyerPage.getByRole('button', { name: 'أكّد الاستلام' })).toHaveCount(0)
     await expect(buyerPage.getByRole('button', { name: 'استفسار أو اعتراض' })).toBeVisible()
+
+    /*
+     * **ويقرأ خطواتِه في أبشر قبل أن تُطلب منه.**
+     *
+     * فالنقلُ يقع في نظامٍ لا تملكه المنصّة، وسيصله طلبٌ معلّقٌ هناك
+     * بانتظار موافقته. ومن لا يعرف أنّه سيأتي يتجاهل الإشعارَ أو يحار فيه،
+     * فتقف الصفقةُ على خطوةٍ لا يعرف أنّها عليه.
+     *
+     * **والشارةُ تقول إنّ دورَه لم يبدأ** — فلا يُدفع إلى أبشر يبحث عن
+     * طلبٍ لم يُرسَل بعد.
+     */
+    const buyerGuide = buyerPage.locator('section').filter({ hasText: 'كيف تستلم اللوحة في أبشر' })
+    await expect(buyerGuide).toBeVisible()
+    await expect(buyerGuide).toContainText('بعد أن يُرسل البائع الطلب')
+    await expect(buyerGuide).toContainText('وافق على الطلب واقبله')
+    /* ورسمُ النقل على المشتري — يُقال حيث يُفعل لا في صفحة أسئلة */
+    await expect(buyerGuide).toContainText('230')
+    /* ولا تُعرض عليه خطواتُ البائع: لا محفظةَ يفصل إليها ولا طلبًا يُرسل */
+    await expect(buyerGuide).not.toContainText('أدخل بيانات المشتري')
+
+    /**
+     * **ويؤكّد بياناتِه التي يطلبها أبشر من البائع.**
+     *
+     * وكانت تُتبادل خارج المنصّة — رقمُ هويةٍ من عشر خاناتٍ يُملى في
+     * محادثةٍ فيُسقط منه رقم، فيُردّ الطلبُ في أبشر بلا سببٍ مفهوم. ولا
+     * سجلَّ عندنا لما أُرسل حين يُختلف فيه.
+     */
+    const identityCard = buyerPage.locator('section').filter({ hasText: 'بياناتك لنقل اللوحة' })
+    await expect(identityCard).toBeVisible()
+    await identityCard.getByLabel('رقم الهوية الوطنية أو الإقامة').fill('1098765432')
+    await identityCard.getByLabel('تاريخ الميلاد').fill('1990-05-04')
+    await identityCard.getByRole('radio', { name: 'ميلادي' }).click()
+    await identityCard.getByRole('button', { name: 'أكّد وأرسل للبائع' }).click()
+    await expect(buyerPage.getByText('وصلت بياناتك إلى البائع')).toBeVisible({ timeout: 15_000 })
+    await expect(identityCard.getByText('1098765432')).toBeVisible()
 
     // الدور على البائع — ويقرأ صفحته بصوته لا بصوت المشتري
     await sellerPage.goto('/account/sales')
@@ -199,7 +245,36 @@ test.describe('مسار الصفقة في الواجهة', () => {
      * الصيغة، فيُطابَق ما يشترك فيه الاثنان.
      */
     await expect(sale.getByText(/ما يصلك/)).toBeVisible()
+
+    /*
+     * **والبائعُ يقرأ خطواتِه الستّ — وشرطَها قبلها.**
+     *
+     * فلوحةٌ ما زالت راكبةً على سيّارته لا يظهر لها خيارُ نقلٍ مجرّدٍ في
+     * أبشر أصلًا، ولا تقول الخدمةُ لماذا — فيرجع يظنّ العطبَ في المنصّة.
+     * وهو أكثرُ ما يُعطّل الصفقات، فيُقاس حضورُه مع الخطوات.
+     */
+    const sellerGuide = sellerPage
+      .locator('section')
+      .filter({ hasText: 'كيف تنقل اللوحة في أبشر' })
+    await expect(sellerGuide).toBeVisible()
+    await expect(sellerGuide).toContainText('دورك الآن')
+    await expect(sellerGuide).toContainText('اللوحة يجب أن تكون في محفظتك الرقميّة')
+    await expect(sellerGuide).toContainText('أدخل بيانات المشتري')
+    /* ورسمُ النقل لا يُعرض عليه: على المشتري بالعرف */
+    await expect(sellerGuide).not.toContainText('230')
+
+    /*
+     * **وبياناتُ المشتري تصله تحت خطوتها** — لا في محادثةٍ خارج المنصّة.
+     * والخطوةُ الخامسة تقول «أدخل بيانات المشتري»، فتُعرض عندها.
+     */
+    await expect(sellerGuide.getByText('1098765432')).toBeVisible()
+
     await sale.getByRole('button', { name: 'أكّد نقل الملكية' }).click()
+    /* وفي نافذة النقل أيضًا — هي الشاشةُ التي يفتحها وأبشر بجانبها */
+    await expect(
+      sellerPage.getByRole('dialog').getByText('1098765432'),
+      'بياناتُ المشتري غائبةٌ عن نافذة النقل نفسِها',
+    ).toBeVisible()
     await sellerPage.getByLabel('بيان النقل').fill('نُقلت في أبشر برقم 998877')
     await sellerPage.getByRole('button', { name: 'رفع الإثبات' }).click()
     await expect(sellerPage.getByText('وصل إثباتك — بانتظار تحقّق الإدارة')).toBeVisible()

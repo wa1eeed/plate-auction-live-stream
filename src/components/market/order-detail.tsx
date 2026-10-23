@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouteRefresh } from '@/lib/hooks/use-route-refresh'
 import { toast } from 'sonner'
-import { CircleSlash, CreditCard, Loader2, X } from 'lucide-react'
+import { CircleSlash, CreditCard, Loader2, Receipt, Route, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -19,6 +19,8 @@ import {
 import { OrderSettlementCard } from './order-timeline'
 import { OrderJourney, OrderStageCallout } from './order-journey'
 import { OrderEscrowActions } from './order-actions'
+import { TransferGuide } from './transfer-guide'
+import { TransferIdentityCard } from './transfer-identity-card'
 import { currentOrderStage, orderClosure, orderMoneyMarker } from '@/lib/domain/order-timeline'
 import type { AccountOrder } from '@/lib/domain/types'
 import { cn } from '@/lib/utils'
@@ -147,12 +149,69 @@ export function OrderDetail({
         </section>
       )}
 
-      {/* أين وصلت */}
-      <section className="rounded-2xl border border-ink-600 bg-ink-800 px-4 pb-4 pt-5">
+      {/*
+        * **دليلُ النقل — في المرحلتين اللتين يقع فيهما، لا في غيرهما.**
+        *
+        * فالنقلُ يقع في أبشر بين الحسابين، والمنصّةُ تحجز المالَ حتى يقع.
+        * وكان ما يصل الطرفين جملةً واحدة — «انقل الملكية عبر أبشر أولًا» —
+        * ثمّ يُترك كلٌّ يبحث عن الطريق في نظامٍ لا نملكه.
+        *
+        * **ويُعرض للمشتري وهو ينتظر**: ستصله موافقةٌ معلّقةٌ في أبشر، ومن
+        * لا يعرف أنّها ستأتي يتجاهل الإشعارَ أو يحار فيه. فيقرأ خطواتِه
+        * قبل أن يُطلب منه — والشارةُ تقول إنّ دورَه لم يبدأ بعد.
+        *
+        * ولا يُعرض بعد `ownership_transferred` للبائع: فعل ما عليه، وما
+        * بقي تحقُّقُ الإدارة.
+        */}
+      {/*
+        * **بياناتُ المشتري — تُطلب منه، وتُعرض للبائع.**
+        *
+        * وتُطلب من حين تقع الصفقة لا من حين يُسدَّد: يملؤها وهو ينتظر، فلا
+        * يقف البائعُ عليها بعد أن يصله المال. وتبقى قابلةً للتصحيح ما دام
+        * لم يُرفع إثباتُ النقل.
+        */}
+      {side === 'buyer' && (order.status === 'awaiting_settlement' || order.status === 'escrow_held') && (
+        <TransferIdentityCard
+          orderId={order.id}
+          identity={order.transferIdentity}
+          editable
+        />
+      )}
+
+      {order.status === 'escrow_held' && (
+        <TransferGuide
+          side={side}
+          active={side === 'seller'}
+          identity={order.transferIdentity}
+        />
+      )}
+      {order.status === 'ownership_transferred' && side === 'buyer' && (
+        <TransferGuide side="buyer" active />
+      )}
+
+      {/*
+        * **ولكلّ بطاقةٍ عنوانُها.**
+        *
+        * فالصفحةُ صارت خمسَ بطاقاتٍ متتابعة — هويّةٌ، ونداءُ مرحلة، ودليلُ
+        * نقل، ومسار، وتسوية — وكانت أخيرتان منها بلا عنوان: صندوقان
+        * يبدآن برسمٍ ورقم. ومن يفتح صفحةً ليجد رقمًا بعينه يمسحها
+        * بالعناوين، فبطاقةٌ بلا عنوانٍ تُقرأ كلُّها أو تُتجاوز كلُّها.
+        *
+        * والعنوانُ بأيقونته — صفُّ عناوينَ متشابهٌ يُقرأ فهرسًا للصفحة.
+        */}
+      <section className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
+          <Route className="size-4 shrink-0 text-muted" />
+          مسار الصفقة
+        </h2>
         <OrderJourney steps={order.timeline} money={orderMoneyMarker(order, side)} />
       </section>
 
       <section className="rounded-2xl border border-ink-600 bg-ink-800 p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
+          <Receipt className="size-4 shrink-0 text-muted" />
+          التفاصيل المالية
+        </h2>
         <OrderSettlementCard settlement={order.settlement} status={order.status} bare />
       </section>
     </div>
