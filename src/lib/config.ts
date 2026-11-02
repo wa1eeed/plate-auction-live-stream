@@ -50,6 +50,15 @@ export const config = {
 export const DEMO_USER_PASSWORD =
   process.env.DEMO_USER_PASSWORD || globalThis.crypto.randomUUID()
 
+/**
+ * هل ضُبطت من البيئة؟
+ *
+ * وعليها تُحاذى الحساباتُ القائمةُ عند الدخول: من بدّلها في متغيّرات النشر
+ * بدّلها في القاعدة. وبلا ضبطٍ لا يُمسّ شيء — فلا تُدهس كلمةٌ غيّرها صاحبُها
+ * بقيمةٍ عشوائيّةٍ تُولَّد في كلّ إقلاع.
+ */
+export const demoPasswordFromEnv = Boolean(process.env.DEMO_USER_PASSWORD)
+
 /** حسابات تجريبية — كل حساب يبيع ويشتري في آنٍ واحد. */
 export const DEMO_USERS = [
   {

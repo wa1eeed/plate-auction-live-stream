@@ -1,6 +1,7 @@
 import { loginSchema } from '@/lib/domain/schemas'
 import { fail, handleError, ok, readJson } from '@/lib/server/api'
-import { verifyPassword } from '@/lib/server/crypto'
+import { hashPassword, verifyPassword } from '@/lib/server/crypto'
+import { DEMO_USERS, DEMO_USER_PASSWORD, demoPasswordFromEnv } from '@/lib/config'
 import { clientIp } from '@/lib/server/client-ip'
 import { rateLimit } from '@/lib/server/rate-limit'
 import { setUserSession } from '@/lib/server/session'
@@ -29,7 +30,37 @@ export async function POST(request: Request) {
       return fail('محاولات كثيرة، حاول بعد دقيقة', 429, 'RATE_LIMITED')
     }
 
-    const account = await getStore().findUserByEmail(body.email)
+    const store = getStore()
+    /*
+     * **حساباتُ العرض تتبع البيئةَ لا القاعدة** — كما يفعل حسابُ الإدارة.
+     *
+     * فكلمتُها كانت مكتوبةً في مستودعٍ عامّ، ونُزعت منه إلى
+     * `DEMO_USER_PASSWORD`. لكنّ النزعَ يحرس النشراتِ القادمةَ وحدها:
+     * البذرةُ لا تُزرع إلّا على قاعدةٍ فارغة، فالحساباتُ المزروعةُ تبقى
+     * بكلمتها القديمة المنشورة إلى الأبد.
+     *
+     * فتُحاذى هنا: من بدّلها في متغيّرات النشر بدّلها في القاعدة بأوّل
+     * محاولةِ دخول.
+     *
+     * **ولا تُنشأ إن لم تكن** — تحديثٌ محض. فحساباتُ العرض بياناتُ عرضٍ لا
+     * بنيةٌ لازمة، وزرعُها في قاعدةٍ نظيفةٍ لأنّ أحدًا كتب بريدَها في نموذج
+     * دخولٍ عبثٌ وخطر.
+     *
+     * **وبلا ضبطِ المتغيّر لا يُمسّ شيء**: الافتراضُ عشوائيٌّ يُولَّد في كلّ
+     * إقلاع، فلو حوذيت به لدُهست كلمةٌ غيّرها صاحبُها بقيمةٍ لا يعرفها أحد.
+     */
+    if (
+      demoPasswordFromEnv &&
+      store.kind === 'postgres' &&
+      'alignDemoPassword' in store &&
+      DEMO_USERS.some((u) => u.email === body.email.trim().toLowerCase())
+    ) {
+      await (
+        store as { alignDemoPassword: (email: string, hash: string) => Promise<boolean> }
+      ).alignDemoPassword(body.email, hashPassword(DEMO_USER_PASSWORD))
+    }
+
+    const account = await store.findUserByEmail(body.email)
     if (!account || !verifyPassword(body.password, account.passwordHash)) {
       return fail('البريد الإلكتروني أو كلمة المرور غير صحيحة', 401, 'INVALID_CREDENTIALS')
     }

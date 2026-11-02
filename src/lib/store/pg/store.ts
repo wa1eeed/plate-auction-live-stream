@@ -538,6 +538,24 @@ export class PostgresStore implements AuctionStore {
       })
   }
 
+  /**
+   * يُحاذي كلمةَ حسابِ عرضٍ **قائمٍ** بما في البيئة — ولا يُنشئه.
+   *
+   * ونظيرُه في الأدمن `upsert` لأنّ حسابَ الإدارة لا بدّ منه. وهذا **تحديثٌ
+   * محض**: حساباتُ العرض بياناتُ عرضٍ لا بنيةٌ لازمة، وزرعُها في قاعدةٍ
+   * نظيفةٍ لأنّ أحدًا كتب بريدَها في نموذج دخولٍ عبثٌ وخطر.
+   *
+   * ويُعيد هل وقع التحديث — فيُعرف أنّ الحساب كان موجودًا أصلًا.
+   */
+  async alignDemoPassword(email: string, passwordHash: string): Promise<boolean> {
+    const rows = await this.db
+      .update(t.users)
+      .set({ passwordHash })
+      .where(eq(t.users.email, email.trim().toLowerCase()))
+      .returning({ id: t.users.id })
+    return rows.length > 0
+  }
+
   /* ------------------------------------------------------- الإعلانات */
 
   async listListings(query: ListingQuery = {}): Promise<Listing[]> {
