@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
-import '../models/demo_data.dart';
+import '../models/listing.dart';
 import '../widgets/home/guarantees_bar.dart';
 import '../widgets/home/home_banners.dart';
 import '../widgets/home/home_header.dart';
@@ -11,19 +11,41 @@ import '../widgets/home/stories_strip.dart';
 
 /// **الشاشةُ الرئيسيّة** — §5.1.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, this.onOpenStory});
+  const HomeScreen({
+    super.key,
+    required this.listings,
+    required this.serverTime,
+    this.onOpenStory,
+  });
+
+  /// ما يُعرض في السوق — يُقسَّم هنا على الأقسام الثلاثة.
+  final List<Listing> listings;
+
+  /// وقتُ الخادم — مرجعُ كلّ عدّاد.
+  final DateTime serverTime;
 
   /// تُفتح قصّةٌ في عارضٍ يملأ الشاشة.
   final ValueChanged<Story>? onOpenStory;
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final auctions = demoAuctions(now);
+    final now = serverTime;
+    /*
+     * **والأقسامُ تُشتقّ من المعروض لا تُجلب مستقلّةً.**
+     *
+     * فثلاثُ ندواتٍ للخادم في فتحةٍ واحدة تُبطئ أوّلَ شاشةٍ يراها
+     * المستخدم، والتقسيمُ بطريقة البيع يُحسب هنا بلا كلفة.
+     */
+    final auctions = listings
+        .where((l) => l.saleType == SaleType.auction)
+        .toList();
     /* عدّادُ بطاقة البنر الثاني يقرأ **أقربَ مزادٍ فعليّ** لا رقمًا مكتوبًا */
-    final nearestEnd = auctions
-        .map((l) => l.endsAt!)
-        .reduce((a, b) => a.isBefore(b) ? a : b);
+    /* وأقربُ مزادٍ قد لا يكون — فيُحتاط له */
+    final ends = auctions.map((l) => l.endsAt).whereType<DateTime>().toList()
+      ..sort();
+    final nearestEnd = ends.isEmpty
+        ? now.add(const Duration(hours: 5))
+        : ends.first;
 
     return ListView(
       /*
@@ -60,7 +82,9 @@ class HomeScreen extends StatelessWidget {
           eyebrow: 'بسعر ثابت',
           eyebrowColor: AppColors.accent2_600,
           title: 'بيع مباشر',
-          listings: demoFixed(now),
+          listings: listings
+              .where((l) => l.saleType == SaleType.fixed)
+              .toList(),
           serverTime: now,
         ),
         const SizedBox(height: 22),
@@ -68,7 +92,9 @@ class HomeScreen extends StatelessWidget {
           eyebrow: 'قدّم سومك',
           eyebrowColor: AppColors.neutral700,
           title: 'على السوم',
-          listings: demoOffers(now),
+          listings: listings
+              .where((l) => l.saleType == SaleType.offers)
+              .toList(),
           serverTime: now,
         ),
         const SizedBox(height: 22),

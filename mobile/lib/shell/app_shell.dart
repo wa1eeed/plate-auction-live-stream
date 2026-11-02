@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../api/api_scope.dart';
+import '../api/mazad_api.dart';
 import '../auth/auth_flow.dart';
 import '../auth/auth_gate.dart';
 import '../auth/session.dart';
 import '../design/tokens.dart';
+import '../widgets/common/async_view.dart';
 import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
@@ -100,8 +103,13 @@ class _AppShellState extends State<AppShell> {
             initialIndex: demoStories.indexOf(_story!),
             onClose: () => setState(() => _story = null),
           ),
-          AppTab.home => HomeScreen(
-            onOpenStory: (s) => setState(() => _story = s),
+          AppTab.home => AsyncView<MarketSnapshot>(
+            load: () => ApiScope.of(context).listings(),
+            builder: (context, snap, reload) => HomeScreen(
+              listings: snap.listings,
+              serverTime: snap.serverTime,
+              onOpenStory: (s) => setState(() => _story = s),
+            ),
           ),
           AppTab.market =>
             _open == null

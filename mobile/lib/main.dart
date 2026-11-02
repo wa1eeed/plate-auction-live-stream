@@ -1,15 +1,37 @@
 import 'package:flutter/material.dart';
 
 import 'design/tokens.dart';
+import 'api/api_client.dart';
+import 'api/api_scope.dart';
+import 'api/mazad_api.dart';
 import 'auth/auth_flow.dart';
 import 'auth/session.dart';
 import 'shell/app_shell.dart';
 
-void main() => runApp(const MazadApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  /*
+   * **ويُنشأ العميلُ قبل الإقلاع** — ومعه مِرطبانُ الكوكي من القرص.
+   *
+   * فقراءةُ الجلسة المحفوظة تحتاج قرصًا، وبناءُ الشجرة قبلها يُظهر
+   * التطبيقَ خارجًا ثمّ يُدخله فجأةً — ووميضٌ كهذا يُقرأ عطبًا.
+   */
+  final client = await ApiClient.create();
+  final api = MazadApi(client);
+  final signedIn = await client.hasSession();
+
+  runApp(MazadApp(api: api, signedIn: signedIn));
+}
 
 /// **تطبيقُ «سوق تداول اللوحات»** — أصيلٌ موحّدٌ لـiOS وأندرويد.
 class MazadApp extends StatelessWidget {
-  const MazadApp({super.key});
+  const MazadApp({super.key, required this.api, required this.signedIn});
+
+  final MazadApi api;
+
+  /// هل وُجدت جلسةٌ محفوظةٌ على القرص؟
+  final bool signedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +55,10 @@ class MazadApp extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: const _Root(),
+      home: ApiScope(
+        api: api,
+        child: _Root(signedIn: signedIn),
+      ),
     );
   }
 }
@@ -43,14 +68,16 @@ class MazadApp extends StatelessWidget {
 /// فالتطبيقُ يُفتح على السوق لا على بابِ تسجيل: من لم يقرّر بعدُ يرى
 /// اللوحاتِ أوّلًا، ويُطلب الحسابُ عند أوّل وظيفةٍ يحتاجه فيها.
 class _Root extends StatefulWidget {
-  const _Root();
+  const _Root({required this.signedIn});
+
+  final bool signedIn;
 
   @override
   State<_Root> createState() => _RootState();
 }
 
 class _RootState extends State<_Root> {
-  final _session = Session();
+  late final _session = Session(signedIn: widget.signedIn);
   AuthRoute? _auth;
 
   @override
