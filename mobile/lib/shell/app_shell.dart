@@ -4,6 +4,7 @@ import '../design/tokens.dart';
 import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
+import '../screens/order_screen.dart';
 import '../screens/market_screen.dart';
 import '../models/listing.dart';
 import '../widgets/listing/price_box.dart';
@@ -31,6 +32,9 @@ class _AppShellState extends State<AppShell> {
   /* لوحةٌ مفتوحةٌ فوق السوق — تُخفي شريطَ التبويب */
   Listing? _open;
 
+  /* صفقةٌ مفتوحةٌ فوق «نشاطي» */
+  bool _order = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,7 +61,12 @@ class _AppShellState extends State<AppShell> {
                     onBack: () => setState(() => _open = null),
                   ),
           AppTab.sell => const _Soon(label: 'اعرض لوحتك'),
+          AppTab.activity when _order => OrderScreen(
+            order: demoOrder(_now),
+            onBack: () => setState(() => _order = false),
+          ),
           AppTab.activity => ActivityScreen(
+            onOpenOrder: () => setState(() => _order = true),
             pending: demoPending(),
             myBids: demoAuctions(_now),
             myOffers: demoOffers(_now),
@@ -74,7 +83,7 @@ class _AppShellState extends State<AppShell> {
        * فوق بعضٍ يدفعان الإجراءَ خارج متناول الإبهام، والزرُّ الطافي يقع
        * على زرّ «زايد».
        */
-      bottomNavigationBar: _open != null
+      bottomNavigationBar: (_open != null || _order)
           ? null
           : Stack(
               clipBehavior: Clip.none,

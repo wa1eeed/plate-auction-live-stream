@@ -24,6 +24,7 @@ class ActivityScreen extends StatefulWidget {
     required this.myOffers,
     required this.watching,
     required this.serverTime,
+    this.onOpenOrder,
   });
 
   final List<PendingItem> pending;
@@ -31,6 +32,7 @@ class ActivityScreen extends StatefulWidget {
   final List<Listing> myOffers;
   final List<Listing> watching;
   final DateTime serverTime;
+  final VoidCallback? onOpenOrder;
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -142,7 +144,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 90),
           itemCount: widget.pending.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, i) => PendingCard(item: widget.pending[i]),
+          itemBuilder: (context, i) => PendingCard(
+            item: widget.pending[i],
+            onAct: widget.onOpenOrder,
+            onAccept: widget.onOpenOrder,
+          ),
         );
 
       case ActivityTab.bids:

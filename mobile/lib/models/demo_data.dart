@@ -1,6 +1,7 @@
 import '../widgets/plate.dart';
 import '../widgets/listing/bid_log.dart';
 import 'activity.dart';
+import 'order.dart';
 import 'listing.dart';
 
 /// **بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings`** — بذرةُ النموذج نفسُها.
@@ -197,3 +198,21 @@ List<PendingItem> demoPending() => const [
     cta: 'اعرض الخطوات',
   ),
 ];
+
+/// صفقةٌ تجريبيّةٌ في مرحلة تأكيد البيانات — وهي حالُ اللقطة ‎٠٦‎.
+OrderView demoOrder(DateTime now) => OrderView(
+  reference: 'S26-00087',
+  stage: OrderStage.id,
+  source: 'مزاد',
+  letters: 'ق و س',
+  number: '1',
+  plateKind: PlateKind.private,
+  format: PlateFormat.long,
+  emblem: PlateEmblem.palm,
+  price: 4100000,
+  buyerName: 'وليد (أنت)',
+  sellerName: 'فهد ع*****',
+  youAreBuyer: true,
+  createdAt: now.subtract(const Duration(hours: 3, minutes: 40)),
+  paidAt: now.subtract(const Duration(hours: 2, minutes: 28)),
+);
