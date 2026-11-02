@@ -7,7 +7,10 @@ import '../auth/auth_gate.dart';
 import '../auth/session.dart';
 import '../design/tokens.dart';
 import '../widgets/common/async_view.dart';
+import '../widgets/common/toast.dart';
 import '../models/demo_data.dart';
+import '../models/wallet.dart';
+import '../screens/notifications_screen.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
@@ -18,7 +21,6 @@ import '../screens/story_viewer.dart';
 import '../widgets/home/stories_strip.dart';
 import '../screens/help_screen.dart';
 import '../screens/invoice_screen.dart';
-import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/showcase_screen.dart';
 import '../screens/account_screen.dart';
@@ -84,6 +86,20 @@ class _AppShellState extends State<AppShell> {
     return false;
   }
 
+  /// **يُجري فعلًا بعد البوّابة** — فإن لم يكن داخلًا سُئل أوّلًا.
+  ///
+  /// ورسالةُ النجاح والخطأ كلتاهما من الخادم تُعرض طافيةً، فلا يبقى
+  /// المستخدمُ يحزر أوقع الفعلُ أم لا.
+  Future<void> _act(
+    GatedAction action,
+    Future<void> Function(MazadApi api) run, {
+    String? success,
+  }) async {
+    if (!await _gate(action)) return;
+    if (!mounted) return;
+    await runAction(context, () => run(ApiScope.of(context)), success: success);
+  }
+
   /// يفتح تبويبًا يحتاج حسابًا — أو يسأل أوّلًا.
   Future<void> _openGatedTab(AppTab tab, GatedAction action) async {
     if (await _gate(action)) {
@@ -127,6 +143,23 @@ class _AppShellState extends State<AppShell> {
                     sellerName: 'وليد المطيري',
                     bids: demoBids(_now),
                     onBack: () => setState(() => _open = null),
+                    /* ووظائفُ اللوحة تمرّ بالبوّابة ثمّ تصل الخادم */
+                    onBid: (amount) => _act(
+                      GatedAction.bid,
+                      (api) => api.bid(_open!.id, amount),
+                      success: 'سُجّلت مزايدتك',
+                    ),
+                    onBuy: () => _act(
+                      GatedAction.buy,
+                      (api) async => api.buy(_open!.id),
+                      success: 'تمّ الشراء — سدّد لتُحجز لك',
+                    ),
+                    onOffer: () => _act(
+                      GatedAction.offer,
+                      (api) => api.offer(_open!.id, _open!.price),
+                      success: 'وصل سومك للبائع',
+                    ),
+                    onFollow: () => _gate(GatedAction.follow),
                   ),
           AppTab.sell => SellScreen(
             onCancel: () => setState(() => _tab = AppTab.home),
@@ -161,9 +194,12 @@ class _AppShellState extends State<AppShell> {
           AppTab.account when _help => HelpScreen(
             onBack: () => setState(() => _help = false),
           ),
-          AppTab.account when _notifs => NotificationsScreen(
-            items: demoNotifications(_now),
-            onBack: () => setState(() => _notifs = false),
+          AppTab.account when _notifs => AsyncView<List<AppNotification>>(
+            load: () => ApiScope.of(context).notifications(),
+            builder: (context, items, reload) => NotificationsScreen(
+              items: items,
+              onBack: () => setState(() => _notifs = false),
+            ),
           ),
           AppTab.account when _showcase => ShowcaseScreen(
             name: 'وليد',
@@ -180,9 +216,12 @@ class _AppShellState extends State<AppShell> {
             ],
             onBack: () => setState(() => _settings = false),
           ),
-          AppTab.account when _wallet => WalletScreen(
-            wallet: demoWallet(_now),
-            onBack: () => setState(() => _wallet = false),
+          AppTab.account when _wallet => AsyncView<WalletView>(
+            load: () => ApiScope.of(context).wallet(),
+            builder: (context, w, reload) => WalletScreen(
+              wallet: w,
+              onBack: () => setState(() => _wallet = false),
+            ),
           ),
           AppTab.account => AccountScreen(
             name: 'وليد',

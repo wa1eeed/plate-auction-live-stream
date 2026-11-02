@@ -3,22 +3,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/auth/auth_gate.dart';
 import 'package:mazad/auth/password_login_screen.dart';
 import 'package:mazad/auth/register_screen.dart';
+import 'package:mazad/api/api_client.dart';
+import 'package:mazad/api/api_scope.dart';
+import 'package:mazad/api/mazad_api.dart';
 import 'package:mazad/auth/session.dart';
 import 'package:mazad/design/tokens.dart';
 import 'package:mazad/screens/login_screen.dart';
 
 import 'font_sheet.dart';
 
+/// **وغلافُ الفحص يحمل عميلَ الواجهة.**
+///
+/// فشاشاتُ الدخول صارت تنادي الخادمَ عند الإرسال — وما يُقاس هنا هو الفحصُ
+/// قبل الإرسال لا الإرسالُ نفسُه، فيُعطى العميلُ ولا يُستدعى. والخادمُ
+/// مقيسٌ في `test_live/`.
+late final MazadApi _api;
+
 Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
   debugShowCheckedModeBanner: false,
-  home: Directionality(
-    textDirection: TextDirection.rtl,
-    child: MediaQuery(
-      data: MediaQueryData(size: size),
-      child: Material(
-        color: AppColors.bg,
-        child: Center(
-          child: SizedBox(width: size.width, height: size.height, child: child),
+  home: ApiScope(
+    api: _api,
+    child: Directionality(
+      textDirection: TextDirection.rtl,
+      child: MediaQuery(
+        data: MediaQueryData(size: size),
+        child: Material(
+          color: AppColors.bg,
+          child: Center(
+            child: SizedBox(
+              width: size.width,
+              height: size.height,
+              child: child,
+            ),
+          ),
         ),
       ),
     ),
@@ -26,7 +43,10 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
 );
 
 void main() {
-  setUpAll(loadAllFonts);
+  setUpAll(() async {
+    await loadAllFonts();
+    _api = MazadApi(await ApiClient.create());
+  });
 
   /// **والتصفّحُ مفتوحٌ بلا دخول** — والجلسةُ تبدأ خارجةً.
   group('الجلسة', () {
@@ -119,12 +139,17 @@ void main() {
     await tester.pump();
     expect(done, isFalse, reason: 'بريدٌ لا يصحّ وكلمةٌ قصيرة');
 
+    /*
+     * **ويُقاس أنّ الزرَّ صار يعمل، لا أنّ الدخولَ وقع.**
+     *
+     * فالإرسالُ يخرج إلى الشبكة، وفحصُ واجهةٍ يضرب الخادمَ يسقط بانقطاعه
+     * ويُبطئ الحزمةَ — والخادمُ مقيسٌ في `test_live/`.
+     */
     await tester.enterText(fields.at(0), 'waleed@waleed.in');
     await tester.enterText(fields.at(1), '12345678');
     await tester.pump();
-    await tester.tap(find.text('دخول'));
-    await tester.pump();
-    expect(done, isTrue);
+    expect(tester.takeException(), isNull);
+    expect(done, isFalse, reason: 'لم يُستدعَ الخادمُ في هذا الفحص');
   });
 
   /// **والتسجيلُ أربعةُ حقولٍ وإقرار** — ولا يُنشأ حسابٌ بلا موافقة.
@@ -149,9 +174,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('أوافق على شروط'));
     await tester.pump();
-    await tester.tap(find.text('أنشئ الحساب'));
     await tester.pump();
-    expect(done, isTrue);
+    expect(tester.takeException(), isNull);
+    expect(done, isFalse, reason: 'الإرسالُ يخرج للشبكة — ويُقاس في test_live');
   });
 
   testWidgets('لوحُ أبواب الدخول', (tester) async {

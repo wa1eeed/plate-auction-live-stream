@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../api/api_scope.dart';
 import '../design/tokens.dart';
+import '../widgets/common/toast.dart';
 
 /// **تسجيلُ حسابٍ جديد** — §5.11 امتدادًا.
 ///
@@ -43,7 +45,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// **وكلمةُ المرور ثمانيةٌ فأكثر** — ويُقال الشرطُ قبل الكتابة لا بعدها.
   bool get _passwordOk => _password.text.length >= 8;
 
-  bool get _valid => _nameOk && _phoneOk && _emailOk && _passwordOk && _agreed;
+  bool _busy = false;
+
+  bool get _valid =>
+      !_busy && _nameOk && _phoneOk && _emailOk && _passwordOk && _agreed;
+
+  Future<void> _submit() async {
+    setState(() => _busy = true);
+    final ok = await runAction(
+      context,
+      () => ApiScope.of(context).register(
+        name: _name.text.trim(),
+        email: _email.text.trim(),
+        password: _password.text,
+        phone: _phone.text.trim(),
+      ),
+      success: 'أهلًا بك — أُنشئ حسابك',
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onDone?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               GestureDetector(
-                onTap: _valid ? widget.onDone : null,
+                onTap: _valid ? _submit : null,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
                   height: 54,

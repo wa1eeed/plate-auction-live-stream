@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../api/api_scope.dart';
 import '../design/tokens.dart';
+import '../widgets/common/toast.dart';
 
 /// **الدخولُ بالبريد وكلمة المرور** — مسارٌ ثانويٌّ لأصحاب الحسابات القديمة.
 ///
@@ -30,9 +32,26 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
     super.dispose();
   }
 
+  bool _busy = false;
+
   bool get _valid =>
+      !_busy &&
       RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim()) &&
       _password.text.length >= 8;
+
+  /// **ويُقفل الزرُّ أثناء الطلب** — فضغطتان تُنشئان جلستين وتُربكان الخادم.
+  Future<void> _submit() async {
+    setState(() => _busy = true);
+    final ok = await runAction(
+      context,
+      () =>
+          ApiScope.of(context)
+              .login(email: _email.text.trim(), password: _password.text),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onDone?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +139,7 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: _valid ? widget.onDone : null,
+            onTap: _valid ? _submit : null,
             behavior: HitTestBehavior.opaque,
             child: Container(
               height: 54,

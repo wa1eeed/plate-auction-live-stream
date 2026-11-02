@@ -89,4 +89,45 @@ void main() {
       );
     }
   });
+
+  /// **والمحفظةُ والإشعاراتُ خلف الحساب** — وهو ما تبني عليه البوّابة.
+  test('المحفظةُ بلا حساب تُردّ', () async {
+    try {
+      await api.wallet();
+      fail('كان ينبغي أن تُردّ بلا جلسة');
+    } on ApiError catch (e) {
+      expect(e.isUnauthorized, isTrue);
+    }
+  });
+
+  test('والإشعاراتُ كذلك', () async {
+    try {
+      await api.notifications();
+      fail('كان ينبغي أن تُردّ بلا جلسة');
+    } on ApiError catch (e) {
+      expect(e.isUnauthorized, isTrue);
+    }
+  });
+
+  /// **ودخولٌ ببيانات خاطئةٍ يردّ رسالةً تُقرأ** لا رمزًا أعجميًّا.
+  test('الدخولُ ببريدٍ خاطئٍ يردّ رسالةً عربيّة', () async {
+    try {
+      await api.login(email: 'nobody@example.com', password: 'wrong-pass');
+      fail('كان ينبغي أن يُرفض');
+    } on ApiError catch (e) {
+      expect(e.message, isNotEmpty);
+      /* والرسالةُ عربيّةٌ — فالخادمُ يكتبها لمستخدمه */
+      expect(
+        RegExp(r'[\u0600-\u06FF]').hasMatch(e.message),
+        isTrue,
+        reason: 'رسالةُ الخادم عربيّة: ${e.message}',
+      );
+    }
+  });
+
+  /// **والأسئلةُ الشائعةُ مفتوحةٌ بلا حساب** — فهي للمتصفّح قبل أن يُسجّل.
+  test('الأسئلةُ الشائعة تصل بلا حساب', () async {
+    final json = await api.faq();
+    expect(json, isNotEmpty);
+  });
 }

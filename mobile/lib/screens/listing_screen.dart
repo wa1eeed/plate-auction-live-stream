@@ -41,7 +41,7 @@ class ListingScreen extends StatelessWidget {
   final VoidCallback? onBack;
 
   /// وظائفُ اللوحة — تمرّ ببوّابة الحساب قبل أن تقع.
-  final VoidCallback? onBid;
+  final ValueChanged<int>? onBid;
   final VoidCallback? onBuy;
   final VoidCallback? onOffer;
   final VoidCallback? onFollow;
@@ -78,7 +78,7 @@ class ListingScreen extends StatelessWidget {
         ListingActionBar(
           listing: listing,
           increment: increment,
-          onBid: (_) => onBid?.call(),
+          onBid: onBid,
           onBuy: onBuy,
           onOffer: onOffer,
         ),

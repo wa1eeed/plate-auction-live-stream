@@ -1,4 +1,6 @@
 import '../models/listing.dart';
+import '../models/wallet.dart';
+import '../screens/notifications_screen.dart';
 import 'api_client.dart';
 import 'mapping.dart';
 
@@ -53,14 +55,21 @@ class MazadApi {
       _client.post('/api/listings/$id/offers', body: {'amount': amountHalalas});
 
   /// المحفظة — `GET api/account/wallet`.
-  Future<Map<String, dynamic>> wallet() => _client.get('/api/account/wallet');
+  Future<WalletView> wallet() async =>
+      ApiMapping.wallet(await _client.get('/api/account/wallet'));
 
   /// الملفُّ الشخصيّ — `GET api/account/profile`.
   Future<Map<String, dynamic>> profile() => _client.get('/api/account/profile');
 
   /// الإشعارات — `GET api/notifications`.
-  Future<Map<String, dynamic>> notifications() =>
-      _client.get('/api/notifications');
+  Future<List<AppNotification>> notifications() async {
+    final json = await _client.get('/api/notifications');
+    final rows = (json['notifications'] as List?) ?? const [];
+    return rows
+        .whereType<Map>()
+        .map((r) => ApiMapping.notification(r.cast<String, dynamic>()))
+        .toList();
+  }
 
   /// تعليمُ الإشعارات مقروءةً — `PATCH api/notifications`.
   Future<void> readNotifications() => _client.patch('/api/notifications');
