@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_scope.dart';
+import '../api/mapping.dart';
 import '../api/mazad_api.dart';
 import '../auth/auth_flow.dart';
 import '../auth/auth_gate.dart';
@@ -27,7 +28,6 @@ import '../screens/account_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
 import '../models/listing.dart';
-import '../widgets/listing/price_box.dart';
 import 'tab_bar.dart';
 
 /// **هيكلُ التطبيق** — الشاشاتُ الخمسُ وشريطُها السفليّ.
@@ -94,10 +94,22 @@ class _AppShellState extends State<AppShell> {
     GatedAction action,
     Future<void> Function(MazadApi api) run, {
     String? success,
+    VoidCallback? then,
   }) async {
     if (!await _gate(action)) return;
     if (!mounted) return;
-    await runAction(context, () => run(ApiScope.of(context)), success: success);
+    final ok = await runAction(
+      context,
+      () => run(ApiScope.of(context)),
+      success: success,
+    );
+    /*
+     * **ويُعاد الجلبُ بعد نجاحٍ يُغيّر ما يُعرض.**
+     *
+     * فمن زايد يريد أن يرى مزايدتَه في الكشف وسعرَه الجديد — وشاشةٌ لا
+     * تتبدّل بعد فعلٍ نجح تُقرأ فشلًا، فيُعيد الفعلَ مرّةً أخرى.
+     */
+    if (ok) then?.call();
   }
 
   /// يفتح تبويبًا يحتاج حسابًا — أو يسأل أوّلًا.
@@ -134,32 +146,38 @@ class _AppShellState extends State<AppShell> {
                     serverTime: _now,
                     onOpen: (l) => setState(() => _open = l),
                   )
-                : ListingScreen(
-                    listing: _open!,
-                    serverTime: _now,
-                    viewers: 100,
-                    depositHalalas: 500000,
-                    reserve: ReserveState.notMet,
-                    sellerName: 'وليد المطيري',
-                    bids: demoBids(_now),
-                    onBack: () => setState(() => _open = null),
-                    /* ووظائفُ اللوحة تمرّ بالبوّابة ثمّ تصل الخادم */
-                    onBid: (amount) => _act(
-                      GatedAction.bid,
-                      (api) => api.bid(_open!.id, amount),
-                      success: 'سُجّلت مزايدتك',
+                : AsyncView<ListingDetailView>(
+                    /* وتفاصيلُ اللوحة تُجلب عند فتحها لا مع السوق كلِّه */
+                    load: () => ApiScope.of(context).listingDetail(_open!.id),
+                    builder: (context, detail, reload) => ListingScreen(
+                      listing: detail.listing,
+                      serverTime: _now,
+                      bids: detail.bids,
+                      depositHalalas: detail.depositAmount,
+                      increment: detail.increment,
+                      reserve: detail.reserve,
+                      sellerName: detail.sellerName,
+                      onBack: () => setState(() => _open = null),
+                      onBid: (amount) => _act(
+                        GatedAction.bid,
+                        (api) => api.bid(_open!.id, amount),
+                        success: 'سُجّلت مزايدتك',
+                        then: reload,
+                      ),
+                      onBuy: () => _act(
+                        GatedAction.buy,
+                        (api) async => api.buy(_open!.id),
+                        success: 'تمّ الشراء — سدّد لتُحجز لك',
+                        then: reload,
+                      ),
+                      onOffer: () => _act(
+                        GatedAction.offer,
+                        (api) => api.offer(_open!.id, detail.nextBidAmount),
+                        success: 'وصل سومك للبائع',
+                        then: reload,
+                      ),
+                      onFollow: () => _gate(GatedAction.follow),
                     ),
-                    onBuy: () => _act(
-                      GatedAction.buy,
-                      (api) async => api.buy(_open!.id),
-                      success: 'تمّ الشراء — سدّد لتُحجز لك',
-                    ),
-                    onOffer: () => _act(
-                      GatedAction.offer,
-                      (api) => api.offer(_open!.id, _open!.price),
-                      success: 'وصل سومك للبائع',
-                    ),
-                    onFollow: () => _gate(GatedAction.follow),
                   ),
           AppTab.sell => SellScreen(
             onCancel: () => setState(() => _tab = AppTab.home),
@@ -223,19 +241,22 @@ class _AppShellState extends State<AppShell> {
               onBack: () => setState(() => _wallet = false),
             ),
           ),
-          AppTab.account => AccountScreen(
-            name: 'وليد',
-            handle: '@waleed',
-            membershipNumber: 'U26-00001',
-            available: demoWallet(_now).available,
-            balance: demoWallet(_now).balance,
-            held: demoWallet(_now).held,
-            myPlates: demoOffers(_now) + demoFixed(_now).take(1).toList(),
-            onOpenWallet: () => setState(() => _wallet = true),
-            onOpenSettings: () => setState(() => _settings = true),
-            onOpenNotifications: () => setState(() => _notifs = true),
-            onOpenShowcase: () => setState(() => _showcase = true),
-            onOpenHelp: () => setState(() => _help = true),
+          AppTab.account => AsyncView<AccountBundle>(
+            load: () => ApiScope.of(context).account(),
+            builder: (context, me, reload) => AccountScreen(
+              name: me.profile.name,
+              handle: me.profile.handle,
+              membershipNumber: me.profile.membershipNumber,
+              available: me.wallet.available,
+              balance: me.wallet.balance,
+              held: me.wallet.held,
+              myPlates: me.myPlates,
+              onOpenWallet: () => setState(() => _wallet = true),
+              onOpenSettings: () => setState(() => _settings = true),
+              onOpenNotifications: () => setState(() => _notifs = true),
+              onOpenShowcase: () => setState(() => _showcase = true),
+              onOpenHelp: () => setState(() => _help = true),
+            ),
           ),
         },
       ),

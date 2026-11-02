@@ -39,7 +39,11 @@ class MazadApi {
   }
 
   /// تفاصيلُ لوحة — `GET api/listings/{id}`.
-  Future<Map<String, dynamic>> listing(String id) =>
+  Future<ListingDetailView> listingDetail(String id) async =>
+      ApiMapping.listingDetail(await _client.get('/api/listings/$id'));
+
+  /// الردُّ الخام — للفحص الحيّ.
+  Future<Map<String, dynamic>> listingRaw(String id) =>
       _client.get('/api/listings/$id');
 
   /// مزايدة — `POST api/listings/{id}/bids`.
@@ -59,7 +63,23 @@ class MazadApi {
       ApiMapping.wallet(await _client.get('/api/account/wallet'));
 
   /// الملفُّ الشخصيّ — `GET api/account/profile`.
-  Future<Map<String, dynamic>> profile() => _client.get('/api/account/profile');
+  Future<ProfileView> profile() async =>
+      ApiMapping.profile(await _client.get('/api/account/profile'));
+
+  /// **حسابي كاملًا**: الملفُّ والمحفظةُ ولوحاتي في ندوةٍ واحدةٍ متوازية.
+  ///
+  /// فثلاثُ ندواتٍ متتابعةٍ تُبطئ الشاشةَ بمجموع أزمنتها، والمتوازيةُ
+  /// بأبطئها وحده.
+  Future<AccountBundle> account() async {
+    final results = await Future.wait([profile(), wallet(), listings()]);
+
+    final market = results[2] as MarketSnapshot;
+    return AccountBundle(
+      profile: results[0] as ProfileView,
+      wallet: results[1] as WalletView,
+      myPlates: market.listings.where((l) => l.mine).toList(),
+    );
+  }
 
   /// الإشعارات — `GET api/notifications`.
   Future<List<AppNotification>> notifications() async {
@@ -125,4 +145,17 @@ class MazadApi {
     await _client.post('/api/auth/logout');
     await _client.clearSession();
   }
+}
+
+/// ما تحتاجه شاشةُ «حسابي» في ندوةٍ واحدة.
+class AccountBundle {
+  const AccountBundle({
+    required this.profile,
+    required this.wallet,
+    required this.myPlates,
+  });
+
+  final ProfileView profile;
+  final WalletView wallet;
+  final List<Listing> myPlates;
 }

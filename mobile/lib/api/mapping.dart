@@ -1,6 +1,8 @@
 import '../models/listing.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
+import '../widgets/listing/bid_log.dart';
+import '../widgets/listing/price_box.dart';
 import '../widgets/plate.dart';
 
 /// **تحويلُ ما يصل من الخادم إلى نماذج الشاشات.**
@@ -170,4 +172,106 @@ abstract final class ApiMapping {
     if (t.contains('order')) return NotifKind.order;
     return NotifKind.system;
   }
+
+  /// **تفاصيلُ لوحةٍ** — من `api/listings/{id}`.
+  static ListingDetailView listingDetail(Map<String, dynamic> json) {
+    final seller = (json['seller'] as Map?)?.cast<String, dynamic>();
+    final bids = (json['bids'] as List?) ?? const [];
+
+    return ListingDetailView(
+      listing: listing(json),
+      /*
+       * **والعربونُ المطلوب قد يكون صفرًا** — فلا تُعرض بطاقتُه حينئذٍ:
+       * بطاقةٌ تقول «العربون 0 ر.س» تُثير سؤالًا لا جوابَ له.
+       */
+      depositAmount: (json['depositAmount'] as num?)?.toInt() ?? 0,
+      increment: (json['minimumIncrement'] as num?)?.toInt() ?? 0,
+      nextBidAmount: (json['nextBidAmount'] as num?)?.toInt() ?? 0,
+      sellerName: seller?['name'] as String? ?? '—',
+      reserve: _reserve(json['reserveState'] as String?),
+      iAmHighest: json['iAmHighest'] == true,
+      bids: bids
+          .whereType<Map>()
+          .map((b) => _bid(b.cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+
+  static ReserveState _reserve(String? raw) => switch (raw) {
+    'met' => ReserveState.met,
+    'not_met' => ReserveState.notMet,
+    _ => ReserveState.none,
+  };
+
+  /// **والاسمُ يصل مقنّعًا من الخادم** — فلا يُقنَّع مرّتين.
+  ///
+  /// والتقنيعُ في الخادم هو الصواب: ما لا يُرسَل لا يُسرَّب، وتقنيعُ
+  /// الواجهة وحدها يترك الاسمَ كاملًا في الشبكة لمن يقرأ الطلبات.
+  static BidEntry _bid(Map<String, dynamic> json) => BidEntry(
+    bidder: json['bidderName'] as String? ?? '—',
+    amount: (json['amount'] as num?)?.toInt() ?? 0,
+    at: time(json['createdAt']) ?? DateTime.now(),
+    isMine: json['isMine'] == true,
+  );
+
+  /// **الملفُّ الشخصيّ** — من `api/account/profile`.
+  static ProfileView profile(Map<String, dynamic> json) {
+    final user = (json['user'] as Map?)?.cast<String, dynamic>() ?? json;
+    final handle = user['handle'] as String?;
+
+    return ProfileView(
+      name: user['name'] as String? ?? '—',
+      /* والمعرّفُ يصل بلا `@` — وهي علامةُ عرضٍ تُضاف هنا */
+      handle: handle == null || handle.isEmpty ? '' : '@$handle',
+      membershipNumber:
+          user['membershipNumber'] as String? ??
+          user['reference'] as String? ??
+          '',
+      city: user['city'] as String? ?? '',
+      email: user['email'] as String? ?? '',
+      phone: user['phone'] as String? ?? '',
+    );
+  }
+}
+
+/// الملفُّ الشخصيُّ كما تحتاجه شاشةُ «حسابي».
+class ProfileView {
+  const ProfileView({
+    required this.name,
+    required this.handle,
+    required this.membershipNumber,
+    required this.city,
+    required this.email,
+    required this.phone,
+  });
+
+  final String name;
+  final String handle;
+  final String membershipNumber;
+  final String city;
+  final String email;
+  final String phone;
+}
+
+/// تفاصيلُ لوحةٍ كما تحتاجها شاشتُها.
+class ListingDetailView {
+  const ListingDetailView({
+    required this.listing,
+    required this.depositAmount,
+    required this.increment,
+    required this.nextBidAmount,
+    required this.sellerName,
+    required this.reserve,
+    required this.iAmHighest,
+    required this.bids,
+  });
+
+  final Listing listing;
+  final int depositAmount;
+  final int increment;
+  final int nextBidAmount;
+  final String sellerName;
+  final ReserveState reserve;
+  final bool iAmHighest;
+  final List<BidEntry> bids;
 }

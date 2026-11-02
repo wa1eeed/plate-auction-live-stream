@@ -63,7 +63,7 @@ void main() {
   /// **والخطأُ يصل برسالته العربيّة لا برمزٍ أعجميّ.**
   test('طلبُ لوحةٍ لا توجد يردّ رسالةً تُقرأ', () async {
     try {
-      await api.listing('lst_لا_يوجد');
+      await api.listingRaw('lst_لا_يوجد');
       fail('كان ينبغي أن يُرفض');
     } on ApiError catch (e) {
       expect(e.message, isNotEmpty);
@@ -129,5 +129,62 @@ void main() {
   test('الأسئلةُ الشائعة تصل بلا حساب', () async {
     final json = await api.faq();
     expect(json, isNotEmpty);
+  });
+
+  /// **وتفاصيلُ اللوحة تصل بكشفها وعربونها** — وهي صدرُ صفحتها.
+  test('تفاصيلُ لوحةٍ تصل مُحوَّلة', () async {
+    final snap = await api.listings();
+    final auction = snap.listings.firstWhere(
+      (l) => l.saleType == SaleType.auction,
+    );
+
+    final detail = await api.listingDetail(auction.id);
+
+    expect(detail.listing.id, auction.id);
+    expect(detail.listing.letters, isNotEmpty);
+    expect(detail.sellerName, isNotEmpty);
+    expect(detail.increment, greaterThan(0), reason: 'المزادُ له خطوةُ زيادة');
+    expect(detail.nextBidAmount, greaterThanOrEqualTo(detail.listing.price));
+  });
+
+  /// **والاسمُ في الكشف يصل مقنّعًا من الخادم** — فلا يُقنَّع مرّتين.
+  ///
+  /// والتقنيعُ في الخادم هو الصواب: ما لا يُرسَل لا يُسرَّب، وتقنيعُ
+  /// الواجهة وحدها يترك الاسمَ كاملًا في الشبكة لمن يقرأ الطلبات.
+  test('أسماءُ الكشف مقنّعةٌ قبل أن تصل', () async {
+    final snap = await api.listings();
+    for (final l
+        in snap.listings
+            .where((l) => l.saleType == SaleType.auction && l.bids > 0)
+            .take(3)) {
+      final detail = await api.listingDetail(l.id);
+      for (final bid in detail.bids) {
+        expect(bid.bidder, isNotEmpty);
+        /* ولا يصل اسمٌ كاملٌ بلا نجوم — إلّا أن يكون اسمًا واحدًا قصيرًا */
+        if (bid.bidder.contains(' ')) {
+          expect(
+            bid.bidder,
+            contains('*'),
+            reason: 'اسمٌ مركّبٌ يصل مقنّعًا: ${bid.bidder}',
+          );
+        }
+      }
+    }
+  });
+
+  /// **والسعرُ الأدنى يصل حالًا لا رقمًا** — فهو سلاحُ البائع.
+  test('السعرُ الأدنى حالةٌ لا قيمة', () async {
+    final snap = await api.listings();
+    final auction = snap.listings.firstWhere(
+      (l) => l.saleType == SaleType.auction,
+    );
+    final raw = await api.listingRaw(auction.id);
+
+    expect(raw['reserveState'], anyOf('met', 'not_met', 'none', null));
+    expect(
+      raw.containsKey('reservePrice'),
+      isFalse,
+      reason: 'لا يُرسَل رقمُ السعر الأدنى أبدًا',
+    );
   });
 }
