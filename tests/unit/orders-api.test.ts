@@ -25,7 +25,7 @@ describe('صفقاتُ المستخدم في ردٍّ واحد', () => {
   })
 
   it('المشترياتُ والمبيعاتُ تُقرأ كلٌّ من جهتها', async () => {
-    const listing = (await store.listListings({ status: 'active' })).find(
+    const listing = (await store.listListings({ status: ['active'] })).find(
       (l) => l.saleType === 'fixed',
     )!
     const buyerId = db.users.find((u) => u.id !== listing.sellerId)!.id
@@ -56,7 +56,7 @@ describe('صفقاتُ المستخدم في ردٍّ واحد', () => {
    * معرّفُه في الطلب.
    */
   it('ولا تظهر صفقةُ غيرك', async () => {
-    const listing = (await store.listListings({ status: 'active' })).find(
+    const listing = (await store.listListings({ status: ['active'] })).find(
       (l) => l.saleType === 'fixed',
     )!
     const buyerId = db.users.find((u) => u.id !== listing.sellerId)!.id
@@ -75,7 +75,7 @@ describe('صفقاتُ المستخدم في ردٍّ واحد', () => {
   })
 
   it('والمشترياتُ تحمل حالَ السداد', async () => {
-    const listing = (await store.listListings({ status: 'active' })).find(
+    const listing = (await store.listListings({ status: ['active'] })).find(
       (l) => l.saleType === 'fixed',
     )!
     const buyerId = db.users.find((u) => u.id !== listing.sellerId)!.id
@@ -106,5 +106,63 @@ describe('صفقاتُ المستخدم في ردٍّ واحد', () => {
 
     const after = (await getPurchases(buyerId)).find((o) => o.id === order.id)!
     expect(after.settlement).toBeTruthy()
+  })
+})
+
+/**
+ * **فاتورةُ الصفقة لصاحبها وحده.**
+ *
+ * فالفاتورةُ تحمل مبلغَ الصفقة وعمولتَها واسمَ من صدرت له — وقراءتُها
+ * برقم صفقةٍ وحده تُسرّب ذلك لمن يُخمّن الأرقام.
+ */
+describe('فاتورةُ الصفقة', () => {
+  let db: MemoryDatabase
+  let store: MemoryStore
+
+  beforeEach(() => {
+    db = emptyDatabase()
+    seedDatabase(db)
+    store = new MemoryStore(db)
+    resetStoreForTests(store)
+  })
+
+  it('تُقرأ بمعرّف الصفقة وتُرشَّح بصاحبها', async () => {
+    const listing = (await store.listListings({ status: ['active'] })).find(
+      (l) => l.saleType === 'fixed',
+    )!
+    const buyerId = db.users.find((u) => u.id !== listing.sellerId)!.id
+    const { order } = await buyNow({
+      listingId: listing.id,
+      buyerId,
+      clientRequestId: 'inv-1',
+    })
+
+    /* ولكلّ طرفٍ فاتورتُه — فالترشيحُ بالمستخدم لا بالصفقة وحدها */
+    const mine = await store.listInvoices({ orderId: order.id, userId: buyerId })
+    const theirs = await store.listInvoices({
+      orderId: order.id,
+      userId: listing.sellerId,
+    })
+
+    for (const invoice of mine) expect(invoice.customerId).toBe(buyerId)
+    for (const invoice of theirs) expect(invoice.customerId).toBe(listing.sellerId)
+  })
+
+  it('ولا تُقرأ فاتورةُ غيرك بترشيحٍ باسمك', async () => {
+    const listing = (await store.listListings({ status: ['active'] })).find(
+      (l) => l.saleType === 'fixed',
+    )!
+    const buyerId = db.users.find((u) => u.id !== listing.sellerId)!.id
+    const stranger = db.users.find(
+      (u) => u.id !== buyerId && u.id !== listing.sellerId,
+    )!.id
+    const { order } = await buyNow({
+      listingId: listing.id,
+      buyerId,
+      clientRequestId: 'inv-2',
+    })
+
+    const theirs = await store.listInvoices({ orderId: order.id, userId: stranger })
+    expect(theirs).toHaveLength(0)
   })
 })

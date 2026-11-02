@@ -455,6 +455,36 @@ export const notifications = pgTable(
   (table) => [index('notifications_user_idx').on(table.userId, table.createdAt)],
 )
 
+/**
+ * رسائلُ الصفقة — محادثةٌ بين طرفَيها لا دليلَ مستخدمين.
+ *
+ * **ومحفوظةٌ لا تُحذف**: تُراجَع عند الاعتراض، وما اتُّفق عليه فيها يُحتجّ
+ * به. فحذفُ رسالةٍ يُفقد الطرفَ الآخرَ بيّنتَه.
+ *
+ * **والمرفقُ يُخزَّن بمفتاحه لا بمحتواه**: الوسائطُ في مخزنها، والجدولُ
+ * يحمل مفتاحَها ونوعَها وحجمَها — فلا تنتفخ القاعدةُ بالصور.
+ */
+export const orderMessages = pgTable(
+  'order_messages',
+  {
+    id: text('id').primaryKey(),
+    orderId: text('order_id').notNull(),
+    /** من كتبها — يُقابَل بطرفَي الصفقة عند القراءة */
+    senderId: text('sender_id').notNull(),
+    /** `text` · `image` · `pdf` · `voice` */
+    kind: text('kind').notNull(),
+    body: text('body'),
+    /** مفتاحُ الوسيط في مخزنه — لا محتواه */
+    mediaKey: text('media_key'),
+    fileName: text('file_name'),
+    fileSize: integer('file_size'),
+    /** مدّةُ الرسالة الصوتيّة بالثواني */
+    durationSeconds: integer('duration_seconds'),
+    createdAt: stamp('created_at').notNull(),
+  },
+  (table) => [index('order_messages_order_idx').on(table.orderId, table.createdAt)],
+)
+
 export const userDevices = pgTable(
   'user_devices',
   {

@@ -27,6 +27,8 @@ import type {
   OrderStatus,
   Payment,
   PlatformEntry,
+  OrderMessage,
+  OrderMessageKind,
   TaxInvoice,
   UserDevice,
   Wallet,
@@ -1343,6 +1345,44 @@ export class PostgresStore implements AuctionStore {
 
   /* --------------------------------------------------------- الفواتير */
 
+  async listOrderMessages(orderId: string): Promise<OrderMessage[]> {
+    const rows = await this.db
+      .select()
+      .from(t.orderMessages)
+      .where(eq(t.orderMessages.orderId, orderId))
+      /* بترتيب زمنها — فالمحادثةُ تُقرأ من أوّلها */
+      .orderBy(asc(t.orderMessages.createdAt))
+    return rows.map(orderMessageFromRow)
+  }
+
+  async addOrderMessage(input: {
+    orderId: string
+    senderId: string
+    kind: OrderMessageKind
+    body?: string | null
+    mediaKey?: string | null
+    fileName?: string | null
+    fileSize?: number | null
+    durationSeconds?: number | null
+  }): Promise<OrderMessage> {
+    const [row] = await this.db
+      .insert(t.orderMessages)
+      .values({
+        id: newId('msg'),
+        orderId: input.orderId,
+        senderId: input.senderId,
+        kind: input.kind,
+        body: input.body ?? null,
+        mediaKey: input.mediaKey ?? null,
+        fileName: input.fileName ?? null,
+        fileSize: input.fileSize ?? null,
+        durationSeconds: input.durationSeconds ?? null,
+        createdAt: new Date().toISOString(),
+      })
+      .returning()
+    return orderMessageFromRow(row)
+  }
+
   async listInvoices(query: { userId?: string; orderId?: string } = {}): Promise<TaxInvoice[]> {
     const where = [
       query.userId ? eq(t.invoices.customerId, query.userId) : undefined,
@@ -1520,6 +1560,22 @@ type AdminRow = typeof t.admins.$inferSelect
 type FaqRow = typeof t.faq.$inferSelect
 type BannerRow = typeof t.banners.$inferSelect
 type StoryRow = typeof t.stories.$inferSelect
+
+/** يحوّل صفَّ رسالةٍ إلى نوعها — والتواريخُ نصوصٌ في الواجهة. */
+function orderMessageFromRow(row: typeof t.orderMessages.$inferSelect): OrderMessage {
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    senderId: row.senderId,
+    kind: row.kind as OrderMessage['kind'],
+    body: row.body,
+    mediaKey: row.mediaKey,
+    fileName: row.fileName,
+    fileSize: row.fileSize,
+    durationSeconds: row.durationSeconds,
+    createdAt: String(row.createdAt),
+  }
+}
 
 function bannerFromRow(row: BannerRow): Banner {
   return {

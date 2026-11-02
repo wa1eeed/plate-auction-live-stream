@@ -27,6 +27,8 @@ import type {
   SocialHandles,
   PaymentSettings,
   PlatformEntry,
+  OrderMessage,
+  OrderMessageKind,
   TaxInvoice,
   TaxSettings,
   BrandSettings,
@@ -277,6 +279,26 @@ export interface AuctionStore {
   updatePageSettings(patch: Partial<PageSettings>): Promise<PageSettings>
   getTaxSettings(): Promise<TaxSettings>
   updateTaxSettings(patch: Partial<TaxSettings>): Promise<TaxSettings>
+
+  /**
+   * رسائلُ صفقةٍ بترتيب زمنها.
+   *
+   * **ولا تُرشَّح بالمستخدم**: المحادثةُ بين طرفين وكلاهما يرى كلَّ ما فيها
+   * — والتحقّقُ من أنّ الطالبَ أحدُهما يقع في المسار قبل القراءة.
+   */
+  listOrderMessages(orderId: string): Promise<OrderMessage[]>
+
+  /** يضيف رسالةً — ولا تُعدَّل ولا تُحذف بعدها. */
+  addOrderMessage(input: {
+    orderId: string
+    senderId: string
+    kind: OrderMessageKind
+    body?: string | null
+    mediaKey?: string | null
+    fileName?: string | null
+    fileSize?: number | null
+    durationSeconds?: number | null
+  }): Promise<OrderMessage>
 
   listInvoices(query?: { userId?: string; orderId?: string }): Promise<TaxInvoice[]>
   getInvoice(idOrReference: string): Promise<TaxInvoice | null>

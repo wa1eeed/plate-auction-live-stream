@@ -1,9 +1,10 @@
 import '../widgets/plate.dart';
 import '../widgets/listing/bid_log.dart';
 import 'activity.dart';
+import 'chat.dart';
+import 'invoice.dart';
 import 'order.dart';
 import 'wallet.dart';
-import '../screens/chat_screen.dart';
 import '../screens/notifications_screen.dart';
 import 'listing.dart';
 
@@ -204,6 +205,7 @@ List<PendingItem> demoPending() => const [
 
 /// صفقةٌ تجريبيّةٌ في مرحلة تأكيد البيانات — وهي حالُ اللقطة ‎٠٦‎.
 OrderView demoOrder(DateTime now) => OrderView(
+  id: 'ord_demo',
   reference: 'S26-00087',
   stage: OrderStage.id,
   source: 'مزاد',
@@ -327,33 +329,65 @@ List<AppNotification> demoNotifications(DateTime now) => [
 /// محادثةٌ تجريبيّةٌ — نصٌّ وصورةٌ وملفٌّ وصوت.
 List<ChatMessage> demoChat(DateTime now) => [
   ChatMessage(
+    id: 'msg_1',
     kind: MessageKind.text,
     at: now.subtract(const Duration(hours: 3)),
     mine: false,
     text: 'السلام عليكم، جاهز أنقل اللوحة أول ما تأكّد بياناتك.',
   ),
   ChatMessage(
+    id: 'msg_2',
     kind: MessageKind.text,
     at: now.subtract(const Duration(hours: 2, minutes: 51)),
     mine: true,
     text: 'وعليكم السلام، أكّدتها الحين. تقدر تبدأ النقل.',
   ),
   ChatMessage(
+    id: 'msg_3',
     kind: MessageKind.image,
     at: now.subtract(const Duration(hours: 1, minutes: 12)),
     mine: false,
+    mediaKey: 'media/demo-plate.png',
+    fileName: 'لوحة-أبشر.png',
   ),
   ChatMessage(
+    id: 'msg_4',
     kind: MessageKind.pdf,
     at: now.subtract(const Duration(minutes: 48)),
     mine: false,
+    mediaKey: 'media/demo-transfer.pdf',
     fileName: 'إثبات-النقل.pdf',
-    fileSize: '240 KB',
+    /* والحجمُ بالبايت كما يصل من الخادم — ‎٢٤٠‎ كيلو */
+    fileSize: 245760,
   ),
   ChatMessage(
+    id: 'msg_5',
     kind: MessageKind.voice,
     at: now.subtract(const Duration(minutes: 9)),
     mine: true,
+    mediaKey: 'media/demo-voice.m4a',
     duration: Duration(seconds: 23),
   ),
 ];
+
+/// **فاتورةٌ تجريبيّةٌ ريثما تُربط** — بأرقام الخادم نفسِها.
+TaxInvoice demoInvoice(DateTime now) => TaxInvoice(
+  id: 'inv_demo',
+  reference: 'T26-00087',
+  uuid: '7f1c6e40-0000-4000-8000-000000000001',
+  kind: InvoiceKind.buyerCommission,
+  orderReference: 'S26-00087',
+  customerName: 'وليد',
+  sellerName: 'سوق تداول اللوحات',
+  sellerVatNumber: '300000000000003',
+  description: 'عمولة المنصّة على المشتري (2٪)',
+  netAmount: 82000,
+  vatRate: 0.15,
+  vatAmount: 12300,
+  totalAmount: 94300,
+  issuedAt: now.subtract(const Duration(hours: 2)),
+  /* حمولةُ TLV حقيقيّةٌ بوسومها الخمسة — فاللقطةُ تُظهر رمزًا يُقرأ */
+  qr:
+      'ASDYs9mI2YIg2KrYr9in2YjZhCDYp9mE2YTZiNit2KfYqgIPMzAwMDAwMDAw'
+      'MDAwMDAzAxgyMDI2LTExLTAyVDA3OjQwOjAwLjAwMFoEBjk0My4wMAUGMTIzLjAw',
+);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../api/api_scope.dart';
 import '../api/mapping.dart';
@@ -10,7 +11,10 @@ import '../design/tokens.dart';
 import '../widgets/common/async_view.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/order/identity_form.dart';
+import '../models/chat.dart';
 import '../models/demo_data.dart';
+import '../models/invoice.dart';
+import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/activity_screen.dart';
@@ -54,8 +58,13 @@ class _AppShellState extends State<AppShell> {
   /* لوحةٌ مفتوحةٌ فوق السوق — تُخفي شريطَ التبويب */
   Listing? _open;
 
-  /* صفقةٌ مفتوحةٌ فوق «نشاطي» */
-  bool _order = false;
+  /*
+   * **صفقةٌ مفتوحةٌ فوق «نشاطي» — كائنُها لا رايةٌ تقول «مفتوحة».**
+   *
+   * فالمحادثةُ والفاتورةُ تُنادَيان بمعرّفها، والشاشةُ تُرسم ببياناتها. وكانت
+   * رايةً تُرسم معها صفقةٌ تجريبيّة — فيُفتح للمستخدم غيرُ ما ضغط.
+   */
+  OrderView? _openOrder;
 
   /* المحفظةُ تُفتح فوق «حسابي» من زرّ البطاقة */
   bool _wallet = false;
@@ -68,6 +77,61 @@ class _AppShellState extends State<AppShell> {
   bool _chat = false;
   bool _invoice = false;
   Story? _story;
+
+  /// **لا فاتورةَ بعد** — تُصدَر عند اكتمال الصفقة لا عند نشأتها.
+  Widget _noInvoiceYet() => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+    child: Column(
+      children: [
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: GestureDetector(
+            onTap: () => setState(() => _invoice = false),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.arrowRight, size: 20),
+            ),
+          ),
+        ),
+        const Spacer(),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            LucideIcons.receipt,
+            size: 28,
+            color: AppColors.neutral500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'ما صدرت الفاتورة بعد',
+          style: AppText.heading(19),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'تُصدَر على عمولة المنصّة حين تكتمل الصفقة وتُنقل الملكية.',
+          style: AppText.body(
+            13,
+            color: AppColors.neutral700,
+          ).copyWith(height: 1.7),
+          textAlign: TextAlign.center,
+        ),
+        const Spacer(flex: 2),
+      ],
+    ),
+  );
 
   /*
    * **والبوّابةُ تسأل مرّةً عند الوظيفة لا عند الفتح.**
@@ -199,29 +263,50 @@ class _AppShellState extends State<AppShell> {
               success: 'نُشرت لوحتك في السوق',
             ),
           ),
-          AppTab.activity when _chat => ChatScreen(
-            counterpartName: 'فهد',
-            counterpartRole: 'البائع',
-            orderReference: 'S26-00087',
-            plateLabel: 'ق و س 1',
-            messages: demoChat(_now),
-            onBack: () => setState(() => _chat = false),
-          ),
-          AppTab.activity when _invoice => InvoiceScreen(
-            order: demoOrder(_now),
-            commission: 82000,
-            onBack: () => setState(() => _invoice = false),
-          ),
-          AppTab.activity when _order => OrderScreen(
-            order: demoOrder(_now),
-            onBack: () => setState(() => _order = false),
+          AppTab.activity when _chat && _openOrder != null =>
+            AsyncView<ChatThread>(
+              load: () => ApiScope.of(context).chat(_openOrder!.id),
+              builder: (context, thread, reload) => ChatScreen(
+                counterpartName: _openOrder!.youAreBuyer
+                    ? _openOrder!.sellerName
+                    : _openOrder!.buyerName,
+                counterpartRole: _openOrder!.youAreBuyer ? 'البائع' : 'المشتري',
+                orderReference: _openOrder!.reference,
+                plateLabel: '${_openOrder!.letters} ${_openOrder!.number}',
+                messages: thread.messages,
+                onSend: (body) =>
+                    ApiScope.of(context).sendMessage(_openOrder!.id, body),
+                onBack: () => setState(() => _chat = false),
+              ),
+            ),
+          AppTab.activity when _invoice && _openOrder != null =>
+            AsyncView<List<TaxInvoice>>(
+              load: () => ApiScope.of(context).invoices(_openOrder!.id),
+              /*
+               * **وفاتورةٌ لم تُصدَر بعد تُقال لا تُلفَّق.**
+               *
+               * فالعمولةُ تُفوتر عند اكتمال الصفقة لا عند نشأتها — ومن فتح
+               * الفاتورةَ قبلها كانت الشاشةُ تحسب له رقمًا وضريبةً لا وجود
+               * لهما في سجلّ المنصّة.
+               */
+              builder: (context, invoices, reload) => invoices.isEmpty
+                  ? _noInvoiceYet()
+                  : InvoiceScreen(
+                      order: _openOrder!,
+                      invoice: invoices.first,
+                      onBack: () => setState(() => _invoice = false),
+                    ),
+            ),
+          AppTab.activity when _openOrder != null => OrderScreen(
+            order: _openOrder!,
+            onBack: () => setState(() => _openOrder = null),
             onOpenChat: () => setState(() => _chat = true),
             onOpenInvoice: () => setState(() => _invoice = true),
-            onConfirmIdentity: (id, birth, cal) => runAction(
+            onConfirmIdentity: (nationalId, birth, cal) => runAction(
               context,
               () => ApiScope.of(context).confirmIdentity(
-                demoOrder(_now).reference,
-                nationalId: id,
+                _openOrder!.id,
+                nationalId: nationalId,
                 birthDate: birth,
                 birthCalendar: cal == BirthCalendar.hijri
                     ? 'hijri'
@@ -238,7 +323,10 @@ class _AppShellState extends State<AppShell> {
               myOffers: a.myOffers,
               watching: a.watching,
               serverTime: a.serverTime,
-              onOpenOrder: () => setState(() => _order = true),
+              /* والصفقةُ تُؤخذ من الحزمة التي في اليد — لا ندوةَ ثانية */
+              onOpenOrder: (id) => setState(() {
+                _openOrder = a.orders.where((o) => o.id == id).firstOrNull;
+              }),
             ),
           ),
           AppTab.account when _help => HelpScreen(
@@ -321,7 +409,7 @@ class _AppShellState extends State<AppShell> {
       /* و«اعرض لوحتك» شاشةٌ كاملةٌ بزرّها السفليّ — فلا شريطَ فوقه */
       bottomNavigationBar:
           (_open != null ||
-              _order ||
+              _openOrder != null ||
               _wallet ||
               _settings ||
               _notifs ||

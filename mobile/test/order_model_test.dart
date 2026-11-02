@@ -12,6 +12,7 @@ OrderView _order({
   DateTime? transfer,
   DateTime? released,
 }) => OrderView(
+  id: 'ord_1',
   reference: 'S26-00087',
   stage: stage,
   source: 'مزاد',

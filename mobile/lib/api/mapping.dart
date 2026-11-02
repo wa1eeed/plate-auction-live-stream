@@ -1,3 +1,5 @@
+import '../models/chat.dart';
+import '../models/invoice.dart';
 import '../models/listing.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
@@ -51,6 +53,57 @@ abstract final class ApiMapping {
     final normalized = raw.replaceFirst(' ', 'T');
     return DateTime.tryParse(normalized)?.toLocal();
   }
+
+  /// **رسالةٌ في محادثة الصفقة** — من `api/orders/{id}/messages`.
+  ///
+  /// و`me` يُمرَّر لأنّ الخادمَ يُرسل `senderId` لا «لي»: المعرّفُ واحدٌ
+  /// للطرفين والجهةُ تختلف بمن يقرأ.
+  static ChatMessage chatMessage(
+    Map<String, dynamic> json, {
+    required String me,
+  }) {
+    final seconds = (json['durationSeconds'] as num?)?.toInt();
+
+    return ChatMessage(
+      id: json['id'] as String? ?? '',
+      kind: messageKind(json['kind'] as String?),
+      at: time(json['createdAt']) ?? DateTime.now(),
+      mine: json['senderId'] == me,
+      text: json['body'] as String?,
+      mediaKey: json['mediaKey'] as String?,
+      fileName: json['fileName'] as String?,
+      fileSize: (json['fileSize'] as num?)?.toInt(),
+      duration: seconds == null ? null : Duration(seconds: seconds),
+    );
+  }
+
+  static MessageKind messageKind(String? raw) => switch (raw) {
+    'image' => MessageKind.image,
+    'pdf' => MessageKind.pdf,
+    'voice' => MessageKind.voice,
+    _ => MessageKind.text,
+  };
+
+  /// **فاتورةٌ ضريبيّة** — من `api/orders/{id}/invoice`.
+  static TaxInvoice invoice(Map<String, dynamic> json) => TaxInvoice(
+    id: json['id'] as String? ?? '',
+    reference: json['reference'] as String? ?? '',
+    uuid: json['uuid'] as String? ?? '',
+    kind: json['kind'] == 'seller_commission'
+        ? InvoiceKind.sellerCommission
+        : InvoiceKind.buyerCommission,
+    orderReference: json['orderReference'] as String? ?? '',
+    customerName: json['customerName'] as String? ?? '',
+    sellerName: json['sellerName'] as String? ?? '',
+    sellerVatNumber: json['sellerVatNumber'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    netAmount: (json['netAmount'] as num?)?.toInt() ?? 0,
+    vatRate: (json['vatRate'] as num?)?.toDouble() ?? 0.15,
+    vatAmount: (json['vatAmount'] as num?)?.toInt() ?? 0,
+    totalAmount: (json['totalAmount'] as num?)?.toInt() ?? 0,
+    issuedAt: time(json['issuedAt']) ?? DateTime.now(),
+    qr: json['qr'] as String? ?? '',
+  );
 
   /// لوحةٌ في السوق — من `api/listings`.
   static Listing listing(Map<String, dynamic> json) {
@@ -240,6 +293,7 @@ abstract final class ApiMapping {
     final counterpart = json['counterpartName'] as String? ?? '—';
 
     return OrderView(
+      id: json['id'] as String? ?? '',
       reference: json['reference'] as String? ?? '',
       stage: _stage(json['status'] as String?),
       source: _sourceLabel(json['source'] as String?),

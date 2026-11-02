@@ -1,5 +1,7 @@
-import '../models/listing.dart';
 import '../models/activity.dart';
+import '../models/chat.dart';
+import '../models/invoice.dart';
+import '../models/listing.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
@@ -199,6 +201,7 @@ class MazadApi {
 
     return ActivityBundle(
       pending: mine.awaitingMe.map((o) => o.toPendingItem()).toList(),
+      orders: [...mine.purchases, ...mine.sales],
       /*
        * **ومزايداتي وعروضي تُشتقّ من السوق** لا من مسارٍ ثالث.
        *
@@ -240,6 +243,46 @@ class MazadApi {
   /// إثباتُ نقل الملكيّة — `POST api/orders/{id}/transfer`.
   Future<void> submitTransfer(String orderId, {String? note}) =>
       _client.post('/api/orders/$orderId/transfer', body: {'note': ?note});
+
+  /// **محادثةُ الصفقة** — `GET api/orders/{id}/messages`.
+  ///
+  /// ويعود `me` معها: الفقاعةُ تُرسم لي يسارًا وللطرف الآخر يمينًا، فلا بدّ
+  /// أن تعرف أيُّها لي. ومعرّفُ الجلسة عند الخادم لا عند العميل.
+  Future<ChatThread> chat(String orderId) async {
+    final json = await _client.get('/api/orders/$orderId/messages');
+    final me = json['me'] as String? ?? '';
+
+    return ChatThread(
+      me: me,
+      messages: ((json['messages'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map((row) => ApiMapping.chatMessage(row, me: me))
+          .toList(),
+    );
+  }
+
+  /// إرسالُ رسالةٍ نصّيّة — `POST api/orders/{id}/messages`.
+  Future<ChatMessage> sendMessage(String orderId, String body) async {
+    final json = await _client.post(
+      '/api/orders/$orderId/messages',
+      body: {'kind': 'text', 'body': body},
+    );
+    final row = (json['message'] as Map).cast<String, dynamic>();
+    /* والمرسِلُ أنا بالضرورة — فلا تُنتظر جولةٌ ثانيةٌ لتعرف جهةَ الفقاعة */
+    return ApiMapping.chatMessage(row, me: row['senderId'] as String? ?? '');
+  }
+
+  /// **فواتيرُ الصفقة** — `GET api/orders/{id}/invoice`.
+  ///
+  /// وهي قائمةٌ لا واحدة: للصفقة فاتورةُ عمولةِ مشترٍ وفاتورةُ عمولةِ بائع،
+  /// ويُرسل الخادمُ ما كان منها لطالبها وحده.
+  Future<List<TaxInvoice>> invoices(String orderId) async {
+    final json = await _client.get('/api/orders/$orderId/invoice');
+    return ((json['invoices'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(ApiMapping.invoice)
+        .toList();
+  }
 
   /// الأسئلةُ الشائعة — `GET api/faq`.
   Future<Map<String, dynamic>> faq() => _client.get('/api/faq');
@@ -330,7 +373,8 @@ extension OrderPending on OrderView {
     };
 
     return PendingItem(
-      id: reference,
+      /* والمعرّفُ لا الرقمُ: منه تُفتح الصفقةُ وتُنادى مساراتُها */
+      id: id,
       kind: stage == OrderStage.transfer
           ? PendingKind.transfer
           : PendingKind.order,
@@ -353,6 +397,7 @@ extension OrderPending on OrderView {
 class ActivityBundle {
   const ActivityBundle({
     required this.pending,
+    required this.orders,
     required this.myBids,
     required this.myOffers,
     required this.watching,
@@ -360,6 +405,13 @@ class ActivityBundle {
   });
 
   final List<PendingItem> pending;
+
+  /// **الصفقاتُ كاملةً مع بنودها** — فمنها تُفتح الصفقةُ بلا ندوةٍ ثانية.
+  ///
+  /// فالبندُ في «بانتظارك» يحمل معرّفًا ونصًّا، والشاشةُ تحتاج الصفقةَ
+  /// كلَّها. وطلبُها من جديدٍ بالمعرّف يُعيد ما في اليد.
+  final List<OrderView> orders;
+
   final List<Listing> myBids;
   final List<Listing> myOffers;
   final List<Listing> watching;

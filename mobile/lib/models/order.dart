@@ -35,6 +35,7 @@ class Station {
 /// **صفقةٌ** — ما تحتاجه الشاشةُ من `AccountOrder`.
 class OrderView {
   const OrderView({
+    required this.id,
     required this.reference,
     required this.stage,
     required this.source,
@@ -54,6 +55,12 @@ class OrderView {
     this.releasedAt,
     this.deadline,
   });
+
+  /// **المعرّفُ الذي تأخذه المسارات** — لا الرقمُ الذي يُعرض.
+  ///
+  /// فالرقمُ (`S26-00087`) للقارئ، والمعرّفُ (`ord_…`) للخادم. وتمريرُ
+  /// الرقم مكانَ المعرّف يردّ ‎٤٠٤‎ على عملٍ صحيح.
+  final String id;
 
   final String reference;
   final OrderStage stage;

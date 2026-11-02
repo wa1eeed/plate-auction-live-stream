@@ -32,7 +32,8 @@ class ActivityScreen extends StatefulWidget {
   final List<Listing> myOffers;
   final List<Listing> watching;
   final DateTime serverTime;
-  final VoidCallback? onOpenOrder;
+  /// **يُمرَّر معرّفُ الصفقة** لا مجرّدُ «افتح».
+  final ValueChanged<String>? onOpenOrder;
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -146,8 +147,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
           separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, i) => PendingCard(
             item: widget.pending[i],
-            onAct: widget.onOpenOrder,
-            onAccept: widget.onOpenOrder,
+            onAct: () => widget.onOpenOrder?.call(widget.pending[i].id),
+            onAccept: () => widget.onOpenOrder?.call(widget.pending[i].id),
           ),
         );
 

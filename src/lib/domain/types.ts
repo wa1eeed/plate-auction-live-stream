@@ -2512,6 +2512,30 @@ export const DEFAULT_TAX_SETTINGS: Omit<TaxSettings, 'updatedAt' | 'updatedByAdm
 }
 
 /** الطرف الذي صدرت له الفاتورة — لكلٍّ عمولته وفاتورته. */
+/** نوعُ رسالةٍ في محادثة الصفقة. */
+export type OrderMessageKind = 'text' | 'image' | 'pdf' | 'voice'
+
+/**
+ * رسالةٌ في محادثة الصفقة.
+ *
+ * **والمحادثةُ تُفتح من الصفقة وحدها**: لا دليلَ مستخدمين ولا محادثاتٌ
+ * عامّة — فمن يتحدّث إليك طرفُ صفقةٍ قائمةٍ معك.
+ */
+export type OrderMessage = {
+  id: string
+  orderId: string
+  senderId: string
+  kind: OrderMessageKind
+  /** نصُّ الرسالة — للنصّيّة وحدها */
+  body: string | null
+  /** مفتاحُ الوسيط في مخزنه — لا محتواه */
+  mediaKey: string | null
+  fileName: string | null
+  fileSize: number | null
+  durationSeconds: number | null
+  createdAt: string
+}
+
 export type TaxInvoiceKind = 'buyer_commission' | 'seller_commission'
 
 export const TAX_INVOICE_KIND_LABELS: Record<TaxInvoiceKind, string> = {

@@ -28,6 +28,7 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
 
 OrderView _order({OrderStage stage = OrderStage.id, bool buyer = true}) =>
     OrderView(
+      id: 'ord_1',
       reference: 'S26-00087',
       stage: stage,
       source: 'مزاد',

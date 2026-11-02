@@ -13,6 +13,8 @@ import type {
   CommissionSettings,
   Deposit,
   Disbursement,
+  OrderMessage,
+  OrderMessageKind,
   TaxInvoice,
   TaxSettings,
   BrandSettings,
@@ -101,6 +103,7 @@ export type MemoryDatabase = {
   disbursements: Disbursement[]
   /** الفواتير الضريبية — سلسلة لا تنقطع ولا يُعدَّل فيها صادر */
   invoices: TaxInvoice[]
+  orderMessages: OrderMessage[]
   taxSettings: TaxSettings
   brandSettings: BrandSettings
   pageSettings: PageSettings
@@ -178,6 +181,7 @@ export function emptyDatabase(): MemoryDatabase {
     platformEntries: [],
     disbursements: [],
     invoices: [],
+    orderMessages: [],
     taxSettings: {
       ...DEFAULT_TAX_SETTINGS,
       updatedAt: new Date(0).toISOString(),
@@ -1048,6 +1052,42 @@ export class MemoryStore implements AuctionStore {
    * وسلسلة التجزئة لا يمسّها هذا: `lastInvoiceHash` يقرأ آخر المُدخَل من
    * `db.invoices` مباشرةً، لا من هنا.
    */
+  async listOrderMessages(orderId: string): Promise<OrderMessage[]> {
+    return clone(
+      this.db.orderMessages
+        .filter((row) => row.orderId === orderId)
+        /* بترتيب زمنها — فالمحادثةُ تُقرأ من أوّلها لا من آخر ما وصل */
+        .slice()
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    )
+  }
+
+  async addOrderMessage(input: {
+    orderId: string
+    senderId: string
+    kind: OrderMessageKind
+    body?: string | null
+    mediaKey?: string | null
+    fileName?: string | null
+    fileSize?: number | null
+    durationSeconds?: number | null
+  }): Promise<OrderMessage> {
+    const message: OrderMessage = {
+      id: `msg_${this.db.orderMessages.length + 1}_${Date.now()}`,
+      orderId: input.orderId,
+      senderId: input.senderId,
+      kind: input.kind,
+      body: input.body ?? null,
+      mediaKey: input.mediaKey ?? null,
+      fileName: input.fileName ?? null,
+      fileSize: input.fileSize ?? null,
+      durationSeconds: input.durationSeconds ?? null,
+      createdAt: new Date().toISOString(),
+    }
+    this.db.orderMessages.push(message)
+    return clone(message)
+  }
+
   async listInvoices(query: { userId?: string; orderId?: string } = {}): Promise<TaxInvoice[]> {
     return clone(
       this.db.invoices
