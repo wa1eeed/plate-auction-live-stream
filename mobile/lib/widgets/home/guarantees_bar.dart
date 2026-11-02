@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/tokens.dart';
 
@@ -7,9 +8,9 @@ class GuaranteesBar extends StatelessWidget {
   const GuaranteesBar({super.key});
 
   static const _items = <(IconData, String)>[
-    (Icons.verified_user_rounded, 'حماية الصفقات بضمان العربون'),
-    (Icons.lock_rounded, 'حماية مزادك بسعر أدنى مخفي'),
-    (Icons.receipt_long_rounded, 'كشف مزايدات مكشوف'),
+    (LucideIcons.shieldCheck, 'حماية الصفقات بضمان العربون'),
+    (LucideIcons.lock, 'حماية مزادك بسعر أدنى مخفي'),
+    (LucideIcons.scrollText, 'كشف مزايدات مكشوف'),
   ];
 
   @override

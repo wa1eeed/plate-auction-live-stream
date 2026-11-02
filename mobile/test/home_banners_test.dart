@@ -6,6 +6,9 @@ import 'package:mazad/widgets/home/home_banners.dart';
 import 'font_sheet.dart';
 
 /// **البنراتُ الثلاثة** — §5.1، وارتفاعُها ثابتٌ ‎١٧٧‎ لا يكبر.
+/* موعدٌ ثابتٌ فلا تتبدّل اللقطةُ بتبدّل الساعة */
+final _end = DateTime.now().add(const Duration(hours: 5, minutes: 12));
+
 void main() {
   setUpAll(loadAllFonts);
 
@@ -18,13 +21,18 @@ void main() {
      * لا يقع على جهاز. وقع ذلك فأخفى فيضًا حقيقيًّا كان يظهر على اللوحيّ.
      */
     await tester.pumpWidget(
-      const Directionality(
+      Directionality(
         textDirection: TextDirection.rtl,
         child: MediaQuery(
-          data: MediaQueryData(size: Size(390, 844)),
+          data: const MediaQueryData(size: Size(390, 844)),
           child: Material(
             color: AppColors.bg,
-            child: Center(child: SizedBox(width: 390, child: HomeBanners())),
+            child: Center(
+              child: SizedBox(
+                width: 390,
+                child: HomeBanners(nearestAuctionEnd: _end),
+              ),
+            ),
           ),
         ),
       ),
@@ -133,5 +141,9 @@ class _BannerAt extends StatefulWidget {
 
 class _BannerAtState extends State<_BannerAt> {
   @override
-  Widget build(BuildContext context) => HomeBanners(initialPage: widget.index);
+  Widget build(BuildContext context) => HomeBanners(
+    initialPage: widget.index,
+    nearestAuctionEnd: _end,
+    availableHalalas: 3850000,
+  );
 }

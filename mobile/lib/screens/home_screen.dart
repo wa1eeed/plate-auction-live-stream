@@ -17,6 +17,11 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final auctions = _auctions(now);
+    /* عدّادُ بطاقة البنر الثاني يقرأ **أقربَ مزادٍ فعليّ** لا رقمًا مكتوبًا */
+    final nearestEnd = auctions
+        .map((l) => l.endsAt!)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
 
     return ListView(
       /*
@@ -39,13 +44,13 @@ class HomeScreen extends StatelessWidget {
           first: 'أكّد بياناتك لنقل الملكية',
         ),
         const SizedBox(height: 22),
-        const HomeBanners(),
+        HomeBanners(nearestAuctionEnd: nearestEnd, availableHalalas: 3850000),
         const SizedBox(height: 22),
         SectionCarousel(
           eyebrow: 'مباشر الآن',
           eyebrowColor: AppColors.accent,
           title: 'مزادات جارية',
-          listings: _auctions(now),
+          listings: auctions,
           serverTime: now,
         ),
         const SizedBox(height: 22),

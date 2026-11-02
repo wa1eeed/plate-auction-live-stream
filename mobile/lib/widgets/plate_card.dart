@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design/tokens.dart';
 import '../models/listing.dart';
@@ -92,9 +93,7 @@ class PlateCard extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: Icon(
-                  listing.following
-                      ? Icons.notifications_active_rounded
-                      : Icons.notifications_none_rounded,
+                  listing.following ? LucideIcons.bellRing : LucideIcons.bell,
                   size: 18,
                   color: listing.following
                       ? AppColors.accent700

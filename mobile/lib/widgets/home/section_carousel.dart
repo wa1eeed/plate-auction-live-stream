@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/tokens.dart';
 import '../../models/listing.dart';
@@ -71,7 +72,7 @@ class SectionCarousel extends StatelessWidget {
                     children: [
                       Text('عرض الكل', style: AppText.body(12)),
                       const SizedBox(width: 2),
-                      const Icon(Icons.chevron_left_rounded, size: 16),
+                      const Icon(LucideIcons.chevronLeft, size: 16),
                     ],
                   ),
                 ),

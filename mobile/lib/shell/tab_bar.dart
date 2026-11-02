@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design/tokens.dart';
 
@@ -40,14 +41,14 @@ class AppTabBar extends StatelessWidget {
           children: [
             _Item(
               tab: AppTab.home,
-              icon: Icons.home_rounded,
+              icon: LucideIcons.house,
               label: 'الرئيسية',
               current: current,
               onSelect: onSelect,
             ),
             _Item(
               tab: AppTab.market,
-              icon: Icons.storefront_rounded,
+              icon: LucideIcons.store,
               label: 'السوق',
               current: current,
               onSelect: onSelect,
@@ -55,7 +56,7 @@ class AppTabBar extends StatelessWidget {
             const _SellButtonSlot(),
             _Item(
               tab: AppTab.activity,
-              icon: Icons.bolt_rounded,
+              icon: LucideIcons.zap,
               label: 'نشاطي',
               current: current,
               onSelect: onSelect,
@@ -63,7 +64,7 @@ class AppTabBar extends StatelessWidget {
             ),
             _Item(
               tab: AppTab.account,
-              icon: Icons.person_rounded,
+              icon: LucideIcons.user,
               label: 'حسابي',
               current: current,
               onSelect: onSelect,
@@ -110,7 +111,7 @@ class SellButton extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: AppColors.bg, width: 4),
           ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+          child: const Icon(LucideIcons.plus, color: Colors.white, size: 30),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/tokens.dart';
 
@@ -70,7 +71,7 @@ class PendingBar extends StatelessWidget {
                 ),
               ),
               const Icon(
-                Icons.chevron_left_rounded,
+                LucideIcons.chevronLeft,
                 size: 22,
                 color: AppColors.accent900,
               ),

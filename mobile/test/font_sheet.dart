@@ -54,10 +54,27 @@ Future<void> loadUiFonts() async {
   }
 }
 
-/// كلُّ ما تحتاجه لقطةٌ صادقة: خطُّ اللوحة وخطوطُ الواجهة.
+/// **خطُّ الأيقونات (Lucide)** — وبدونه تخرج كلُّ أيقونةٍ مربّعًا فارغًا،
+/// فتُقرأ اللقطةُ ناقصةً وهي سليمة.
+Future<void> loadIconFont() async {
+  /*
+   * **ويُسجَّل باسمٍ مُسبَّقٍ باسم الحزمة.**
+   *
+   * فـ`IconData` تحمل `fontPackage`، وFlutter يحلّها إلى
+   * `packages/<الحزمة>/<العائلة>` — فتسجيلُه باسم «Lucide» وحده لا يُطابق،
+   * فتخرج كلُّ أيقونةٍ مربّعًا فارغًا واللقطةُ تُقرأ ناقصةً وهي سليمة.
+   */
+  const asset = 'packages/lucide_icons_flutter/assets/lucide.ttf';
+  for (final family in ['packages/lucide_icons_flutter/Lucide', 'Lucide']) {
+    await (FontLoader(family)..addFont(rootBundle.load(asset))).load();
+  }
+}
+
+/// كلُّ ما تحتاجه لقطةٌ صادقة: خطُّ اللوحة وخطوطُ الواجهة والأيقونات.
 Future<void> loadAllFonts() async {
   await loadPlateFont('assets/fonts/plate-arial-bold.ttf');
   await loadUiFonts();
+  await loadIconFont();
 }
 
 const _cases = <SaudiPlate>[

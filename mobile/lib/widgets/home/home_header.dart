@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/tokens.dart';
 
@@ -50,7 +51,7 @@ class HomeHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.credit_card_rounded, size: 17),
+                const Icon(LucideIcons.creditCard, size: 17),
                 const SizedBox(width: 6),
                 Text(
                   _riyals,
@@ -66,7 +67,7 @@ class HomeHeader extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded, size: 19),
+                const Icon(LucideIcons.bell, size: 19),
                 if (hasUnread)
                   PositionedDirectional(
                     top: -1,
