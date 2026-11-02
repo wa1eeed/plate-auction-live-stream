@@ -13,30 +13,49 @@ import 'package:mazad/widgets/plate.dart';
 Widget _sheet() {
   const cases = <(String, SaudiPlate)>[
     ('طويلة · خصوصي', SaudiPlate(letters: 'ق و س', number: '1')),
-    ('طويلة · نقل خاص',
-        SaudiPlate(letters: 'ق و س', number: '1', kind: PlateKind.transport)),
-    ('اعتيادية · خصوصي',
-        SaudiPlate(letters: 'ك ط ع', number: '4040', format: PlateFormat.standard)),
-    ('اعتيادية · نقل خاص',
-        SaudiPlate(
-            letters: 'ك ط ع',
-            number: '4040',
-            kind: PlateKind.transport,
-            format: PlateFormat.standard)),
-    ('رياضية · خصوصي',
-        SaudiPlate(letters: 'س ع د', number: '1', format: PlateFormat.sport)),
-    ('رياضية · نقل خاص',
-        SaudiPlate(
-            letters: 'س ع د',
-            number: '1',
-            kind: PlateKind.transport,
-            format: PlateFormat.sport)),
-    ('دراجة نارية',
-        SaudiPlate(letters: 'ب ح د', number: '77', kind: PlateKind.motorcycle)),
-    ('الباء والهاء معًا',
-        SaudiPlate(letters: 'ب ه ا', number: '2846')),
-    ('شعار رؤية 2030',
-        SaudiPlate(letters: 'ر س م', number: '2030', emblem: PlateEmblem.vision)),
+    (
+      'طويلة · نقل خاص',
+      SaudiPlate(letters: 'ق و س', number: '1', kind: PlateKind.transport),
+    ),
+    (
+      'اعتيادية · خصوصي',
+      SaudiPlate(
+        letters: 'ك ط ع',
+        number: '4040',
+        format: PlateFormat.standard,
+      ),
+    ),
+    (
+      'اعتيادية · نقل خاص',
+      SaudiPlate(
+        letters: 'ك ط ع',
+        number: '4040',
+        kind: PlateKind.transport,
+        format: PlateFormat.standard,
+      ),
+    ),
+    (
+      'رياضية · خصوصي',
+      SaudiPlate(letters: 'س ع د', number: '1', format: PlateFormat.sport),
+    ),
+    (
+      'رياضية · نقل خاص',
+      SaudiPlate(
+        letters: 'س ع د',
+        number: '1',
+        kind: PlateKind.transport,
+        format: PlateFormat.sport,
+      ),
+    ),
+    (
+      'دراجة نارية',
+      SaudiPlate(letters: 'ب ح د', number: '77', kind: PlateKind.motorcycle),
+    ),
+    ('الباء والهاء معًا', SaudiPlate(letters: 'ب ه ا', number: '2846')),
+    (
+      'شعار رؤية 2030',
+      SaudiPlate(letters: 'ر س م', number: '2030', emblem: PlateEmblem.vision),
+    ),
   ];
 
   return Directionality(
@@ -59,6 +78,7 @@ Widget _sheet() {
               ),
             ),
             const SizedBox(height: 6),
+
             /// الإطارُ الداخليّ الذي تجلس فيه اللوحة داخل الكرت —
             /// انحناء ٨، خلفية `neutral-200`، حشوةٌ أفقيّة ١٠.
             Container(

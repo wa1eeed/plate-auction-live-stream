@@ -59,6 +59,8 @@ flutter:
 
   assets:
     - assets/emblems/
+    # بديلُ المقارنة — حرٌّ (OFL)، يُرسم به في `test/font_compare_test.dart`
+    - assets/fonts/plate-noto-bold.ttf
 
   # **خطُّ اللوحة — Arial Bold، قرارٌ صريحٌ في حزمة التسليم.**
   #

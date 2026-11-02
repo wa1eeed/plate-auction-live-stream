@@ -48,7 +48,9 @@ void main() {
     return out;
   }
 
-  testWidgets('الطويلة: الحرفُ العربيُّ فوق مقابله، والرقمُ فوق مقابله', (tester) async {
+  testWidgets('الطويلة: الحرفُ العربيُّ فوق مقابله، والرقمُ فوق مقابله', (
+    tester,
+  ) async {
     const plate = SaudiPlate(letters: 'ق و س', number: '4040');
 
     /* ق→G · و→U · س→S — ولكلٍّ عمودُه */
@@ -62,8 +64,9 @@ void main() {
     }
   });
 
-  testWidgets('والترتيبُ يسار→يمين حسب اللاتينيّ لا حسب قراءة العربيّة',
-      (tester) async {
+  testWidgets('والترتيبُ يسار→يمين حسب اللاتينيّ لا حسب قراءة العربيّة', (
+    tester,
+  ) async {
     const plate = SaudiPlate(letters: 'ق و س', number: '4040');
     final found = await centers(tester, plate, ['G', 'U', 'S']);
 
@@ -71,8 +74,16 @@ void main() {
      * **واللوحةُ تُقرأ من اليسار** — النموذجُ يكتب `dir="ltr"` على جذرها.
      * فأوّلُ حرفٍ في «ق و س» يقع يسارًا، ولو كان التطبيق كلُّه عربيًّا.
      */
-    expect(found[0].$2, lessThan(found[1].$2), reason: 'G يجب أن تسبق U يسارًا');
-    expect(found[1].$2, lessThan(found[2].$2), reason: 'U يجب أن تسبق S يسارًا');
+    expect(
+      found[0].$2,
+      lessThan(found[1].$2),
+      reason: 'G يجب أن تسبق U يسارًا',
+    );
+    expect(
+      found[1].$2,
+      lessThan(found[2].$2),
+      reason: 'U يجب أن تسبق S يسارًا',
+    );
   });
 
   testWidgets('والرقمُ لا ينقلب: 4040 تبقى 4040', (tester) async {
@@ -87,8 +98,9 @@ void main() {
     }
   });
 
-  testWidgets('والأرقامُ تقع يسارَ الحروف — كما في الصورة المرجعيّة',
-      (tester) async {
+  testWidgets('والأرقامُ تقع يسارَ الحروف — كما في الصورة المرجعيّة', (
+    tester,
+  ) async {
     const plate = SaudiPlate(letters: 'ك ط ع', number: '4040');
     final found = await centers(tester, plate, ['4', 'K']);
     expect(found[0].$2, lessThan(found[1].$2));
