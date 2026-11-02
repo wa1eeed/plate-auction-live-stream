@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../auth/auth_flow.dart';
+import '../auth/auth_gate.dart';
+import '../auth/session.dart';
 import '../design/tokens.dart';
 import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
@@ -27,7 +30,10 @@ import 'tab_bar.dart';
 /// والزرُّ الدائريُّ يُرسم **فوق** الشريط لا فيه: يرتفع ‎٣٠‎ بكسلًا بحدٍّ بلون
 /// الخلفية، فلو كان عنصرًا في الصفّ لقُصّ عند حافّته.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, required this.onNeedAuth});
+
+  /// يُستدعى حين يطلب المستخدمُ وظيفةً تحتاج حسابًا وقد اختار بابًا.
+  final ValueChanged<AuthRoute> onNeedAuth;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -56,6 +62,31 @@ class _AppShellState extends State<AppShell> {
   bool _chat = false;
   bool _invoice = false;
   Story? _story;
+
+  /*
+   * **والبوّابةُ تسأل مرّةً عند الوظيفة لا عند الفتح.**
+   *
+   * فمن ضغط «زايد» وهو متصفّحٌ بلا حساب تُفتح له ورقةٌ تقول لماذا يلزمه
+   * حساب، ثمّ يختار بابَه. ومن كان داخلًا يمضي بلا اعتراض.
+   */
+  Future<bool> _gate(GatedAction action) async {
+    if (SessionScope.of(context).signedIn) return true;
+    final choice = await showAuthGate(context, action);
+    if (choice == null || !mounted) return false;
+    widget.onNeedAuth(switch (choice) {
+      AuthChoice.otp => AuthRoute.otp,
+      AuthChoice.password => AuthRoute.password,
+      AuthChoice.register => AuthRoute.register,
+    });
+    return false;
+  }
+
+  /// يفتح تبويبًا يحتاج حسابًا — أو يسأل أوّلًا.
+  Future<void> _openGatedTab(AppTab tab, GatedAction action) async {
+    if (await _gate(action)) {
+      if (mounted) setState(() => _tab = tab);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -196,11 +227,17 @@ class _AppShellState extends State<AppShell> {
                   padding: const EdgeInsets.only(top: SellButton.lift),
                   child: AppTabBar(
                     current: _tab,
-                    onSelect: (t) => setState(() => _tab = t),
+                    onSelect: (t) => switch (t) {
+                      AppTab.activity => _openGatedTab(t, GatedAction.orders),
+                      AppTab.account => _openGatedTab(t, GatedAction.wallet),
+                      _ => setState(() => _tab = t),
+                    },
                     pendingCount: 3,
                   ),
                 ),
-                SellButton(onTap: () => setState(() => _tab = AppTab.sell)),
+                SellButton(
+                  onTap: () => _openGatedTab(AppTab.sell, GatedAction.sell),
+                ),
                 Positioned(
                   top: SellButton.diameter + 1,
                   child: Text(

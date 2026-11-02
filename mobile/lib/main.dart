@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'design/tokens.dart';
+import 'auth/auth_flow.dart';
+import 'auth/session.dart';
 import 'shell/app_shell.dart';
 
 void main() => runApp(const MazadApp());
@@ -31,7 +33,46 @@ class MazadApp extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: const AppShell(),
+      home: const _Root(),
+    );
+  }
+}
+
+/// **الجذرُ يحمل الجلسةَ ويُبقي التصفّحَ مفتوحًا.**
+///
+/// فالتطبيقُ يُفتح على السوق لا على بابِ تسجيل: من لم يقرّر بعدُ يرى
+/// اللوحاتِ أوّلًا، ويُطلب الحسابُ عند أوّل وظيفةٍ يحتاجه فيها.
+class _Root extends StatefulWidget {
+  const _Root();
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  final _session = Session();
+  AuthRoute? _auth;
+
+  @override
+  void dispose() {
+    _session.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SessionScope(
+      session: _session,
+      child: _auth == null
+          ? AppShell(onNeedAuth: (route) => setState(() => _auth = route))
+          : AuthFlow(
+              initial: _auth!,
+              onClose: () => setState(() => _auth = null),
+              onSignedIn: () {
+                _session.signIn();
+                setState(() => _auth = null);
+              },
+            ),
     );
   }
 }

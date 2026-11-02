@@ -21,6 +21,10 @@ class ListingScreen extends StatelessWidget {
     this.reserve = ReserveState.none,
     this.sellerName = '—',
     this.onBack,
+    this.onBid,
+    this.onBuy,
+    this.onOffer,
+    this.onFollow,
   });
 
   final Listing listing;
@@ -35,6 +39,12 @@ class ListingScreen extends StatelessWidget {
   final ReserveState reserve;
   final String sellerName;
   final VoidCallback? onBack;
+
+  /// وظائفُ اللوحة — تمرّ ببوّابة الحساب قبل أن تقع.
+  final VoidCallback? onBid;
+  final VoidCallback? onBuy;
+  final VoidCallback? onOffer;
+  final VoidCallback? onFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +75,13 @@ class ListingScreen extends StatelessWidget {
             ],
           ),
         ),
-        ListingActionBar(listing: listing, increment: increment),
+        ListingActionBar(
+          listing: listing,
+          increment: increment,
+          onBid: (_) => onBid?.call(),
+          onBuy: onBuy,
+          onOffer: onOffer,
+        ),
       ],
     );
   }

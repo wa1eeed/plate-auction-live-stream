@@ -8,9 +8,19 @@ enum LoginStage { phone, code, handle }
 
 /// **شاشةُ الدخول** — §5.11: جوالٌ ثمّ رمزٌ ثمّ اختيارُ معرّف.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.onDone});
+  const LoginScreen({
+    super.key,
+    this.onDone,
+    this.onPasswordLogin,
+    this.onRegister,
+  });
 
   final VoidCallback? onDone;
+
+  /// المسارُ الثانويّ — لأصحاب الحسابات القديمة.
+  final VoidCallback? onPasswordLogin;
+
+  final VoidCallback? onRegister;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -159,6 +169,20 @@ class _LoginScreenState extends State<LoginScreen> {
         'أرسل الرمز',
         _phoneValid,
         () => setState(() => _stage = LoginStage.code),
+      ),
+      const SizedBox(height: 10),
+      _ghost('أنشئ حسابًا جديدًا', widget.onRegister),
+      /*
+       * **وكلمةُ المرور سطرٌ لا زرّ.**
+       *
+       * فالتصميمُ المعتمد يدخل بالرمز، ومسارانِ متساويان يُجبران كلَّ وافدٍ
+       * على اختيارٍ لا يعنيه. ومن له حسابٌ قديمٌ بكلمة مرورٍ يبحث عنها —
+       * فتُوضع حيث يبحث، لا حيث تُزاحم.
+       */
+      _ghost(
+        'لديك حساب بكلمة مرور؟ ادخل بالبريد',
+        widget.onPasswordLogin,
+        muted: true,
       ),
     ],
   );
@@ -311,6 +335,25 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ],
   );
+
+  Widget _ghost(String label, VoidCallback? onTap, {bool muted = false}) =>
+      GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: muted ? 40 : 48,
+          child: Center(
+            child: Text(
+              label,
+              style: AppText.body(
+                muted ? 12.5 : 14,
+                color: muted ? AppColors.neutral700 : AppColors.accent700,
+                weight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
 
   Widget _primary(String label, bool enabled, VoidCallback? onTap) =>
       GestureDetector(
