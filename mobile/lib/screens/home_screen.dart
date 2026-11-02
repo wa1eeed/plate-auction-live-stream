@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
-import '../models/listing.dart';
+import '../models/demo_data.dart';
 import '../widgets/home/guarantees_bar.dart';
 import '../widgets/home/home_banners.dart';
 import '../widgets/home/home_header.dart';
 import '../widgets/home/pending_bar.dart';
 import '../widgets/home/section_carousel.dart';
 import '../widgets/home/stories_strip.dart';
-import '../widgets/plate.dart';
 
 /// **الشاشةُ الرئيسيّة** — §5.1.
 class HomeScreen extends StatelessWidget {
@@ -17,7 +16,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final auctions = _auctions(now);
+    final auctions = demoAuctions(now);
     /* عدّادُ بطاقة البنر الثاني يقرأ **أقربَ مزادٍ فعليّ** لا رقمًا مكتوبًا */
     final nearestEnd = auctions
         .map((l) => l.endsAt!)
@@ -58,7 +57,7 @@ class HomeScreen extends StatelessWidget {
           eyebrow: 'بسعر ثابت',
           eyebrowColor: AppColors.accent2_600,
           title: 'بيع مباشر',
-          listings: _fixed(now),
+          listings: demoFixed(now),
           serverTime: now,
         ),
         const SizedBox(height: 22),
@@ -66,7 +65,7 @@ class HomeScreen extends StatelessWidget {
           eyebrow: 'قدّم سومك',
           eyebrowColor: AppColors.neutral700,
           title: 'على السوم',
-          listings: _offers(now),
+          listings: demoOffers(now),
           serverTime: now,
         ),
         const SizedBox(height: 22),
@@ -75,100 +74,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
-/* بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings` — بذرةُ النموذج نفسُها */
-
-List<Listing> _auctions(DateTime now) => [
-  Listing(
-    id: '1',
-    reference: 'L26-00421',
-    letters: 'س ع د',
-    number: '1',
-    kind: PlateKind.private,
-    format: PlateFormat.long,
-    emblem: PlateEmblem.palm,
-    saleType: SaleType.auction,
-    price: 125000000,
-    bids: 23,
-    endsAt: now.add(const Duration(days: 2, hours: 5, minutes: 23)),
-    standing: BidStanding.top,
-  ),
-  Listing(
-    id: '2',
-    reference: 'L26-00418',
-    letters: 'ق و س',
-    number: '4040',
-    kind: PlateKind.private,
-    format: PlateFormat.standard,
-    emblem: PlateEmblem.palm,
-    saleType: SaleType.auction,
-    price: 8000000,
-    bids: 7,
-    endsAt: now.add(const Duration(hours: 3, minutes: 12)),
-  ),
-  Listing(
-    id: '3',
-    reference: 'L26-00410',
-    letters: 'ر ر',
-    number: '77',
-    kind: PlateKind.private,
-    format: PlateFormat.long,
-    emblem: PlateEmblem.vision,
-    saleType: SaleType.auction,
-    price: 47500000,
-    bids: 41,
-    endsAt: now.add(const Duration(days: 1, hours: 2)),
-    standing: BidStanding.outbid,
-  ),
-];
-
-List<Listing> _fixed(DateTime now) => [
-  const Listing(
-    id: '4',
-    reference: 'L26-00399',
-    letters: 'ن ق ل',
-    number: '5566',
-    kind: PlateKind.transport,
-    format: PlateFormat.sport,
-    emblem: PlateEmblem.palm,
-    saleType: SaleType.fixed,
-    price: 3500000,
-  ),
-  const Listing(
-    id: '5',
-    reference: 'L26-00381',
-    letters: 'ك ط ع',
-    number: '1234',
-    kind: PlateKind.private,
-    format: PlateFormat.standard,
-    emblem: PlateEmblem.palm,
-    saleType: SaleType.fixed,
-    price: 12000000,
-    settlementPending: true,
-  ),
-];
-
-List<Listing> _offers(DateTime now) => [
-  const Listing(
-    id: '6',
-    reference: 'L26-00355',
-    letters: 'ح د',
-    number: '9',
-    kind: PlateKind.motorcycle,
-    format: PlateFormat.standard,
-    emblem: PlateEmblem.palm,
-    saleType: SaleType.offers,
-    price: 2200000,
-  ),
-  const Listing(
-    id: '7',
-    reference: 'L26-00344',
-    letters: 'ب ه ا',
-    number: '2846',
-    kind: PlateKind.private,
-    format: PlateFormat.long,
-    emblem: PlateEmblem.dereyah,
-    saleType: SaleType.offers,
-    price: 6400000,
-  ),
-];

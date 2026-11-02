@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
+import '../models/demo_data.dart';
+import '../screens/market_screen.dart';
 import 'tab_bar.dart';
 
 /// **هيكلُ التطبيق** — الشاشاتُ الخمسُ وشريطُها السفليّ.
@@ -19,6 +21,9 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   AppTab _tab = AppTab.home;
 
+  /* وقتُ الخادم — يُقرأ مرّةً ولا يتبدّل بإعادة البناء */
+  final _now = DateTime.now();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,7 +32,10 @@ class _AppShellState extends State<AppShell> {
         bottom: false,
         child: switch (_tab) {
           AppTab.home => widget.home,
-          AppTab.market => const _Soon(label: 'السوق'),
+          AppTab.market => MarketScreen(
+            listings: demoAll(_now),
+            serverTime: _now,
+          ),
           AppTab.sell => const _Soon(label: 'اعرض لوحتك'),
           AppTab.activity => const _Soon(label: 'نشاطي'),
           AppTab.account => const _Soon(label: 'حسابي'),
