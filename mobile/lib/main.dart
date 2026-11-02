@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'design/tokens.dart';
-import 'screens/home_screen.dart';
 import 'shell/app_shell.dart';
 
 void main() => runApp(const MazadApp());
@@ -32,7 +31,7 @@ class MazadApp extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: const AppShell(home: HomeScreen()),
+      home: const AppShell(),
     );
   }
 }

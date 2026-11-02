@@ -22,7 +22,7 @@ class Story {
   final bool seen;
 }
 
-const _stories = <Story>[
+const demoStories = <Story>[
   Story(id: 's1', label: 'مزاد الليلة', letters: 'س ع د', number: '1'),
   Story(id: 's2', label: 'وصل حديثًا', letters: 'ق و س', number: '77'),
   Story(id: 's3', label: 'كيف تزايد', letters: 'ك ط ع', number: '4040'),
@@ -59,10 +59,10 @@ class StoriesStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 18),
-        itemCount: _stories.length,
+        itemCount: demoStories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
-          final st = _stories[i];
+          final st = demoStories[i];
           return GestureDetector(
             onTap: onOpen == null ? null : () => onOpen!(st),
             behavior: HitTestBehavior.opaque,

@@ -15,6 +15,8 @@ class OrderScreen extends StatelessWidget {
     this.counterpartPhone,
     this.counterpartId,
     this.onBack,
+    this.onOpenChat,
+    this.onOpenInvoice,
   });
 
   final OrderView order;
@@ -26,6 +28,8 @@ class OrderScreen extends StatelessWidget {
   final String? counterpartId;
 
   final VoidCallback? onBack;
+  final VoidCallback? onOpenChat;
+  final VoidCallback? onOpenInvoice;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,8 @@ class OrderScreen extends StatelessWidget {
                 _callCard(),
               const SizedBox(height: 14),
               _counterpartCard(),
+              const SizedBox(height: 14),
+              _links(),
             ],
           ),
         ),
@@ -310,8 +316,66 @@ class OrderScreen extends StatelessWidget {
     );
   }
 
+  /// **المحادثةُ والفاتورةُ تُفتحان من الصفقة** — لا من قائمةٍ عامّة.
+  Widget _links() => Row(
+    children: [
+      Expanded(
+        child: _LinkButton(
+          icon: LucideIcons.messageCircle,
+          label: 'محادثة',
+          onTap: onOpenChat,
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _LinkButton(
+          icon: LucideIcons.receipt,
+          label: 'الفاتورة الضريبية',
+          onTap: onOpenInvoice,
+        ),
+      ),
+    ],
+  );
+
   String get _money => (order.price ~/ 100).toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
     (m) => '${m[1]},',
+  );
+}
+
+class _LinkButton extends StatelessWidget {
+  const _LinkButton({required this.icon, required this.label, this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: AppColors.neutral100,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(13, weight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }

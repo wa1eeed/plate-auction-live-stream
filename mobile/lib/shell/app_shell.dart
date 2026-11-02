@@ -6,7 +6,12 @@ import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
 import '../screens/sell_screen.dart';
+import '../screens/chat_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/story_viewer.dart';
+import '../widgets/home/stories_strip.dart';
 import '../screens/help_screen.dart';
+import '../screens/invoice_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/showcase_screen.dart';
@@ -22,9 +27,7 @@ import 'tab_bar.dart';
 /// والزرُّ الدائريُّ يُرسم **فوق** الشريط لا فيه: يرتفع ‎٣٠‎ بكسلًا بحدٍّ بلون
 /// الخلفية، فلو كان عنصرًا في الصفّ لقُصّ عند حافّته.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.home});
-
-  final Widget home;
+  const AppShell({super.key});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -50,6 +53,9 @@ class _AppShellState extends State<AppShell> {
   bool _notifs = false;
   bool _showcase = false;
   bool _help = false;
+  bool _chat = false;
+  bool _invoice = false;
+  Story? _story;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +64,14 @@ class _AppShellState extends State<AppShell> {
       body: SafeArea(
         bottom: false,
         child: switch (_tab) {
-          AppTab.home => widget.home,
+          AppTab.home when _story != null => StoryViewer(
+            stories: demoStories,
+            initialIndex: demoStories.indexOf(_story!),
+            onClose: () => setState(() => _story = null),
+          ),
+          AppTab.home => HomeScreen(
+            onOpenStory: (s) => setState(() => _story = s),
+          ),
           AppTab.market =>
             _open == null
                 ? MarketScreen(
@@ -79,9 +92,24 @@ class _AppShellState extends State<AppShell> {
           AppTab.sell => SellScreen(
             onCancel: () => setState(() => _tab = AppTab.home),
           ),
+          AppTab.activity when _chat => ChatScreen(
+            counterpartName: 'فهد',
+            counterpartRole: 'البائع',
+            orderReference: 'S26-00087',
+            plateLabel: 'ق و س 1',
+            messages: demoChat(_now),
+            onBack: () => setState(() => _chat = false),
+          ),
+          AppTab.activity when _invoice => InvoiceScreen(
+            order: demoOrder(_now),
+            commission: 82000,
+            onBack: () => setState(() => _invoice = false),
+          ),
           AppTab.activity when _order => OrderScreen(
             order: demoOrder(_now),
             onBack: () => setState(() => _order = false),
+            onOpenChat: () => setState(() => _chat = true),
+            onOpenInvoice: () => setState(() => _invoice = true),
           ),
           AppTab.activity => ActivityScreen(
             onOpenOrder: () => setState(() => _order = true),
@@ -149,6 +177,9 @@ class _AppShellState extends State<AppShell> {
               _notifs ||
               _showcase ||
               _help ||
+              _chat ||
+              _invoice ||
+              _story != null ||
               _tab == AppTab.sell)
           ? null
           /*

@@ -11,7 +11,10 @@ import '../widgets/home/stories_strip.dart';
 
 /// **الشاشةُ الرئيسيّة** — §5.1.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onOpenStory});
+
+  /// تُفتح قصّةٌ في عارضٍ يملأ الشاشة.
+  final ValueChanged<Story>? onOpenStory;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +38,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 6),
         const HomeHeader(availableHalalas: 3850000, hasUnread: true),
         const SizedBox(height: 22),
-        const StoriesStrip(),
+        StoriesStrip(onOpen: onOpenStory),
         const SizedBox(height: 22),
         const PendingBar(
           count: 3,

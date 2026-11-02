@@ -3,6 +3,7 @@ import '../widgets/listing/bid_log.dart';
 import 'activity.dart';
 import 'order.dart';
 import 'wallet.dart';
+import '../screens/chat_screen.dart';
 import '../screens/notifications_screen.dart';
 import 'listing.dart';
 
@@ -320,5 +321,39 @@ List<AppNotification> demoNotifications(DateTime now) => [
     title: 'رست عليك «ق و س 1»',
     body: 'بمبلغ 41,000 ر.س — سدّد خلال 24 ساعة',
     at: now.subtract(const Duration(days: 2)),
+  ),
+];
+
+/// محادثةٌ تجريبيّةٌ — نصٌّ وصورةٌ وملفٌّ وصوت.
+List<ChatMessage> demoChat(DateTime now) => [
+  ChatMessage(
+    kind: MessageKind.text,
+    at: now.subtract(const Duration(hours: 3)),
+    mine: false,
+    text: 'السلام عليكم، جاهز أنقل اللوحة أول ما تأكّد بياناتك.',
+  ),
+  ChatMessage(
+    kind: MessageKind.text,
+    at: now.subtract(const Duration(hours: 2, minutes: 51)),
+    mine: true,
+    text: 'وعليكم السلام، أكّدتها الحين. تقدر تبدأ النقل.',
+  ),
+  ChatMessage(
+    kind: MessageKind.image,
+    at: now.subtract(const Duration(hours: 1, minutes: 12)),
+    mine: false,
+  ),
+  ChatMessage(
+    kind: MessageKind.pdf,
+    at: now.subtract(const Duration(minutes: 48)),
+    mine: false,
+    fileName: 'إثبات-النقل.pdf',
+    fileSize: '240 KB',
+  ),
+  ChatMessage(
+    kind: MessageKind.voice,
+    at: now.subtract(const Duration(minutes: 9)),
+    mine: true,
+    duration: Duration(seconds: 23),
   ),
 ];
