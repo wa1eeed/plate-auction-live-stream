@@ -20,31 +20,60 @@ import 'package:mazad/api/mazad_api.dart';
 /// **ولا يُرسل شيئًا افتراضًا.** الإرسالُ يكتب في محادثةِ صفقةٍ قائمةٍ
 /// ويراه الطرفُ الآخر — فهو خلف `MAZAD_WRITE=1` صراحةً.
 void main() {
-  final email = Platform.environment['MAZAD_EMAIL'];
-  final password = Platform.environment['MAZAD_PASSWORD'];
+  /*
+   * **حسابُ الديمو افتراضًا** — فيُشغَّل الفحصُ بأمرٍ واحدٍ بلا إعداد.
+   *
+   * وهذه ليست سرًّا يُفشى: هي مكتوبةٌ في `src/lib/config.ts` بذرةً للمنصّة،
+   * والمستودعُ عامّ. فكتابتُها هنا لا تكشف شيئًا لم يُكشف.
+   *
+   * **ولا يُوضع هنا حسابٌ حقيقيّ أبدًا.** من أراد قياسَ حسابه فليُمرّره
+   * في البيئة — لا يُحرّر هذا الملفّ:
+   *
+   * ```bash
+   * MAZAD_EMAIL='…' MAZAD_PASSWORD='…' flutter test test_live/session_test.dart
+   * ```
+   */
+  const demoEmail = 'sara@demo.sa';
+  const demoPassword = 'demo1234';
+
+  final email = Platform.environment['MAZAD_EMAIL'] ?? demoEmail;
+  final password = Platform.environment['MAZAD_PASSWORD'] ?? demoPassword;
   final mayWrite = Platform.environment['MAZAD_WRITE'] == '1';
 
   late MazadApi api;
 
+  /* وسببُ سقوط الدخول يُحفظ ليُقال في كلّ فحصٍ بدل خطأٍ غامض */
+  Object? loginFailure;
+
   setUpAll(() async {
     api = MazadApi(await ApiClient.create());
-    if (email == null || password == null) return;
-    await api.login(email: email, password: password);
+    try {
+      await api.login(email: email, password: password);
+    } catch (error) {
+      loginFailure = error;
+    }
   });
 
   tearDownAll(() async {
-    if (email == null || password == null) return;
+    if (loginFailure != null) return;
     /* ولا تبقى جلسةٌ في مِرطبان الجهاز بعد الفحص */
     await api.logout();
   });
 
-  /// يُعلَّق بوضوحٍ بدل أن يسقط بغموض.
+  /// **ودخولٌ ساقطٌ يُقال سببُه** لا يُترك فحوصًا تسقط واحدًا واحدًا.
   bool ready() {
-    if (email == null || password == null) {
-      markTestSkipped('اضبط MAZAD_EMAIL و MAZAD_PASSWORD لتُجرى');
+    final failure = loginFailure;
+    if (failure == null) return true;
+
+    if (failure is ApiError && failure.status == 401) {
+      markTestSkipped(
+        'لم يُقبل الدخول بـ$email — '
+        'فحساباتُ البذرة غيرُ مستوردةٍ على هذا الخادم، وهو الأسلم. '
+        'مرّر حسابًا قائمًا في MAZAD_EMAIL و MAZAD_PASSWORD.',
+      );
       return false;
     }
-    return true;
+    fail('سقط الدخول: $failure');
   }
 
   test('الدخولُ يصل، وصفقاتي تُقرأ', () async {
