@@ -5,6 +5,7 @@ import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
+import '../screens/sell_screen.dart';
 import '../screens/account_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
@@ -65,7 +66,9 @@ class _AppShellState extends State<AppShell> {
                     bids: demoBids(_now),
                     onBack: () => setState(() => _open = null),
                   ),
-          AppTab.sell => const _Soon(label: 'اعرض لوحتك'),
+          AppTab.sell => SellScreen(
+            onCancel: () => setState(() => _tab = AppTab.home),
+          ),
           AppTab.activity when _order => OrderScreen(
             order: demoOrder(_now),
             onBack: () => setState(() => _order = false),
@@ -101,25 +104,31 @@ class _AppShellState extends State<AppShell> {
        * فوق بعضٍ يدفعان الإجراءَ خارج متناول الإبهام، والزرُّ الطافي يقع
        * على زرّ «زايد».
        */
-      bottomNavigationBar: (_open != null || _order || _wallet)
+      /* و«اعرض لوحتك» شاشةٌ كاملةٌ بزرّها السفليّ — فلا شريطَ فوقه */
+      bottomNavigationBar:
+          (_open != null || _order || _wallet || _tab == AppTab.sell)
           ? null
+          /*
+           * **والزرُّ الطافي داخلَ حدود الشريط لا خارجَها.**
+           *
+           * فـ`Clip.none` يُظهر ما يخرج عن الكومة ولا يُمرّر إليه الضغط —
+           * فكان الزرُّ يُرى ولا يعمل. فتُفسَح للشريط حشوةٌ علويّةٌ بمقدار
+           * ارتفاعه، ويقع هو في أعلاها: الصورةُ نفسُها، والضغطُ يصل.
+           */
           : Stack(
-              clipBehavior: Clip.none,
               alignment: Alignment.topCenter,
               children: [
-                AppTabBar(
-                  current: _tab,
-                  onSelect: (t) => setState(() => _tab = t),
-                  pendingCount: 3,
-                ),
-                Positioned(
-                  top: -SellButton.lift,
-                  child: SellButton(
-                    onTap: () => setState(() => _tab = AppTab.sell),
+                Padding(
+                  padding: const EdgeInsets.only(top: SellButton.lift),
+                  child: AppTabBar(
+                    current: _tab,
+                    onSelect: (t) => setState(() => _tab = t),
+                    pendingCount: 3,
                   ),
                 ),
+                SellButton(onTap: () => setState(() => _tab = AppTab.sell)),
                 Positioned(
-                  top: SellButton.diameter - SellButton.lift + 1,
+                  top: SellButton.diameter + 1,
                   child: Text(
                     'اعرض لوحتك',
                     style: AppText.body(10.5, color: AppColors.neutral600),
@@ -129,13 +138,4 @@ class _AppShellState extends State<AppShell> {
             ),
     );
   }
-}
-
-class _Soon extends StatelessWidget {
-  const _Soon({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) =>
-      Center(child: Text(label, style: AppText.heading(18)));
 }
