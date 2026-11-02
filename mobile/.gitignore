@@ -52,3 +52,6 @@ app.*.map.json
 assets/fonts/plate-arial-*.ttf
 mobile/build/
 mobile/.dart_tool/
+
+# صورُ إخفاقِ اللقطات — يُولّدها الفحصُ عند الاختلاف ولا تُحفظ.
+test/failures/
