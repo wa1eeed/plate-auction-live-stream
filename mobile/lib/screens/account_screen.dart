@@ -22,6 +22,9 @@ class AccountScreen extends StatelessWidget {
     required this.myPlates,
     this.onOpenWallet,
     this.onOpenSettings,
+    this.onOpenNotifications,
+    this.onOpenShowcase,
+    this.onOpenHelp,
   });
 
   final String name;
@@ -36,6 +39,9 @@ class AccountScreen extends StatelessWidget {
   final List<Listing> myPlates;
   final VoidCallback? onOpenWallet;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenNotifications;
+  final VoidCallback? onOpenShowcase;
+  final VoidCallback? onOpenHelp;
 
   static const _links = <AccountLink>[
     (LucideIcons.shoppingCart, 'مشترياتي', 'كل ما اشتريته وتفاصيله وفواتيره'),
@@ -138,7 +144,13 @@ class AccountScreen extends StatelessWidget {
         for (var i = 0; i < _links.length; i++) ...[
           _MenuRow(
             link: _links[i],
-            onTap: _links[i].$2 == 'الإعدادات' ? onOpenSettings : null,
+            onTap: switch (_links[i].$2) {
+              'الإعدادات' => onOpenSettings,
+              'الإشعارات' => onOpenNotifications,
+              'معرض لوحاتي' => onOpenShowcase,
+              'المساعدة' => onOpenHelp,
+              _ => null,
+            },
           ),
           if (i != _links.length - 1)
             Container(height: 1, color: AppColors.divider),

@@ -6,7 +6,10 @@ import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
 import '../screens/sell_screen.dart';
+import '../screens/help_screen.dart';
+import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/showcase_screen.dart';
 import '../screens/account_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
@@ -44,6 +47,9 @@ class _AppShellState extends State<AppShell> {
 
   /* والإعداداتُ تُفتح فوق «حسابي» من قائمته */
   bool _settings = false;
+  bool _notifs = false;
+  bool _showcase = false;
+  bool _help = false;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +91,21 @@ class _AppShellState extends State<AppShell> {
             watching: demoFixed(_now),
             serverTime: _now,
           ),
+          AppTab.account when _help => HelpScreen(
+            onBack: () => setState(() => _help = false),
+          ),
+          AppTab.account when _notifs => NotificationsScreen(
+            items: demoNotifications(_now),
+            onBack: () => setState(() => _notifs = false),
+          ),
+          AppTab.account when _showcase => ShowcaseScreen(
+            name: 'وليد',
+            handle: '@waleed',
+            city: 'الرياض',
+            joined: 'سنتين',
+            plates: demoOffers(_now) + demoFixed(_now),
+            onBack: () => setState(() => _showcase = false),
+          ),
           AppTab.account when _settings => SettingsScreen(
             blockers: const [
               DeletionBlocker('عربون محجوز', '11,500 ر.س على 3 مزادات'),
@@ -106,6 +127,9 @@ class _AppShellState extends State<AppShell> {
             myPlates: demoOffers(_now) + demoFixed(_now).take(1).toList(),
             onOpenWallet: () => setState(() => _wallet = true),
             onOpenSettings: () => setState(() => _settings = true),
+            onOpenNotifications: () => setState(() => _notifs = true),
+            onOpenShowcase: () => setState(() => _showcase = true),
+            onOpenHelp: () => setState(() => _help = true),
           ),
         },
       ),
@@ -122,6 +146,9 @@ class _AppShellState extends State<AppShell> {
               _order ||
               _wallet ||
               _settings ||
+              _notifs ||
+              _showcase ||
+              _help ||
               _tab == AppTab.sell)
           ? null
           /*

@@ -3,6 +3,7 @@ import '../widgets/listing/bid_log.dart';
 import 'activity.dart';
 import 'order.dart';
 import 'wallet.dart';
+import '../screens/notifications_screen.dart';
 import 'listing.dart';
 
 /// **بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings`** — بذرةُ النموذج نفسُها.
@@ -285,3 +286,39 @@ WalletView demoWallet(DateTime now) => WalletView(
     ),
   ],
 );
+
+/// إشعاراتٌ تجريبيّة — ولكلّ نوعٍ أيقونتُه.
+List<AppNotification> demoNotifications(DateTime now) => [
+  AppNotification(
+    kind: NotifKind.outbid,
+    title: 'تجاوزك أحد في «ر ر 77»',
+    body: 'أعلى مزايدة 51,000 ر.س — ينتهي خلال يوم و5 ساعات',
+    at: now.subtract(const Duration(minutes: 12)),
+    unread: true,
+  ),
+  AppNotification(
+    kind: NotifKind.order,
+    title: 'صفقة S26-00087 تنتظر بياناتك',
+    body: 'أكّد رقم هويتك وتاريخ ميلادك ليبدأ البائع النقل',
+    at: now.subtract(const Duration(hours: 2, minutes: 28)),
+    unread: true,
+  ),
+  AppNotification(
+    kind: NotifKind.offer,
+    title: 'سوم جديد على «ك ط ع 4040»',
+    body: '24,000 ر.س من سلطان ع*****',
+    at: now.subtract(const Duration(hours: 6)),
+  ),
+  AppNotification(
+    kind: NotifKind.wallet,
+    title: 'عاد عربونك 5,000 ر.س',
+    body: 'انتهى مزاد «ا ه ب 2846» ولم ترسُ عليك',
+    at: now.subtract(const Duration(days: 1, hours: 4)),
+  ),
+  AppNotification(
+    kind: NotifKind.won,
+    title: 'رست عليك «ق و س 1»',
+    body: 'بمبلغ 41,000 ر.س — سدّد خلال 24 ساعة',
+    at: now.subtract(const Duration(days: 2)),
+  ),
+];
