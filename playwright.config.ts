@@ -20,6 +20,8 @@ export default defineConfig({
     env: {
       AUCTION_STORE: 'memory',
       DEMO_MODE: 'true',
+      /* بيانةُ فحصٍ — المخزنُ ذاكرةٌ تُمحى مع العملية */
+      DEMO_USER_PASSWORD: 'demo1234',
       SESSION_SECRET: 'e2e-secret-please-change',
       PORT: String(PORT),
       // مجلّد مخرجات خاص حتى لا يستبدل مبنى الاختبار ملفات خادم تطوير عامل

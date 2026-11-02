@@ -31,11 +31,30 @@ export const config = {
   },
 } as const
 
+/**
+ * **كلمة حسابات العرض — من البيئة، ولا تُكتب هنا.**
+ *
+ * كانت مكتوبةً في هذا الملفّ، والمستودعُ عامّ. وهي عينُها ما يُزرع في قاعدة
+ * الإنتاج عبر `api/admin/seed` — فصارت سرًّا منشورًا: يقرؤه من شاء فيدخل
+ * حسابًا له محفظةٌ ورصيد، ويزايد ويشتري ويبيع.
+ *
+ * **والبديلُ عند غيابها عشوائيٌّ لا ثابت.** فافتراضٌ ثابتٌ يعود بالعلّة من
+ * بابٍ آخر: من زرع قاعدةً حقيقيّةً ونسي ضبط المتغيّر أعاد نشر ما ظنناه
+ * أزلناه. والعشوائيُّ يجعل النسيانَ يُنتج حساباتٍ لا تُدخَل — وهو الإخفاق
+ * الآمن.
+ *
+ * ويُضبط للتطوير المحلّيّ في `.env.local` (وهو خارج Git)، وللفحوص في
+ * `vitest.config.ts` و`playwright.config.ts` — فهي بيانةُ فحصٍ على قاعدةٍ
+ * عابرةٍ في الذاكرة، لا تبلغ قاعدةً حقيقيّةً أبدًا.
+ */
+export const DEMO_USER_PASSWORD =
+  process.env.DEMO_USER_PASSWORD || globalThis.crypto.randomUUID()
+
 /** حسابات تجريبية — كل حساب يبيع ويشتري في آنٍ واحد. */
 export const DEMO_USERS = [
   {
     email: 'waleed@demo.sa',
-    password: 'demo1234',
+    password: DEMO_USER_PASSWORD,
     displayName: 'وليد العتيبي',
     phone: '+966500000001',
     city: 'الرياض',
@@ -44,7 +63,7 @@ export const DEMO_USERS = [
   },
   {
     email: 'sara@demo.sa',
-    password: 'demo1234',
+    password: DEMO_USER_PASSWORD,
     displayName: 'سارة القحطاني',
     phone: '+966500000002',
     city: 'جدة',
@@ -53,7 +72,7 @@ export const DEMO_USERS = [
   },
   {
     email: 'majed@demo.sa',
-    password: 'demo1234',
+    password: DEMO_USER_PASSWORD,
     displayName: 'ماجد الشهري',
     phone: '+966500000003',
     city: 'الدمام',
