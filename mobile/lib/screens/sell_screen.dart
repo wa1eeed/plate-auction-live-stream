@@ -10,9 +10,12 @@ import '../widgets/sell/segmented_row.dart';
 
 /// **شاشةُ إضافة لوحة** — §5.5: ثلاثُ خطواتٍ ومعاينةٌ حيّة.
 class SellScreen extends StatefulWidget {
-  const SellScreen({super.key, this.onCancel});
+  const SellScreen({super.key, this.onCancel, this.onPublish});
 
   final VoidCallback? onCancel;
+
+  /// يُنشئ الإعلانَ على الخادم — ويُرجع `true` إن قُبل.
+  final Future<bool> Function(SellDraft draft)? onPublish;
 
   @override
   State<SellScreen> createState() => _SellScreenState();
@@ -20,6 +23,7 @@ class SellScreen extends StatefulWidget {
 
 class _SellScreenState extends State<SellScreen> {
   int _step = 0;
+  bool _busy = false;
 
   PlateKind _kind = PlateKind.private;
   PlateFormat _format = PlateFormat.long;
@@ -55,6 +59,9 @@ class _SellScreenState extends State<SellScreen> {
      */
     return chosen.isEmpty ? '؟؟؟' : chosen.join('');
   }
+
+  /// **ولا يُنشر بسعرٍ صفر** — إعلانٌ بلا سعرٍ يُردّ في الخادم.
+  bool get _priceValid => (int.tryParse(_price.text.trim()) ?? 0) > 0;
 
   bool get _step1Valid =>
       _letters.every((l) => l != null) && _number.text.trim().isNotEmpty;
@@ -455,8 +462,53 @@ class _SellScreenState extends State<SellScreen> {
     ),
   );
 
+  /// يجمع ما اختير في مسوّدةٍ يفهمها الخادم.
+  SellDraft get _draft => SellDraft(
+    plateType: switch (_kind) {
+      PlateKind.transport => 'transport',
+      PlateKind.motorcycle => 'motorcycle',
+      PlateKind.private => 'private',
+    },
+    plateFormat: switch (_format) {
+      PlateFormat.standard => 'standard',
+      PlateFormat.sport => 'sport',
+      PlateFormat.long => 'long',
+    },
+    arabicLetters: _letters.whereType<String>().join(),
+    latinLetters: _letters
+        .whereType<String>()
+        .map((l) => plateLetters.firstWhere((e) => e.$1 == l).$2)
+        .join(),
+    plateNumbers: _number.text.trim(),
+    emblem: switch (_emblem) {
+      PlateEmblem.gold => 'palm-swords-gold',
+      PlateEmblem.vision => 'vision-2030',
+      PlateEmblem.dereyah => 'dereyah',
+      PlateEmblem.madaen => 'madaen',
+      PlateEmblem.palm => 'palm-swords-black',
+    },
+    saleType: switch (_sale) {
+      SaleType.fixed => 'fixed',
+      SaleType.offers => 'offers',
+      SaleType.auction => 'auction',
+    },
+    priceRiyals: int.tryParse(_price.text.trim()) ?? 0,
+    durationSeconds: _days * 24 * 60 * 60,
+  );
+
+  Future<void> _publish() async {
+    final send = widget.onPublish;
+    if (send == null) return;
+    setState(() => _busy = true);
+    final ok = await send(_draft);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onCancel?.call();
+  }
+
   Widget _footer() {
-    final enabled = _step == 0 ? _step1Valid : true;
+    final enabled =
+        !_busy && (_step == 0 ? _step1Valid : _step != 2 || _priceValid);
     const labels = ['التالي: طريقة البيع', 'التالي: المراجعة', 'انشر اللوحة'];
 
     return Container(
@@ -468,7 +520,9 @@ class _SellScreenState extends State<SellScreen> {
       child: SafeArea(
         top: false,
         child: GestureDetector(
-          onTap: enabled && _step < 2 ? () => setState(() => _step++) : null,
+          onTap: !enabled
+              ? null
+              : (_step < 2 ? () => setState(() => _step++) : _publish),
           behavior: HitTestBehavior.opaque,
           child: Container(
             height: 52,
@@ -496,4 +550,29 @@ class _SellScreenState extends State<SellScreen> {
     RegExp(r'(\d)(?=(\d{3})+$)'),
     (m) => '${m[1]},',
   );
+}
+
+/// مسوّدةُ إعلانٍ كما يفهمها الخادم.
+class SellDraft {
+  const SellDraft({
+    required this.plateType,
+    required this.plateFormat,
+    required this.arabicLetters,
+    required this.latinLetters,
+    required this.plateNumbers,
+    required this.emblem,
+    required this.saleType,
+    required this.priceRiyals,
+    required this.durationSeconds,
+  });
+
+  final String plateType;
+  final String plateFormat;
+  final String arabicLetters;
+  final String latinLetters;
+  final String plateNumbers;
+  final String emblem;
+  final String saleType;
+  final int priceRiyals;
+  final int durationSeconds;
 }

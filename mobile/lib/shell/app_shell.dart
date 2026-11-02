@@ -9,6 +9,7 @@ import '../auth/session.dart';
 import '../design/tokens.dart';
 import '../widgets/common/async_view.dart';
 import '../widgets/common/toast.dart';
+import '../widgets/order/identity_form.dart';
 import '../models/demo_data.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
@@ -181,6 +182,22 @@ class _AppShellState extends State<AppShell> {
                   ),
           AppTab.sell => SellScreen(
             onCancel: () => setState(() => _tab = AppTab.home),
+            onPublish: (draft) => runAction(
+              context,
+              () => ApiScope.of(context).createListing(
+                plateType: draft.plateType,
+                plateFormat: draft.plateFormat,
+                arabicLetters: draft.arabicLetters,
+                latinLetters: draft.latinLetters,
+                plateNumbers: draft.plateNumbers,
+                emblem: draft.emblem,
+                saleType: draft.saleType,
+                priceRiyals: draft.priceRiyals,
+                durationSeconds: draft.durationSeconds,
+                minimumIncrementRiyals: 500,
+              ),
+              success: 'نُشرت لوحتك في السوق',
+            ),
           ),
           AppTab.activity when _chat => ChatScreen(
             counterpartName: 'فهد',
@@ -200,14 +217,29 @@ class _AppShellState extends State<AppShell> {
             onBack: () => setState(() => _order = false),
             onOpenChat: () => setState(() => _chat = true),
             onOpenInvoice: () => setState(() => _invoice = true),
+            onConfirmIdentity: (id, birth, cal) => runAction(
+              context,
+              () => ApiScope.of(context).confirmIdentity(
+                demoOrder(_now).reference,
+                nationalId: id,
+                birthDate: birth,
+                birthCalendar: cal == BirthCalendar.hijri
+                    ? 'hijri'
+                    : 'gregorian',
+              ),
+              success: 'وصلت بياناتك للبائع',
+            ),
           ),
-          AppTab.activity => ActivityScreen(
-            onOpenOrder: () => setState(() => _order = true),
-            pending: demoPending(),
-            myBids: demoAuctions(_now),
-            myOffers: demoOffers(_now),
-            watching: demoFixed(_now),
-            serverTime: _now,
+          AppTab.activity => AsyncView<ActivityBundle>(
+            load: () => ApiScope.of(context).activity(),
+            builder: (context, a, reload) => ActivityScreen(
+              pending: a.pending,
+              myBids: a.myBids,
+              myOffers: a.myOffers,
+              watching: a.watching,
+              serverTime: a.serverTime,
+              onOpenOrder: () => setState(() => _order = true),
+            ),
           ),
           AppTab.account when _help => HelpScreen(
             onBack: () => setState(() => _help = false),

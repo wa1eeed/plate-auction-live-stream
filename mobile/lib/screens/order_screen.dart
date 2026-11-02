@@ -17,6 +17,7 @@ class OrderScreen extends StatelessWidget {
     this.onBack,
     this.onOpenChat,
     this.onOpenInvoice,
+    this.onConfirmIdentity,
   });
 
   final OrderView order;
@@ -30,6 +31,14 @@ class OrderScreen extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onOpenChat;
   final VoidCallback? onOpenInvoice;
+
+  /// يُرسل بياناتِ المشتري — ويُرجع `true` إن قُبلت.
+  final Future<bool> Function(
+    String nationalId,
+    String birthDate,
+    BirthCalendar calendar,
+  )?
+  onConfirmIdentity;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +54,7 @@ class OrderScreen extends StatelessWidget {
               _railCard(),
               const SizedBox(height: 14),
               if (order.stage == OrderStage.id && order.youAreBuyer)
-                const IdentityForm()
+                IdentityForm(onSubmit: onConfirmIdentity)
               else
                 _callCard(),
               const SizedBox(height: 14),

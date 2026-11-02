@@ -1,4 +1,5 @@
 import '../models/listing.dart';
+import '../models/activity.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
@@ -59,6 +60,47 @@ class MazadApi {
   Future<void> offer(String id, int amountHalalas) =>
       _client.post('/api/listings/$id/offers', body: {'amount': amountHalalas});
 
+  /// **عرضُ لوحةٍ جديدة** — `POST api/listings`.
+  ///
+  /// **والمخطَّطُ يشترط اللاتينيَّ مع العربيّ**: الخادمُ يُطبّق قواعدَه على
+  /// الاثنين، والخريطةُ معروفةٌ في الواجهة — فتُرسل محسوبةً لا يُطالَب
+  /// المستخدمُ بكتابتها مرّتين.
+  Future<void> createListing({
+    required String plateType,
+    required String plateFormat,
+    required String arabicLetters,
+    required String latinLetters,
+    required String plateNumbers,
+    required String emblem,
+    required String saleType,
+    required int priceRiyals,
+    required int durationSeconds,
+    int minimumIncrementRiyals = 0,
+  }) => _client.post(
+    '/api/listings',
+    body: {
+      'plateType': plateType,
+      'plateFormat': plateFormat,
+      'arabicLetters': arabicLetters,
+      'latinLetters': latinLetters,
+      'plateNumbers': plateNumbers,
+      'emblem': emblem,
+      'saleType': saleType,
+      /*
+         * **والمبالغُ بالريال في هذا المسار لا بالهللة.**
+         *
+         * فالمخطَّطُ يقرأها `riyalField` ويضربها هو — وإرسالُ الهللات
+         * يُنشئ إعلانًا بمئة ضعف سعره.
+         */
+      'price': saleType == 'fixed' ? priceRiyals : 0,
+      'startingPrice': saleType == 'auction' ? priceRiyals : 0,
+      'minimumIncrement': minimumIncrementRiyals,
+      'reservePrice': 0,
+      'minimumOffer': saleType == 'offers' ? priceRiyals : 0,
+      'durationSeconds': durationSeconds,
+    },
+  );
+
   /// المحفظة — `GET api/account/wallet`.
   Future<WalletView> wallet() async =>
       ApiMapping.wallet(await _client.get('/api/account/wallet'));
@@ -111,6 +153,33 @@ class MazadApi {
     return OrdersBundle(
       purchases: read('purchases', asBuyer: true),
       sales: read('sales', asBuyer: false),
+    );
+  }
+
+  /// **ما يحتاجه «نشاطي»** — صفقاتي ولوحاتي في ندوتين متوازيتين.
+  Future<ActivityBundle> activity() async {
+    final results = await Future.wait([orders(), listings()]);
+    final mine = results[0] as OrdersBundle;
+    final market = (results[1] as MarketSnapshot).listings;
+
+    return ActivityBundle(
+      pending: mine.awaitingMe.map((o) => o.toPendingItem()).toList(),
+      /*
+       * **ومزايداتي وعروضي تُشتقّ من السوق** لا من مسارٍ ثالث.
+       *
+       * فالخادمُ يُرسل مع كلّ لوحةٍ حالَ المزايد عليها، والسوقُ مجلوبٌ
+       * أصلًا — فندوةٌ ثالثةٌ تُبطئ بلا فائدة.
+       */
+      myBids: market
+          .where(
+            (l) =>
+                l.saleType == SaleType.auction &&
+                l.standing != BidStanding.none,
+          )
+          .toList(),
+      myOffers: market.where((l) => l.saleType == SaleType.offers).toList(),
+      watching: market.where((l) => l.following).toList(),
+      serverTime: (results[1] as MarketSnapshot).serverTime,
     );
   }
 
@@ -197,4 +266,67 @@ class OrdersBundle {
     ),
     ...sales.where((o) => o.stage == OrderStage.transfer),
   ];
+}
+
+/// يحوّل صفقةً إلى بندٍ في «بانتظارك».
+extension OrderPending on OrderView {
+  /// **والنداءُ يتبع المرحلةَ والدور** — وهو ما يُغني عن تاباتٍ لكلّ نوع.
+  PendingItem toPendingItem() {
+    final (kicker, title, sub, cta) = switch (stage) {
+      OrderStage.pay when youAreBuyer => (
+        'صفقة $reference',
+        'سدّد قيمة اللوحة',
+        'يُحجز المبلغ أمانةً حتى تصلك اللوحة',
+        'سدّد الآن',
+      ),
+      OrderStage.id when youAreBuyer => (
+        'صفقة $reference',
+        'أكّد بياناتك لنقل الملكية',
+        'البائع ينتظر رقم هويتك ليبدأ النقل في أبشر',
+        'أكّد بياناتك',
+      ),
+      OrderStage.transfer => (
+        'صفقة $reference',
+        'انقل الملكية في أبشر',
+        'وصلتك بيانات المشتري — والمبلغ محجوز حتى تنقل',
+        'اعرض الخطوات',
+      ),
+      _ => ('صفقة $reference', stageName, '', 'افتح الصفقة'),
+    };
+
+    return PendingItem(
+      id: reference,
+      kind: stage == OrderStage.transfer
+          ? PendingKind.transfer
+          : PendingKind.order,
+      role: youAreBuyer ? ActorRole.buyer : ActorRole.seller,
+      letters: letters,
+      number: number,
+      plateKind: plateKind,
+      format: format,
+      emblem: emblem,
+      saleLabel: source,
+      kicker: kicker,
+      title: title,
+      sub: sub,
+      cta: cta,
+    );
+  }
+}
+
+/// ما تحتاجه شاشةُ «نشاطي».
+class ActivityBundle {
+  const ActivityBundle({
+    required this.pending,
+    required this.myBids,
+    required this.myOffers,
+    required this.watching,
+    required this.serverTime,
+  });
+
+  final List<PendingItem> pending;
+  final List<Listing> myBids;
+  final List<Listing> myOffers;
+  final List<Listing> watching;
+  final DateTime serverTime;
 }

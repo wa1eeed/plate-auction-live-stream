@@ -17,7 +17,12 @@ enum BirthCalendar { hijri, gregorian }
 class IdentityForm extends StatefulWidget {
   const IdentityForm({super.key, this.onSubmit});
 
-  final void Function(String nationalId, String birthDate, BirthCalendar cal)?
+  /// يُرجع `true` إن قُبلت البيانات.
+  final Future<bool> Function(
+    String nationalId,
+    String birthDate,
+    BirthCalendar calendar,
+  )?
   onSubmit;
 
   @override
@@ -28,6 +33,7 @@ class _IdentityFormState extends State<IdentityForm> {
   final _id = TextEditingController();
   final _birth = TextEditingController();
   BirthCalendar _cal = BirthCalendar.hijri;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -42,7 +48,15 @@ class _IdentityFormState extends State<IdentityForm> {
   bool get _birthValid =>
       RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(_birth.text.trim());
 
-  bool get _valid => _idValid && _birthValid;
+  bool get _valid => !_busy && _idValid && _birthValid;
+
+  Future<void> _submit() async {
+    final send = widget.onSubmit;
+    if (send == null) return;
+    setState(() => _busy = true);
+    await send(_id.text.trim(), _birth.text.trim(), _cal);
+    if (mounted) setState(() => _busy = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,13 +124,7 @@ class _IdentityFormState extends State<IdentityForm> {
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: _valid
-                ? () => widget.onSubmit?.call(
-                    _id.text.trim(),
-                    _birth.text.trim(),
-                    _cal,
-                  )
-                : null,
+            onTap: _valid ? _submit : null,
             behavior: HitTestBehavior.opaque,
             child: Container(
               height: 50,
