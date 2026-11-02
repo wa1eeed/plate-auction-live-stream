@@ -5,6 +5,7 @@ import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
+import '../screens/account_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
 import '../models/listing.dart';
@@ -35,6 +36,9 @@ class _AppShellState extends State<AppShell> {
 
   /* صفقةٌ مفتوحةٌ فوق «نشاطي» */
   bool _order = false;
+
+  /* المحفظةُ تُفتح فوق «حسابي» من زرّ البطاقة */
+  bool _wallet = false;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +78,20 @@ class _AppShellState extends State<AppShell> {
             watching: demoFixed(_now),
             serverTime: _now,
           ),
-          AppTab.account => WalletScreen(wallet: demoWallet(_now)),
+          AppTab.account when _wallet => WalletScreen(
+            wallet: demoWallet(_now),
+            onBack: () => setState(() => _wallet = false),
+          ),
+          AppTab.account => AccountScreen(
+            name: 'وليد',
+            handle: '@waleed',
+            membershipNumber: 'U26-00001',
+            available: demoWallet(_now).available,
+            balance: demoWallet(_now).balance,
+            held: demoWallet(_now).held,
+            myPlates: demoOffers(_now) + demoFixed(_now).take(1).toList(),
+            onOpenWallet: () => setState(() => _wallet = true),
+          ),
         },
       ),
       /*
@@ -84,7 +101,7 @@ class _AppShellState extends State<AppShell> {
        * فوق بعضٍ يدفعان الإجراءَ خارج متناول الإبهام، والزرُّ الطافي يقع
        * على زرّ «زايد».
        */
-      bottomNavigationBar: (_open != null || _order)
+      bottomNavigationBar: (_open != null || _order || _wallet)
           ? null
           : Stack(
               clipBehavior: Clip.none,
