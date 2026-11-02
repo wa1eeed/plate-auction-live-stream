@@ -195,7 +195,13 @@ jobs:
           # `--config-only` يكتب الإعداد ويجلب الإضافات ولا يترجم: الترجمةُ
           # تقع في `xcodebuild archive` نفسِه عبر خطوة Flutter في المشروع،
           # فلا يُبنى الشيءُ مرّتين.
-          flutter build ios --release --config-only "${VERSION_ARGS[@]}"
+          #
+          # **و`--no-codesign` معه وإن كنّا نوقّع.** فـ`flutter build` يفحص
+          # الشهاداتِ في حلقة المفاتيح بنفسه قبل أن يكتب شيئًا، ومفتاحُنا
+          # مفتاحُ واجهةٍ يفهمه `xcodebuild` وحده مع
+          # `-allowProvisioningUpdates` — فيسقط Flutter بـ«لا شهادة» على
+          # بناءٍ توقيعُه مضمون. والتوقيعُ يقع في الأرشفة لا هنا.
+          flutter build ios --release --config-only --no-codesign "${VERSION_ARGS[@]}"
 
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
