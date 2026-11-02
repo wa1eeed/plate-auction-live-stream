@@ -21,6 +21,7 @@ class AccountScreen extends StatelessWidget {
     required this.held,
     required this.myPlates,
     this.onOpenWallet,
+    this.onOpenSettings,
   });
 
   final String name;
@@ -34,6 +35,7 @@ class AccountScreen extends StatelessWidget {
   final int held;
   final List<Listing> myPlates;
   final VoidCallback? onOpenWallet;
+  final VoidCallback? onOpenSettings;
 
   static const _links = <AccountLink>[
     (LucideIcons.shoppingCart, 'مشترياتي', 'كل ما اشتريته وتفاصيله وفواتيره'),
@@ -134,7 +136,10 @@ class AccountScreen extends StatelessWidget {
     child: Column(
       children: [
         for (var i = 0; i < _links.length; i++) ...[
-          _MenuRow(link: _links[i]),
+          _MenuRow(
+            link: _links[i],
+            onTap: _links[i].$2 == 'الإعدادات' ? onOpenSettings : null,
+          ),
           if (i != _links.length - 1)
             Container(height: 1, color: AppColors.divider),
         ],
@@ -215,55 +220,63 @@ class _PlateTile extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.link});
+  const _MenuRow({required this.link, this.onTap});
 
   final AccountLink link;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final (icon, title, sub) = link;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          /* أيقونةٌ في مربّعٍ ‎٣٨‎ بخلفيةٍ `accent-100` */
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.accent100,
-              borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            /* أيقونةٌ في مربّعٍ ‎٣٨‎ بخلفيةٍ `accent-100` */
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.accent100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 17, color: AppColors.accent700),
             ),
-            child: Icon(icon, size: 17, color: AppColors.accent700),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppText.body(13.5, weight: FontWeight.w700)),
-                if (sub != null) ...[
-                  const SizedBox(height: 2),
-                  Directionality(
-                    textDirection: sub.contains('/')
-                        ? TextDirection.ltr
-                        : TextDirection.rtl,
-                    child: Text(
-                      sub,
-                      style: AppText.body(11.5, color: AppColors.neutral700),
-                    ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppText.body(13.5, weight: FontWeight.w700),
                   ),
+                  if (sub != null) ...[
+                    const SizedBox(height: 2),
+                    Directionality(
+                      textDirection: sub.contains('/')
+                          ? TextDirection.ltr
+                          : TextDirection.rtl,
+                      child: Text(
+                        sub,
+                        style: AppText.body(11.5, color: AppColors.neutral700),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const Icon(
-            LucideIcons.chevronLeft,
-            size: 18,
-            color: AppColors.neutral600,
-          ),
-        ],
+            const Icon(
+              LucideIcons.chevronLeft,
+              size: 18,
+              color: AppColors.neutral600,
+            ),
+          ],
+        ),
       ),
     );
   }

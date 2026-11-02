@@ -6,6 +6,7 @@ import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
 import '../screens/sell_screen.dart';
+import '../screens/settings_screen.dart';
 import '../screens/account_screen.dart';
 import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
@@ -40,6 +41,9 @@ class _AppShellState extends State<AppShell> {
 
   /* المحفظةُ تُفتح فوق «حسابي» من زرّ البطاقة */
   bool _wallet = false;
+
+  /* والإعداداتُ تُفتح فوق «حسابي» من قائمته */
+  bool _settings = false;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +85,13 @@ class _AppShellState extends State<AppShell> {
             watching: demoFixed(_now),
             serverTime: _now,
           ),
+          AppTab.account when _settings => SettingsScreen(
+            blockers: const [
+              DeletionBlocker('عربون محجوز', '11,500 ر.س على 3 مزادات'),
+              DeletionBlocker('لوحات معروضة', '3 لوحات في السوق'),
+            ],
+            onBack: () => setState(() => _settings = false),
+          ),
           AppTab.account when _wallet => WalletScreen(
             wallet: demoWallet(_now),
             onBack: () => setState(() => _wallet = false),
@@ -94,6 +105,7 @@ class _AppShellState extends State<AppShell> {
             held: demoWallet(_now).held,
             myPlates: demoOffers(_now) + demoFixed(_now).take(1).toList(),
             onOpenWallet: () => setState(() => _wallet = true),
+            onOpenSettings: () => setState(() => _settings = true),
           ),
         },
       ),
@@ -106,7 +118,11 @@ class _AppShellState extends State<AppShell> {
        */
       /* و«اعرض لوحتك» شاشةٌ كاملةٌ بزرّها السفليّ — فلا شريطَ فوقه */
       bottomNavigationBar:
-          (_open != null || _order || _wallet || _tab == AppTab.sell)
+          (_open != null ||
+              _order ||
+              _wallet ||
+              _settings ||
+              _tab == AppTab.sell)
           ? null
           /*
            * **والزرُّ الطافي داخلَ حدود الشريط لا خارجَها.**
