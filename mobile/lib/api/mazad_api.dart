@@ -1,4 +1,5 @@
 import '../models/listing.dart';
+import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
 import 'api_client.dart';
@@ -94,6 +95,25 @@ class MazadApi {
   /// تعليمُ الإشعارات مقروءةً — `PATCH api/notifications`.
   Future<void> readNotifications() => _client.patch('/api/notifications');
 
+  /// **صفقاتي** — `GET api/orders`: مشترياتٌ ومبيعاتٌ في ردٍّ واحد.
+  Future<OrdersBundle> orders() async {
+    final json = await _client.get('/api/orders');
+
+    List<OrderView> read(String key, {required bool asBuyer}) =>
+        ((json[key] as List?) ?? const [])
+            .whereType<Map>()
+            .map(
+              (o) =>
+                  ApiMapping.order(o.cast<String, dynamic>(), asBuyer: asBuyer),
+            )
+            .toList();
+
+    return OrdersBundle(
+      purchases: read('purchases', asBuyer: true),
+      sales: read('sales', asBuyer: false),
+    );
+  }
+
   /// صفقةٌ — `GET api/orders/{id}`.
   Future<Map<String, dynamic>> order(String id) =>
       _client.get('/api/orders/$id');
@@ -158,4 +178,23 @@ class AccountBundle {
   final ProfileView profile;
   final WalletView wallet;
   final List<Listing> myPlates;
+}
+
+/// مشترياتٌ ومبيعاتٌ معًا.
+class OrdersBundle {
+  const OrdersBundle({required this.purchases, required this.sales});
+
+  final List<OrderView> purchases;
+  final List<OrderView> sales;
+
+  /// **ما ينتظر ردَّك من الجهتين** — وهو تابُ «بانتظارك».
+  ///
+  /// فالمشتري يُنتظر في السداد وتأكيد البيانات، والبائعُ في النقل. ومن
+  /// يفتح التطبيقَ يسأل «ماذا عليّ؟» لا «أيَّ دورٍ ألبس الآن؟».
+  List<OrderView> get awaitingMe => [
+    ...purchases.where(
+      (o) => o.stage == OrderStage.pay || o.stage == OrderStage.id,
+    ),
+    ...sales.where((o) => o.stage == OrderStage.transfer),
+  ];
 }

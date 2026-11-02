@@ -1,4 +1,5 @@
 import '../models/listing.dart';
+import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
 import '../widgets/listing/bid_log.dart';
@@ -232,6 +233,54 @@ abstract final class ApiMapping {
       phone: user['phone'] as String? ?? '',
     );
   }
+
+  /// **صفقةٌ في قائمة «صفقاتي»** — من `api/orders`.
+  static OrderView order(Map<String, dynamic> json, {required bool asBuyer}) {
+    final plate = (json['plate'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final counterpart = json['counterpartName'] as String? ?? '—';
+
+    return OrderView(
+      reference: json['reference'] as String? ?? '',
+      stage: _stage(json['status'] as String?),
+      source: _sourceLabel(json['source'] as String?),
+      letters: plate['arabicLetters'] as String? ?? '',
+      number: plate['plateNumbers'] as String? ?? '',
+      plateKind: kind(plate['plateType'] as String?),
+      format: format(plate['plateFormat'] as String?),
+      emblem: emblem(plate['emblem'] as String?),
+      price: (json['amount'] as num?)?.toInt() ?? 0,
+      /*
+       * **والطرفُ الآخرُ يصل باسمٍ واحد** — فيُركَّب الطرفان من دور القارئ:
+       * من يقرأ مشترياتِه هو المشتري، والآخرُ هو البائع. والخادمُ لا يُرسل
+       * الاسمين لأنّ أحدَهما صاحبُ الطلب، ومعرفتُه بنفسه لا تحتاج شبكة.
+       */
+      buyerName: asBuyer ? 'أنت' : counterpart,
+      sellerName: asBuyer ? counterpart : 'أنت',
+      youAreBuyer: asBuyer,
+      createdAt: time(json['createdAt']) ?? DateTime.now(),
+      paidAt: time(json['paidAt']),
+      identityAt: time(json['identityConfirmedAt']),
+      transferAt: time(json['transferProofAt']),
+      releasedAt: time(json['releasedAt']),
+      deadline: time(json['paymentDueAt']) ?? time(json['transferDueAt']),
+    );
+  }
+
+  static OrderStage _stage(String? raw) => switch (raw) {
+    'awaiting_settlement' => OrderStage.pay,
+    'escrow_held' => OrderStage.id,
+    'ownership_transferred' => OrderStage.review,
+    'completed' => OrderStage.done,
+    'cancelled' => OrderStage.cancelled,
+    'defaulted' => OrderStage.defaulted,
+    _ => OrderStage.pay,
+  };
+
+  static String _sourceLabel(String? raw) => switch (raw) {
+    'fixed' => 'بيع مباشر',
+    'offer' || 'offers' => 'سوم',
+    _ => 'مزاد',
+  };
 }
 
 /// الملفُّ الشخصيُّ كما تحتاجه شاشةُ «حسابي».
