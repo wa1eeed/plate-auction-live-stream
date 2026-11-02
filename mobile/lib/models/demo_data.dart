@@ -1,5 +1,6 @@
 import '../widgets/plate.dart';
 import '../widgets/listing/bid_log.dart';
+import 'activity.dart';
 import 'listing.dart';
 
 /// **بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings`** — بذرةُ النموذج نفسُها.
@@ -130,5 +131,69 @@ List<BidEntry> demoBids(DateTime now) => [
     bidder: 'فهد الدوسري',
     amount: 118500000,
     at: now.subtract(const Duration(hours: 5)),
+  ),
+];
+
+/// **بنودُ «بانتظارك» الأربعة** — واحدٌ من كلّ نوعٍ يجمعه التاب.
+List<PendingItem> demoPending() => const [
+  PendingItem(
+    id: 'p1',
+    kind: PendingKind.order,
+    role: ActorRole.buyer,
+    letters: 'ق و س',
+    number: '1',
+    plateKind: PlateKind.private,
+    format: PlateFormat.long,
+    emblem: PlateEmblem.palm,
+    saleLabel: 'مزاد',
+    kicker: 'صفقة S26-00087',
+    title: 'أكّد بياناتك لنقل الملكية',
+    sub: 'البائع ينتظر رقم هويتك ليبدأ النقل في أبشر',
+    cta: 'أكّد بياناتك',
+  ),
+  PendingItem(
+    id: 'p2',
+    kind: PendingKind.offer,
+    role: ActorRole.seller,
+    letters: 'ك ط ع',
+    number: '4040',
+    plateKind: PlateKind.private,
+    format: PlateFormat.standard,
+    emblem: PlateEmblem.palm,
+    saleLabel: 'سوم',
+    kicker: 'سوم على لوحتك',
+    title: '24,000 ر.س من سلطان ع*****',
+    sub: 'طلبت 20,000 ر.س كحدّ أدنى · 3 عروض على اللوحة',
+    cta: 'اقبل السوم',
+  ),
+  PendingItem(
+    id: 'p3',
+    kind: PendingKind.outbid,
+    role: ActorRole.buyer,
+    letters: 'ر ر',
+    number: '77',
+    plateKind: PlateKind.private,
+    format: PlateFormat.long,
+    emblem: PlateEmblem.vision,
+    saleLabel: 'مزاد',
+    kicker: 'تجاوزك أحد',
+    title: 'أعلى مزايدة 51,000 ر.س',
+    sub: 'مزايدتك 47,000 · ينتهي خلال 1 يوم و5 س',
+    cta: 'زايد 53,000',
+  ),
+  PendingItem(
+    id: 'p4',
+    kind: PendingKind.transfer,
+    role: ActorRole.seller,
+    letters: 'ن ق ل',
+    number: '5566',
+    plateKind: PlateKind.transport,
+    format: PlateFormat.sport,
+    emblem: PlateEmblem.palm,
+    saleLabel: 'بيع مباشر',
+    kicker: 'صفقة S26-00091',
+    title: 'انقل الملكية في أبشر',
+    sub: 'وصلتك بيانات المشتري — والمبلغ محجوز حتى تنقل',
+    cta: 'اعرض الخطوات',
   ),
 ];

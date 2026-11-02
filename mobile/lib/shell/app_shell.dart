@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
 import '../models/demo_data.dart';
+import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/market_screen.dart';
 import '../models/listing.dart';
@@ -56,7 +57,13 @@ class _AppShellState extends State<AppShell> {
                     onBack: () => setState(() => _open = null),
                   ),
           AppTab.sell => const _Soon(label: 'اعرض لوحتك'),
-          AppTab.activity => const _Soon(label: 'نشاطي'),
+          AppTab.activity => ActivityScreen(
+            pending: demoPending(),
+            myBids: demoAuctions(_now),
+            myOffers: demoOffers(_now),
+            watching: demoFixed(_now),
+            serverTime: _now,
+          ),
           AppTab.account => const _Soon(label: 'حسابي'),
         },
       ),

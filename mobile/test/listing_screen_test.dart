@@ -11,31 +11,30 @@ import 'font_sheet.dart';
 final _now = DateTime(2026, 10, 30, 10);
 
 Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Directionality(
-        textDirection: TextDirection.rtl,
-        child: MediaQuery(
-          data: MediaQueryData(size: size),
-          child: Material(
-            color: AppColors.bg,
-            child: Center(
-              child: SizedBox(
-                  width: size.width, height: size.height, child: child),
-            ),
-          ),
+  debugShowCheckedModeBanner: false,
+  home: Directionality(
+    textDirection: TextDirection.rtl,
+    child: MediaQuery(
+      data: MediaQueryData(size: size),
+      child: Material(
+        color: AppColors.bg,
+        child: Center(
+          child: SizedBox(width: size.width, height: size.height, child: child),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 ListingScreen _screen({Listing? listing}) => ListingScreen(
-      listing: listing ?? demoAuctions(_now).first,
-      serverTime: _now,
-      viewers: 100,
-      depositHalalas: 500000,
-      reserve: ReserveState.notMet,
-      sellerName: 'وليد المطيري',
-      bids: demoBids(_now),
-    );
+  listing: listing ?? demoAuctions(_now).first,
+  serverTime: _now,
+  viewers: 100,
+  depositHalalas: 500000,
+  reserve: ReserveState.notMet,
+  sellerName: 'وليد المطيري',
+  bids: demoBids(_now),
+);
 
 void main() {
   setUpAll(loadAllFonts);
@@ -54,28 +53,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     await expectLater(
-        find.byType(ListingScreen), matchesGoldenFile('goldens/listing.png'));
+      find.byType(ListingScreen),
+      matchesGoldenFile('goldens/listing.png'),
+    );
   });
 
   /// **والمالكُ لا يزايد ولا يشتري ولا يسوم** — سطرُ قفلٍ صريحٌ لا زرٌّ معطَّل.
   testWidgets('المالكُ يرى سطرَ القفل لا زرَّ المزايدة', (tester) async {
     final mine = demoAuctions(_now).first;
-    await tester.pumpWidget(_wrap(_screen(
-      listing: Listing(
-        id: mine.id,
-        reference: mine.reference,
-        letters: mine.letters,
-        number: mine.number,
-        kind: mine.kind,
-        format: mine.format,
-        emblem: mine.emblem,
-        saleType: mine.saleType,
-        price: mine.price,
-        bids: mine.bids,
-        endsAt: mine.endsAt,
-        mine: true,
+    await tester.pumpWidget(
+      _wrap(
+        _screen(
+          listing: Listing(
+            id: mine.id,
+            reference: mine.reference,
+            letters: mine.letters,
+            number: mine.number,
+            kind: mine.kind,
+            format: mine.format,
+            emblem: mine.emblem,
+            saleType: mine.saleType,
+            price: mine.price,
+            bids: mine.bids,
+            endsAt: mine.endsAt,
+            mine: true,
+          ),
+        ),
       ),
-    )));
+    );
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('زايد'), findsNothing);
