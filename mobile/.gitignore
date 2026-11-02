@@ -50,3 +50,5 @@ app.*.map.json
 # خطوطُ اللوحة: Arial مُلكُ Monotype — لا يُعاد توزيعه في مستودع.
 # تُنسخ محليًّا للتحقّق البصريّ (انظر docs/FLUTTER_APP.md).
 assets/fonts/plate-arial-*.ttf
+mobile/build/
+mobile/.dart_tool/

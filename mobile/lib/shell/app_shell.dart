@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+
+import '../design/tokens.dart';
+import 'tab_bar.dart';
+
+/// **هيكلُ التطبيق** — الشاشاتُ الخمسُ وشريطُها السفليّ.
+///
+/// والزرُّ الدائريُّ يُرسم **فوق** الشريط لا فيه: يرتفع ‎٣٠‎ بكسلًا بحدٍّ بلون
+/// الخلفية، فلو كان عنصرًا في الصفّ لقُصّ عند حافّته.
+class AppShell extends StatefulWidget {
+  const AppShell({super.key, required this.home});
+
+  final Widget home;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  AppTab _tab = AppTab.home;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        bottom: false,
+        child: switch (_tab) {
+          AppTab.home => widget.home,
+          AppTab.market => const _Soon(label: 'السوق'),
+          AppTab.sell => const _Soon(label: 'اعرض لوحتك'),
+          AppTab.activity => const _Soon(label: 'نشاطي'),
+          AppTab.account => const _Soon(label: 'حسابي'),
+        },
+      ),
+      bottomNavigationBar: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          AppTabBar(
+            current: _tab,
+            onSelect: (t) => setState(() => _tab = t),
+            pendingCount: 3,
+          ),
+          Positioned(
+            top: -SellButton.lift,
+            child: SellButton(onTap: () => setState(() => _tab = AppTab.sell)),
+          ),
+          Positioned(
+            top: SellButton.diameter - SellButton.lift + 1,
+            child: Text(
+              'اعرض لوحتك',
+              style: AppText.body(10.5, color: AppColors.neutral600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Soon extends StatelessWidget {
+  const _Soon({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) =>
+      Center(child: Text(label, style: AppText.heading(18)));
+}
