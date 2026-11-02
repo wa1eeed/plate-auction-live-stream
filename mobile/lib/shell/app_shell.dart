@@ -5,6 +5,7 @@ import '../models/demo_data.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
+import '../screens/wallet_screen.dart';
 import '../screens/market_screen.dart';
 import '../models/listing.dart';
 import '../widgets/listing/price_box.dart';
@@ -73,7 +74,7 @@ class _AppShellState extends State<AppShell> {
             watching: demoFixed(_now),
             serverTime: _now,
           ),
-          AppTab.account => const _Soon(label: 'حسابي'),
+          AppTab.account => WalletScreen(wallet: demoWallet(_now)),
         },
       ),
       /*

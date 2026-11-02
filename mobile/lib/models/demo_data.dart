@@ -2,6 +2,7 @@ import '../widgets/plate.dart';
 import '../widgets/listing/bid_log.dart';
 import 'activity.dart';
 import 'order.dart';
+import 'wallet.dart';
 import 'listing.dart';
 
 /// **بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings`** — بذرةُ النموذج نفسُها.
@@ -215,4 +216,72 @@ OrderView demoOrder(DateTime now) => OrderView(
   youAreBuyer: true,
   createdAt: now.subtract(const Duration(hours: 3, minutes: 40)),
   paidAt: now.subtract(const Duration(hours: 2, minutes: 28)),
+);
+
+/// محفظةٌ تجريبيّةٌ — أرقامُ اللقطة ‎٠٧‎.
+WalletView demoWallet(DateTime now) => WalletView(
+  available: 3850000,
+  balance: 5000000,
+  held: 1150000,
+  deposits: const [
+    HeldDeposit(
+      amount: 500000,
+      why: 'أنت الأعلى — يبقى حتى يُحسم المزاد',
+      letters: 'ق و س',
+      number: '1',
+      kind: PlateKind.private,
+      format: PlateFormat.long,
+      emblem: PlateEmblem.palm,
+    ),
+    HeldDeposit(
+      amount: 500000,
+      why: 'يعود إن انتهى المزاد ولم ترسُ عليك',
+      letters: 'ك ط ع',
+      number: '4040',
+      kind: PlateKind.private,
+      format: PlateFormat.long,
+      emblem: PlateEmblem.palm,
+    ),
+    HeldDeposit(
+      amount: 150000,
+      why: 'أنت الأعلى — يبقى حتى يُحسم المزاد',
+      letters: 'ر ر',
+      number: '77',
+      kind: PlateKind.private,
+      format: PlateFormat.long,
+      emblem: PlateEmblem.vision,
+    ),
+  ],
+  ledger: [
+    LedgerEntry(
+      reference: 'W26-00412',
+      kind: LedgerKind.hold,
+      amount: -500000,
+      at: now.subtract(const Duration(hours: 2)),
+      status: 'محجوز',
+      note: 'و ل ق 9999',
+    ),
+    LedgerEntry(
+      reference: 'W26-00408',
+      kind: LedgerKind.release,
+      amount: 500000,
+      at: now.subtract(const Duration(days: 1, hours: 4)),
+      status: 'تمّ',
+      note: 'لم ترسُ عليك',
+    ),
+    LedgerEntry(
+      reference: 'W26-00401',
+      kind: LedgerKind.topup,
+      amount: 2500000,
+      at: now.subtract(const Duration(days: 3)),
+      status: 'تمّ',
+    ),
+    LedgerEntry(
+      reference: 'W26-00397',
+      kind: LedgerKind.withdrawal,
+      amount: -1000000,
+      at: now.subtract(const Duration(days: 6)),
+      status: 'قيد المراجعة',
+    ),
+  ],
 );
