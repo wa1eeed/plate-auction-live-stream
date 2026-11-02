@@ -225,17 +225,12 @@ jobs:
             -authenticationKeyIssuerID "$ISSUER_ID"
           )
 
-          # ---------------------------------------------------------------
-          # **وهويّةُ التوقيع تُمرَّر توزيعًا صراحةً.**
+          # **ولا تُمرَّر هويّةُ توقيعٍ هنا.**
           #
-          # قالبُ Flutter يكتب في `project.pbxproj`:
-          #     CODE_SIGN_IDENTITY[sdk=iphoneos*] = "iPhone Developer"
-          # وهي مقيّدةٌ بالمنصّة، فتغلب غيرَ المقيّدة. فيطلب Xcode ملفَّ
-          # تعريفِ **تطوير** مهما كان المقصدُ متجرًا — وملفُّ التطوير يشترط
-          # أجهزةً مسجّلةً في الحساب، فيسقط بـ«فريقُك بلا أجهزة» على أرشفةٍ
-          # لا جهازَ فيها أصلًا.
-          #
-          # والصيغةُ المقيّدةُ تُمرَّر مثلَها: غيرُ المقيّدة لا تُزيحها.
+          # فالتوقيعُ تلقائيّ، وتحديدُ الهويّة يدويًّا يُسقطه بـ«إعداداتُ
+          # تعريفٍ متضاربة». وكان قالبُ Flutter يفرض `iPhone Developer` في
+          # إعداد `Release` فيطلب Xcode ملفَّ تطويرٍ لأرشفةٍ متجرٍ — فنُزع
+          # من المشروع نفسِه، وتُرك لـXcode أن يختار التوزيع.
           xcodebuild archive \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
@@ -243,9 +238,7 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            "CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution"
+            DEVELOPMENT_TEAM="$TEAM_ID"
 
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
