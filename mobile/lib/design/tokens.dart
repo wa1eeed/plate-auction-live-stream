@@ -88,3 +88,57 @@ abstract final class AppFonts {
   static const plate = 'PlateArial';
   static const plateFallback = ['PlateArialUnicode'];
 }
+
+/// **أنماطُ النصّ** — §2.2.
+///
+/// والأرقامُ غربيّةٌ دائمًا وبـ`tabular-nums` في كلّ سعرٍ وعدّادٍ ووقت: فعرضُ
+/// الرقم يثبت، فلا يرقص السعرُ ولا يتزحزح العدّادُ وهو ينزل.
+abstract final class AppText {
+  static const _tabular = [FontFeature.tabularFigures()];
+
+  /// الأساسُ: لاتينيٌّ على Figtree وعربيٌّ على Plex — والخلطُ وارد.
+  static const base = TextStyle(
+    fontFamily: AppFonts.ui,
+    fontFamilyFallback: [AppFonts.arabic],
+    color: AppColors.text,
+    height: 1.45,
+  );
+
+  /// **العناوينُ والأسعارُ والمبالغ**: Plex 700 — قرارٌ صريح، «رسميّةٌ
+  /// واحترافية» لا الخطّ الاستعراضيّ.
+  static TextStyle money(double size) => base.copyWith(
+    fontFamily: AppFonts.arabic,
+    fontWeight: FontWeight.w700,
+    fontSize: size,
+    height: 1.2,
+    fontFeatures: _tabular,
+  );
+
+  static TextStyle heading(double size) => base.copyWith(
+    fontFamily: AppFonts.arabic,
+    fontWeight: FontWeight.w700,
+    fontSize: size,
+    height: 1.3,
+  );
+
+  static TextStyle body(double size, {FontWeight? weight, Color? color}) =>
+      base.copyWith(
+        fontSize: size,
+        fontWeight: weight ?? FontWeight.w400,
+        color: color,
+      );
+
+  /// رقمٌ يُقرأ خانةً خانة — العدّادات وأرقام الإعلان والمراجع.
+  static TextStyle digits(
+    double size, {
+    FontWeight weight = FontWeight.w700,
+    Color? color,
+  }) => base.copyWith(
+    fontFamily: AppFonts.arabic,
+    fontSize: size,
+    fontWeight: weight,
+    height: 1,
+    color: color,
+    fontFeatures: _tabular,
+  );
+}

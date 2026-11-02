@@ -69,6 +69,32 @@ flutter:
   # (ترخيصٌ أو بديلٌ مكافئٌ بالمقاييس) على صاحب المنتج — انظر
   # `docs/FLUTTER_APP.md`.
   fonts:
+    # **خطُّ الواجهة** — اللاتينيُّ على Figtree والعربيُّ على IBM Plex Sans
+    # Arabic، كما في §2.2. وكلاهما OFL فيُحفظان في المستودع.
+    #
+    # والعائلتان تُعلَنان مستقلّتين، وتُجمعان في `fontFamilyFallback`:
+    # فالنصُّ الواحد يخلط عربيًّا بلاتينيّ (سعرٌ ومعه «ر.س»)، ولو أُعلنتا
+    # عائلةً واحدة لغلب أوّلُ ملفٍّ يحمل المحرفَ لا أصلحُهما له.
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/figtree-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/figtree-Bold.ttf
+          weight: 700
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/plex-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/plex-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/plex-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/plex-Bold.ttf
+          weight: 700
     - family: PlateArial
       fonts:
         - asset: assets/fonts/plate-arial-bold.ttf

@@ -176,7 +176,26 @@ class SaudiPlate extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cqw = constraints.maxWidth / 100;
+        /*
+         * **والمقاسُ يتّسع للقيدين معًا — لا للعرض وحده.**
+         *
+         * فالنموذجُ يحسب `cqw` من العرض فقط، وCSS يفيض صامتًا إن ضاق
+         * الارتفاع. وكرتُ اللوحة يُثبّت ارتفاعَ منطقتها (‎٨٠‎ في الرئيسية
+         * و‎٦٠‎ في المعرض) فيضيق الارتفاعُ قبل العرض — فيفيض الشريطُ
+         * الجانبيّ. ولا يُقصّ: تُحسب `cqw` من أضيق القيدين فتصغر اللوحةُ
+         * كلُّها بنسبةٍ واحدة، وهو معنى `cqw` نفسُه.
+         */
+        final heightInCqw = switch (_format) {
+          PlateFormat.long => 22.4473,
+          PlateFormat.standard => 35.25,
+          PlateFormat.sport => 22.4632,
+        };
+        final cqw = math.min(
+          constraints.maxWidth / 100,
+          constraints.hasBoundedHeight
+              ? constraints.maxHeight / heightInCqw
+              : double.infinity,
+        );
         /*
          * **واللوحةُ تُقرأ من اليسار إلى اليمين — ولو كان التطبيق كلُّه عربيًّا.**
          *

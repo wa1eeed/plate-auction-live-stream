@@ -23,6 +23,43 @@ Future<void> loadPlateFont(String file) async {
   await (FontLoader(AppFonts.plate)..addFont(rootBundle.load(file))).load();
 }
 
+/// **خطوطُ الواجهة** — وبدونها تخرج كلُّ لقطةٍ بمربّعاتٍ فارغةٍ مكانَ النصّ،
+/// فتحرس التخطيطَ وحده ولا تُري ما يقرؤه المستخدم.
+Future<void> loadUiFonts() async {
+  for (final (family, files) in [
+    (
+      AppFonts.ui,
+      [
+        ('assets/fonts/figtree-Regular.ttf', FontWeight.w400),
+        ('assets/fonts/figtree-Medium.ttf', FontWeight.w500),
+        ('assets/fonts/figtree-SemiBold.ttf', FontWeight.w600),
+        ('assets/fonts/figtree-Bold.ttf', FontWeight.w700),
+      ],
+    ),
+    (
+      AppFonts.arabic,
+      [
+        ('assets/fonts/plex-Regular.ttf', FontWeight.w400),
+        ('assets/fonts/plex-Medium.ttf', FontWeight.w500),
+        ('assets/fonts/plex-SemiBold.ttf', FontWeight.w600),
+        ('assets/fonts/plex-Bold.ttf', FontWeight.w700),
+      ],
+    ),
+  ]) {
+    final loader = FontLoader(family);
+    for (final (file, _) in files) {
+      loader.addFont(rootBundle.load(file));
+    }
+    await loader.load();
+  }
+}
+
+/// كلُّ ما تحتاجه لقطةٌ صادقة: خطُّ اللوحة وخطوطُ الواجهة.
+Future<void> loadAllFonts() async {
+  await loadPlateFont('assets/fonts/plate-arial-bold.ttf');
+  await loadUiFonts();
+}
+
 const _cases = <SaudiPlate>[
   SaudiPlate(letters: 'ق و س', number: '4040'),
   SaudiPlate(letters: 'ك ط ع', number: '1234', format: PlateFormat.standard),
