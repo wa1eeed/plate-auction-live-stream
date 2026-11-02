@@ -41,8 +41,7 @@ const config = [
        * للنماذج لا يُشحن، و`.dc.html` قوالبُ تصميم. وفحصُها يُنتج أخطاءً
        * عن كودٍ لا نملكه ولا نبنيه.
        */
-      'docs/design_handoff_plates_app/**',
-      'docs/design_handoff_plates_web/**',
+      'docs/design_handoff_final/**',
       'mobile/**',
     ],
   },

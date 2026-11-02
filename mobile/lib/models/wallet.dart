@@ -86,3 +86,49 @@ class WalletView {
   final List<HeldDeposit> deposits;
   final List<LedgerEntry> ledger;
 }
+
+/// طرائقُ الشحن المفعَّلة — كما تقولها الإدارةُ لا كما يفترض الجهاز.
+class PaymentOptions {
+  const PaymentOptions({
+    required this.cardEnabled,
+    required this.bankEnabled,
+    this.bank,
+  });
+
+  /// مدى · Apple Pay · بطاقة ائتمانيّة — عبر بوّابة الدفع.
+  final bool cardEnabled;
+
+  final bool bankEnabled;
+
+  /// بياناتُ الحساب البنكيّ — تُعرض للمحوِّل، وتأتي من إعدادات المنصّة.
+  final BankDetails? bank;
+
+  bool get none => !cardEnabled && !bankEnabled;
+}
+
+class BankDetails {
+  const BankDetails({
+    required this.name,
+    required this.accountName,
+    required this.iban,
+    required this.accountNumber,
+    required this.instructions,
+  });
+
+  final String name;
+  final String accountName;
+  final String iban;
+  final String accountNumber;
+  final String instructions;
+}
+
+/// نتيجةُ بدء الشحن.
+class TopUpStarted {
+  const TopUpStarted({required this.reference, this.redirectUrl});
+
+  /// مرجعُ العمليّة — يُقال للمحوِّل ليُكتب في الحوالة.
+  final String reference;
+
+  /// صفحةُ البوّابة — للبطاقة وحدها، و`null` للحوالة.
+  final String? redirectUrl;
+}

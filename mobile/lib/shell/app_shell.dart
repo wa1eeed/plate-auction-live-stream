@@ -9,7 +9,9 @@ import '../auth/auth_gate.dart';
 import '../auth/session.dart';
 import '../design/tokens.dart';
 import '../widgets/common/async_view.dart';
+import '../widgets/common/external_link.dart';
 import '../widgets/common/toast.dart';
+import '../widgets/wallet/top_up_sheet.dart';
 import '../widgets/order/identity_form.dart';
 import '../models/chat.dart';
 import '../models/demo_data.dart';
@@ -77,6 +79,61 @@ class _AppShellState extends State<AppShell> {
   bool _chat = false;
   bool _invoice = false;
   Story? _story;
+
+  /// **شحنُ الرصيد** — الخياراتُ ثمّ الورقةُ ثمّ النداء.
+  ///
+  /// **والخياراتُ تُجلب قبل فتح الورقة**: الإدارةُ تُطفئ البطاقةَ أو الحوالةَ
+  /// من لوحتها، فورقةٌ ترسم الطريقتين دائمًا تُرَدّ بـ‎٤٠٩‎ بعد أن يختار
+  /// المستخدمُ مبلغَه — وقد أدخل ما أدخل.
+  Future<void> _topUp(VoidCallback reload) async {
+    final api = ApiScope.of(context);
+
+    final options = await runValue(context, api.paymentOptions);
+    if (options == null || !mounted) return;
+
+    final choice = await showTopUpSheet(context, options);
+    if (choice == null || !mounted) return;
+
+    final (amount, byCard) = choice;
+    final started = await runValue(
+      context,
+      () => api.startTopUp(amountRiyals: amount, byCard: byCard),
+    );
+    if (started == null || !mounted) return;
+
+    /*
+     * **وصفحةُ البوّابة تُفتح خارج التطبيق.**
+     *
+     * فصفحةُ دفعٍ داخل التطبيق تمنع المستخدمَ من رؤية القفل في شريط العنوان
+     * — وهو ما يُعلَّم الناسُ أن يتحقّقوا منه قبل أن يُدخلوا بطاقة. ومتجرا
+     * التطبيقات يمنعان ذلك كذلك.
+     */
+    final url = started.redirectUrl;
+    if (url != null) {
+      final opened = await launchExternal(url);
+      if (!mounted) return;
+      if (!opened) {
+        showToast(
+          context,
+          'ما قدرنا نفتح صفحة الدفع — حاول مرّة ثانية',
+          kind: ToastKind.warning,
+        );
+        return;
+      }
+      /* والرصيدُ يصل بعد أن يردّ الخطّافُ من البوّابة — فيُعاد الجلب */
+      reload();
+      return;
+    }
+
+    if (!mounted) return;
+    showToast(
+      context,
+      'سُجّلت حوالتك برقم ${started.reference} — '
+      'اكتبه في الحوالة ليُوثَّق رصيدك',
+      kind: ToastKind.success,
+    );
+    reload();
+  }
 
   /// **لا فاتورةَ بعد** — تُصدَر عند اكتمال الصفقة لا عند نشأتها.
   Widget _noInvoiceYet() => Padding(
@@ -378,6 +435,12 @@ class _AppShellState extends State<AppShell> {
             builder: (context, w, reload) => WalletScreen(
               wallet: w,
               onBack: () => setState(() => _wallet = false),
+              onTopUp: () => _topUp(reload),
+              onWithdraw: () => showToast(
+                context,
+                'طلب السحب يصل قريبًا — تواصل مع الإدارة حاليًا',
+                kind: ToastKind.info,
+              ),
             ),
           ),
           AppTab.account => AsyncView<AccountBundle>(

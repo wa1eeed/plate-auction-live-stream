@@ -32,6 +32,7 @@ class ActivityScreen extends StatefulWidget {
   final List<Listing> myOffers;
   final List<Listing> watching;
   final DateTime serverTime;
+
   /// **يُمرَّر معرّفُ الصفقة** لا مجرّدُ «افتح».
   final ValueChanged<String>? onOpenOrder;
 

@@ -83,3 +83,22 @@ Future<bool> runAction(
     return false;
   }
 }
+
+/// **يُجري فعلًا يُعيد قيمةً** — و`null` تعني أنّه رُدّ وعُرض سببُه.
+///
+/// و`runAction` تكفي لما لا يُعيد شيئًا. وما يُعيد قيمةً يحتاج أن يُفرَّق
+/// بين «نجح وأعاد» و«رُدّ» — فلو رُدّ ومضى النداءُ لفُتحت ورقةٌ على بياناتٍ
+/// لم تصل.
+Future<T?> runValue<T>(
+  BuildContext context,
+  Future<T> Function() action,
+) async {
+  try {
+    return await action();
+  } on ApiError catch (e) {
+    if (context.mounted) {
+      showToast(context, e.message, kind: ToastKind.warning);
+    }
+    return null;
+  }
+}

@@ -8,10 +8,27 @@ import '../widgets/plate.dart';
 
 /// **شاشةُ المحفظة** — §5.8.
 class WalletScreen extends StatelessWidget {
-  const WalletScreen({super.key, required this.wallet, this.onBack});
+  const WalletScreen({
+    super.key,
+    required this.wallet,
+    this.onBack,
+    this.onTopUp,
+    this.onWithdraw,
+  });
 
   final WalletView wallet;
   final VoidCallback? onBack;
+
+  /// يفتح ورقةَ الشحن ويتولّى النداء — والشاشةُ لا تعرف الخادم.
+  final VoidCallback? onTopUp;
+
+  /// **مؤجَّلٌ بقرار** — لا مسارَ للسحب في الخادم بعد.
+  ///
+  /// فطلبُ السحب نصفُه في التطبيق ونصفُه في لوحة الإدارة: قائمةُ الطلبات،
+  /// وتحقّقُ الآيبان، وإقفالُ الطلب بمرجع الحوالة. وبناءُ نصفِه الآن يُنتج
+  /// طلباتٍ لا يراها أحد. وحتّى يصل تصميمُ اللوحة يُقال ذلك صراحةً بدل زرٍّ
+  /// يُضغط فلا يقع شيء.
+  final VoidCallback? onWithdraw;
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +193,7 @@ class WalletScreen extends StatelessWidget {
           label: 'اشحن رصيدك',
           color: AppColors.accent,
           textColor: AppColors.neutral100,
+          onTap: onTopUp,
         ),
       ),
       const SizedBox(width: 8),
@@ -184,6 +202,7 @@ class WalletScreen extends StatelessWidget {
           label: 'اطلب سحبًا',
           color: AppColors.neutral100,
           textColor: AppColors.text,
+          onTap: onWithdraw,
         ),
       ),
     ],
@@ -216,23 +235,29 @@ class _Button extends StatelessWidget {
     required this.label,
     required this.color,
     required this.textColor,
+    this.onTap,
   });
 
   final String label;
   final Color color;
   final Color textColor;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 48,
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      label,
-      style: AppText.body(16, color: textColor, weight: FontWeight.w700),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: AppText.body(16, color: textColor, weight: FontWeight.w700),
+      ),
     ),
   );
 }

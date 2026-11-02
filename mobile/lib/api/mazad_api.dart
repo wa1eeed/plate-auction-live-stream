@@ -284,6 +284,58 @@ class MazadApi {
         .toList();
   }
 
+  /// **خياراتُ الدفع المفعَّلة** — `GET api/payments`.
+  ///
+  /// **ولا تُفترض الطرائقُ في الجهاز**: الإدارةُ تُطفئ البطاقةَ أو الحوالةَ
+  /// من لوحتها، فزرٌّ يُرسم لطريقةٍ مطفأةٍ يُرَدّ طلبُه بـ‎٤٠٩‎ بعد أن يختار
+  /// المستخدمُ مبلغَه.
+  Future<PaymentOptions> paymentOptions() async {
+    final json = await _client.get('/api/payments');
+    final o = (json['options'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final bank = (o['bank'] as Map?)?.cast<String, dynamic>();
+
+    return PaymentOptions(
+      cardEnabled: o['tapEnabled'] == true,
+      bankEnabled: o['bankTransferEnabled'] == true,
+      bank: bank == null
+          ? null
+          : BankDetails(
+              name: bank['name'] as String? ?? '',
+              accountName: bank['accountName'] as String? ?? '',
+              iban: bank['iban'] as String? ?? '',
+              accountNumber: bank['accountNumber'] as String? ?? '',
+              instructions: bank['instructions'] as String? ?? '',
+            ),
+    );
+  }
+
+  /// **بدءُ شحن** — `POST api/payments`.
+  ///
+  /// **والمبلغُ بالريال** كما يقرؤه المخطَّط (`riyalsToHalalas` في الخادم) —
+  /// وإرسالُ الهللات يشحن مئةَ ضعفٍ. وهو الفخُّ نفسُه في إنشاء الإعلان.
+  ///
+  /// ويعود `redirectUrl` للبطاقة — صفحةُ البوّابة تُفتح خارج التطبيق؛
+  /// و`null` للحوالة، فبياناتُ الحساب تُعرض وينتظر توثيقَ الإدارة.
+  Future<TopUpStarted> startTopUp({
+    required int amountRiyals,
+    required bool byCard,
+  }) async {
+    final json = await _client.post(
+      '/api/payments',
+      body: {
+        'amount': amountRiyals,
+        'method': byCard ? 'tap' : 'bank_transfer',
+      },
+    );
+    final payment =
+        (json['payment'] as Map?)?.cast<String, dynamic>() ?? const {};
+
+    return TopUpStarted(
+      reference: payment['reference'] as String? ?? '',
+      redirectUrl: json['redirectUrl'] as String?,
+    );
+  }
+
   /// الأسئلةُ الشائعة — `GET api/faq`.
   Future<Map<String, dynamic>> faq() => _client.get('/api/faq');
 
