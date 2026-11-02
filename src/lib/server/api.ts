@@ -111,3 +111,25 @@ export async function readJson(request: Request): Promise<unknown> {
     return {}
   }
 }
+
+/**
+ * يقرأ تعديلًا جزئيًّا: **ما أُرسل وحده، لا ما يُستنتج.**
+ *
+ * فـ`PATCH` يعني «غيّر هذه الحقول» — وما لم يُرسَل يبقى كما هو في الصفّ.
+ *
+ * **وZod 4 تُطبّق القيمَ الافتراضيّة في `.partial()`** وZod 3 لم تكن تفعل.
+ * فصار تعديلُ عنوانِ بنرٍ وحده يحمل معه `published: false` و`startsAt: null`
+ * و`sortOrder: 0` — والخدمةُ تدمجها على الصفّ، فيُلغى نشرُ البنر وتُمحى
+ * نافذتُه الزمنيّةُ ويُصفَّر ترتيبُه، ولا رسالةَ خطأٍ واحدة. وهو ما لا
+ * يكشفه فحصُ أنواعٍ لأنّ الشكل صحيح.
+ *
+ * فيُرشَّح المُحلَّلُ بمفاتيح الجسم الواردة — ويبقى صحيحًا مهما أُضيف من
+ * قيمٍ افتراضيّةٍ غدًا، فالحارسُ ما وصل لا ما في المخطَّط.
+ */
+export function patchOf<T extends object>(parsed: T, body: unknown): Partial<T> {
+  if (body === null || typeof body !== 'object') return {}
+  const sent = new Set(Object.keys(body as Record<string, unknown>))
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([key]) => sent.has(key)),
+  ) as Partial<T>
+}

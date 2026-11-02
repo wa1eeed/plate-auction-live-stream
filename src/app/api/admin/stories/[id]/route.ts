@@ -1,5 +1,5 @@
-import { storyInputSchema } from '@/lib/domain/schemas'
-import { handleError, ok, readJson } from '@/lib/server/api'
+import { storyShape } from '@/lib/domain/schemas'
+import { handleError, ok, patchOf, readJson } from '@/lib/server/api'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { deleteStory, updateStory } from '@/lib/server/home-media-service'
 
@@ -17,7 +17,8 @@ export async function PATCH(request: Request, context: Ctx) {
      * فيُقرأ الشكلُ الداخليّ ثمّ يُجزَّأ، ويبقى تحقّقُ كلّ حقلٍ على حاله.
      * وما يخصّ الترتيب الزمنيّ يُفحص في `updateStory` على الصفّ المدموج.
      */
-    const input = storyInputSchema.innerType().partial().parse(await readJson(request))
+    const body = await readJson(request)
+    const input = patchOf(storyShape.partial().parse(body), body)
     return ok({ item: await updateStory(id, input, adminId) })
   } catch (error) {
     return handleError(error)

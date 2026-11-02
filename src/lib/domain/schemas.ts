@@ -99,7 +99,7 @@ export const registerSchema = loginSchema.extend({
   phone: saudiPhoneSchema.optional().or(z.literal('')),
   social: socialHandlesSchema.optional(),
   acceptedTerms: z.literal(true, {
-    errorMap: () => ({ message: 'يجب الموافقة على شروط الاستخدام' }),
+    error: 'يجب الموافقة على شروط الاستخدام',
   }),
 })
 
@@ -149,7 +149,7 @@ export const profileUpdateSchema = z.object({
 
 const riyalField = (label: string, min = 0) =>
   z
-    .number({ invalid_type_error: `${label} يجب أن يكون رقمًا` })
+    .number({ error: `${label} يجب أن يكون رقمًا` })
     .int(`${label} يجب أن يكون عددًا صحيحًا من الريالات`)
     .min(min, `${label} يجب أن يكون ${min} أو أكثر`)
     .max(100_000_000, `${label} كبير جدًا`)
@@ -285,7 +285,7 @@ export const adminLoginSchema = z.object({
 export const walletAdjustmentSchema = z.object({
   type: z.enum(['topup', 'withdrawal', 'adjustment']),
   amount: z
-    .number({ invalid_type_error: 'المبلغ يجب أن يكون رقمًا' })
+    .number({ error: 'المبلغ يجب أن يكون رقمًا' })
     .int('المبلغ يجب أن يكون عددًا صحيحًا من الريالات')
     .positive('المبلغ يجب أن يكون أكبر من صفر')
     .max(100_000_000, 'المبلغ كبير جدًا'),
@@ -358,7 +358,15 @@ const orderedWindow = <T extends { startsAt: string | null; endsAt: string | nul
   }
 }
 
-export const bannerInputSchema = z
+/**
+ * شكلُ البنر بلا تنقيحِ النافذة.
+ *
+ * **ويُسمّى ليُجزَّأ**: التعديلُ الجزئيّ (`PATCH`) يحتاج الشكلَ وحده —
+ * وترتيبُ التواريخ لا يُفحص على حقلٍ واحدٍ وصل، بل على الصفّ المدموج في
+ * `updateBanner`. وكان يُتناول بـ`.innerType()` من داخل المُنقَّى، وZod 4
+ * أزاله ويرفض `.partial()` على ما فيه تنقيح — فصار يُسمّى صراحةً.
+ */
+export const bannerShape = z
   .object({
     title: z.string().trim().min(2, 'العنوان قصير جدًا').max(80),
     imageKey: publicKeySchema,
@@ -368,7 +376,8 @@ export const bannerInputSchema = z
     linkUrl: linkSchema.nullable().default(null),
     ...liveWindowShape,
   })
-  .superRefine(orderedWindow)
+
+export const bannerInputSchema = bannerShape.superRefine(orderedWindow)
 
 /**
  * شريحةُ ستوري — وسيطٌ وغلافٌ ووصفٌ ومدّة.
@@ -412,7 +421,8 @@ export const storySlideInputSchema = z
     }
   })
 
-export const storyInputSchema = z
+/** شكلُ الستوري بلا تنقيحِ النافذة — يُجزَّأ في التعديل الجزئيّ. */
+export const storyShape = z
   .object({
     title: z.string().trim().min(2, 'العنوان قصير جدًا').max(40),
     slides: z
@@ -422,7 +432,8 @@ export const storyInputSchema = z
     linkUrl: linkSchema.nullable().default(null),
     ...liveWindowShape,
   })
-  .superRefine(orderedWindow)
+
+export const storyInputSchema = storyShape.superRefine(orderedWindow)
 
 export type BannerInput = z.infer<typeof bannerInputSchema>
 export type StoryInput = z.infer<typeof storyInputSchema>
@@ -431,7 +442,7 @@ export type StoryInput = z.infer<typeof storyInputSchema>
 
 export const startTopUpSchema = z.object({
   amount: z
-    .number({ invalid_type_error: 'المبلغ يجب أن يكون رقمًا' })
+    .number({ error: 'المبلغ يجب أن يكون رقمًا' })
     .int('المبلغ يجب أن يكون عددًا صحيحًا من الريالات')
     .min(50, 'أقل مبلغ شحن 50 ريالًا')
     .max(500_000, 'أقصى مبلغ شحن 500,000 ريال'),
@@ -476,7 +487,7 @@ export const auctionSettingsSchema = z
     depositMode: z.enum(['fixed', 'percent']),
     depositFixed: riyalField('العربون الثابت', 0),
     depositPercent: z
-      .number({ invalid_type_error: 'النسبة يجب أن تكون رقمًا' })
+      .number({ error: 'النسبة يجب أن تكون رقمًا' })
       .min(0, 'النسبة لا تقلّ عن صفر')
       .max(50, 'نسبة تتجاوز 50٪ تمنع المزايدة بدل أن تضمن الجدّية'),
     depositMin: riyalField('أقل عربون', 0),
@@ -487,7 +498,7 @@ export const auctionSettingsSchema = z
       .min(1, 'أقل مهلة سداد ساعة واحدة')
       .max(720, 'أقصى مهلة سداد 30 يومًا'),
     forfeitPercent: z
-      .number({ invalid_type_error: 'نسبة المصادرة يجب أن تكون رقمًا' })
+      .number({ error: 'نسبة المصادرة يجب أن تكون رقمًا' })
       .min(0, 'النسبة لا تقلّ عن صفر')
       .max(100, 'لا تتجاوز المصادرة كامل العربون'),
     forfeitUndoWindowHours: z
@@ -539,7 +550,7 @@ const commissionSideSchema = z.object({
   enabled: z.boolean(),
   mode: z.enum(['percent', 'fixed']),
   percent: z
-    .number({ invalid_type_error: 'النسبة يجب أن تكون رقمًا' })
+    .number({ error: 'النسبة يجب أن تكون رقمًا' })
     .min(0, 'النسبة لا تقلّ عن صفر')
     .max(50, 'عمولة تتجاوز 50٪ تُخرج الصفقة عن معناها'),
   fixed: riyalField('العمولة الثابتة', 0),
@@ -553,7 +564,7 @@ export const commissionSettingsSchema = z
     buyer: commissionSideSchema,
     vatEnabled: z.boolean(),
     vatPercent: z
-      .number({ invalid_type_error: 'نسبة الضريبة يجب أن تكون رقمًا' })
+      .number({ error: 'نسبة الضريبة يجب أن تكون رقمًا' })
       .min(0, 'النسبة لا تقلّ عن صفر')
       .max(100, 'نسبة غير معقولة'),
   })

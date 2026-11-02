@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:100%;container-type:inline-size;display:flex;justify-content:center">
+<sc-if value="{{ isLong }}" hint-placeholder-val="{{ true }}">
+<div dir="ltr" style="width:100cqw;aspect-ratio:4.65/1;display:flex;padding:0.6cqw;gap:0.6cqw;background:#141414;border-radius:2.2cqw;font-family:Arial,'Arial Unicode MS',sans-serif;font-weight:700;color:#141414;text-shadow:min(-0.6px,-0.13cqw) min(-0.6px,-0.13cqw) 0 rgba(255,255,255,.95),max(0.4px,0.08cqw) max(0.4px,0.08cqw) 0 rgba(10,13,18,.38),max(0.7px,0.15cqw) max(0.8px,0.18cqw) 0 rgba(10,13,18,.2),max(1px,0.24cqw) max(1.3px,0.3cqw) max(1px,0.26cqw) rgba(10,13,18,.22);box-shadow:0 0 0 1px #fbfbfc,0 0 0 1.5px rgba(32,30,29,.14),0 0.5cqw 1.4cqw rgba(32,30,29,.18)">
+  <div style="flex:1;display:flex;border-radius:1cqw;overflow:hidden;background:linear-gradient(172deg,#ffffff 0%,#f4f5f6 45%,#e2e5e8 100%);box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1.2cqw;min-width:0">
+      <div style="display:flex;justify-content:center"><sc-for list="{{ nums }}" as="n"><span style="width:7.4cqw;text-align:center;font-size:6.6cqw;line-height:1">{{ n.ar }}</span></sc-for></div>
+      <div style="display:flex;justify-content:center"><sc-for list="{{ nums }}" as="n"><span style="width:7.4cqw;text-align:center;font-size:6.4cqw;line-height:1">{{ n.en }}</span></sc-for></div>
+    </div>
+<sc-if value="{{ notTransport }}" hint-placeholder-val="{{ true }}">    <div style="width:14cqw;display:flex;align-items:center;justify-content:center">
+      <sc-if value="{{ em_palm }}" hint-placeholder-val="{{ true }}"><img src="assets/emblem-palm.png" alt="" style="display:block;width:{{ emblemW }};max-height:17cqw;object-fit:contain;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"></sc-if><sc-if value="{{ em_gold }}" hint-placeholder-val="{{ false }}"><img src="assets/emblem-gold.png" alt="" style="display:block;width:{{ emblemW }};max-height:17cqw;object-fit:contain;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"></sc-if><sc-if value="{{ em_vision }}" hint-placeholder-val="{{ false }}"><img src="assets/emblem-vision.png" alt="" style="display:block;width:{{ emblemW }};max-height:17cqw;object-fit:contain;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"></sc-if><sc-if value="{{ em_dereyah }}" hint-placeholder-val="{{ false }}"><img src="assets/emblem-dereyah.png" alt="" style="display:block;width:{{ emblemW }};max-height:17cqw;object-fit:contain;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"></sc-if><sc-if value="{{ em_madaen }}" hint-placeholder-val="{{ false }}"><img src="assets/emblem-madaen.png" alt="" style="display:block;width:{{ emblemW }};max-height:17cqw;object-fit:contain;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"></sc-if>
+    </div></sc-if>
+    <sc-if value="{{ isTransport }}" hint-placeholder-val="{{ false }}"><div style="width:14cqw;border-inline:0.6cqw solid #141414;background:linear-gradient(180deg,#3f6fe0,#2a55c9);color:#141414;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5cqw;box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)"><img src="assets/emblem-palm.png" alt="" style="display:block;width:4.6cqw;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"><span style="font-size:1.7cqw;line-height:1">السعودية</span><span style="font-size:4.4cqw;line-height:1;letter-spacing:0.3cqw">KSA</span><span style="width:0;height:0;border-left:1.6cqw solid transparent;border-right:1.6cqw solid transparent;border-top:1.6cqw solid currentColor"></span></div></sc-if>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1.2cqw;min-width:0">
+      <div style="display:flex;justify-content:center"><sc-for list="{{ letters }}" as="l"><span style="width:8.6cqw;text-align:center;font-size:6.6cqw;line-height:1;position:relative;display:block;height:1em"><sc-if value="{{ l.plain }}" hint-placeholder-val="{{ true }}">{{ l.ar }}</sc-if><sc-if value="{{ l.dot }}" hint-placeholder-val="{{ false }}"><span style="position:relative;display:inline-block;line-height:1;height:1em">ٮ<span style="position:absolute;left:0.29em;top:0.8em;width:0.16em;height:0.16em;border-radius:50%;background:currentColor"></span></span></sc-if></span></sc-for></div>
+      <div style="display:flex;justify-content:center"><sc-for list="{{ letters }}" as="l"><span style="width:8.6cqw;text-align:center;font-size:6.4cqw;line-height:1">{{ l.en }}</span></sc-for></div>
+    </div>
+  </div>
+<sc-if value="{{ notTransport }}" hint-placeholder-val="{{ true }}">  <div style="width:6cqw;border-radius:0.8cqw;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5cqw;background:{{ stripBg }};box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)">
+    <img src="assets/emblem-palm.png" alt="" style="display:block;width:3.4cqw;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))">
+    <span style="font-size:1.05cqw;line-height:1;white-space:nowrap">السعودية</span>
+    <span style="font-size:1.9cqw;line-height:1.02;display:flex;flex-direction:column;align-items:center"><span>K</span><span>S</span><span>A</span></span>
+  </div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ isStd }}" hint-placeholder-val="{{ false }}">
+<div dir="ltr" style="width:69cqw;aspect-ratio:2/1;display:flex;padding:0.75cqw;gap:0.75cqw;background:#141414;border-radius:2.7cqw;font-family:Arial,'Arial Unicode MS',sans-serif;font-weight:700;color:#141414;text-shadow:min(-0.6px,-0.19cqw) min(-0.6px,-0.19cqw) 0 rgba(255,255,255,.95),max(0.4px,0.12cqw) max(0.4px,0.12cqw) 0 rgba(10,13,18,.38),max(0.7px,0.22cqw) max(0.8px,0.27cqw) 0 rgba(10,13,18,.2),max(1px,0.36cqw) max(1.3px,0.45cqw) max(1px,0.39cqw) rgba(10,13,18,.22);box-shadow:0 0 0 1px #fbfbfc,0 0 0 1.5px rgba(32,30,29,.14),0 0.75cqw 2.1cqw rgba(32,30,29,.18)">
+  <div style="flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-width:0;gap:0.75cqw">
+    <div style="border-radius:0.9cqw;background:linear-gradient(172deg,#ffffff,#e7eaed);display:flex;align-items:center;justify-content:center;box-shadow:inset 0.26cqw 0.33cqw 1.2cqw rgba(10,13,18,.24)"><div style="display:flex;justify-content:center"><sc-for list="{{ nums }}" as="n"><span style="width:6.6cqw;text-align:center;font-size:8.7cqw;line-height:1">{{ n.ar }}</span></sc-for></div></div>
+    <div style="border-radius:0.9cqw;background:linear-gradient(172deg,#ffffff,#e7eaed);display:flex;align-items:center;justify-content:center;box-shadow:inset 0.26cqw 0.33cqw 1.2cqw rgba(10,13,18,.24)"><div style="display:flex;justify-content:center"><sc-for list="{{ letters }}" as="l"><span style="width:8.1cqw;text-align:center;font-size:8.4cqw;line-height:1;position:relative;display:block;height:1em"><sc-if value="{{ l.plain }}" hint-placeholder-val="{{ true }}">{{ l.ar }}</sc-if><sc-if value="{{ l.dot }}" hint-placeholder-val="{{ false }}"><span style="position:relative;display:inline-block;line-height:1;height:1em">ٮ<span style="position:absolute;left:0.29em;top:0.8em;width:0.16em;height:0.16em;border-radius:50%;background:currentColor"></span></span></sc-if></span></sc-for></div></div>
+    <div style="border-radius:0.9cqw;background:linear-gradient(172deg,#f7f8f9,#e2e5e8);display:flex;align-items:center;justify-content:center;box-shadow:inset 0.26cqw 0.33cqw 1.2cqw rgba(10,13,18,.24)"><div style="display:flex;justify-content:center"><sc-for list="{{ nums }}" as="n"><span style="width:6.6cqw;text-align:center;font-size:8.4cqw;line-height:1">{{ n.en }}</span></sc-for></div></div>
+    <div style="border-radius:0.9cqw;background:linear-gradient(172deg,#f7f8f9,#e2e5e8);display:flex;align-items:center;justify-content:center;box-shadow:inset 0.26cqw 0.33cqw 1.2cqw rgba(10,13,18,.24)"><div style="display:flex;justify-content:center"><sc-for list="{{ letters }}" as="l"><span style="width:8.1cqw;text-align:center;font-size:8.1cqw;line-height:1">{{ l.en }}</span></sc-for></div></div>
+  </div>
+  <div style="width:9cqw;border-radius:0.9cqw;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:1.35cqw 0;gap:0.6cqw;background:{{ stripBgStd }};box-shadow:inset 0.26cqw 0.33cqw 1.2cqw rgba(10,13,18,.24)">
+    <span style="display:flex;flex-direction:column;align-items:center;gap:0.38cqw"><img src="assets/emblem-palm.png" alt="" style="display:block;width:6.3cqw;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))"><span style="font-size:1.95cqw;line-height:1;white-space:nowrap">السعودية</span></span>
+    <span style="font-size:3.6cqw;line-height:1.02;display:flex;flex-direction:column;align-items:center"><span>K</span><span>S</span><span>A</span></span>
+    <sc-if value="{{ stdDot }}" hint-placeholder-val="{{ false }}"><span style="display:flex;flex-direction:column;align-items:center;gap:1.05cqw"><span style="width:6.9cqw;height:2.25cqw;border-radius:0.38cqw;background:linear-gradient(180deg,#f7f8fa 0%,#c3c8cf 28%,#fbfcfd 46%,#8e959e 62%,#d9dde2 82%,#a8aeb6 100%);box-shadow:inset 0 0 0 0.15cqw rgba(20,20,20,.25),0 0.15cqw 0.3cqw rgba(20,20,20,.25)"></span><span style="width:4.8cqw;height:4.8cqw;border-radius:50%;background:#141414;flex:none"></span></span></sc-if>
+  </div>
+</div>
+</sc-if>
+<sc-if value="{{ isSport }}" hint-placeholder-val="{{ false }}">
+<div dir="ltr" style="width:82cqw;aspect-ratio:3.8/1;display:flex;padding:0.6cqw;gap:0.6cqw;background:#141414;border-radius:2cqw;font-family:Arial,'Arial Unicode MS',sans-serif;font-weight:700;color:#141414;text-shadow:min(-0.6px,-0.13cqw) min(-0.6px,-0.13cqw) 0 rgba(255,255,255,.95),max(0.4px,0.08cqw) max(0.4px,0.08cqw) 0 rgba(10,13,18,.38),max(0.7px,0.15cqw) max(0.8px,0.18cqw) 0 rgba(10,13,18,.2),max(1px,0.24cqw) max(1.3px,0.3cqw) max(1px,0.26cqw) rgba(10,13,18,.22);box-shadow:0 0 0 1px #fbfbfc,0 0 0 1.5px rgba(32,30,29,.14),0 0.5cqw 1.4cqw rgba(32,30,29,.18)">
+  <div style="flex:1;border-radius:0.9cqw;background:linear-gradient(172deg,#ffffff 0%,#f2f3f5 45%,#dfe2e6 100%);display:flex;align-items:center;justify-content:center;font-size:10.5cqw;line-height:1;letter-spacing:0.8cqw;padding-inline-start:0.8cqw;box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)">{{ numEn }}</div>
+  <div style="width:15cqw;border-radius:0.6cqw;background:{{ sportBlock }};color:{{ sportInk }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5cqw;box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)">
+    <img src="assets/emblem-palm.png" alt="" style="display:block;width:4.6cqw;height:auto;filter:drop-shadow(-0.6px -0.6px 0 rgba(255,255,255,.95)) drop-shadow(0.5px 0.5px 0 rgba(10,13,18,.32)) drop-shadow(1px 1.3px 1px rgba(10,13,18,.22))">
+    <span style="font-size:1.7cqw;line-height:1">السعودية</span>
+    <span style="font-size:4.4cqw;line-height:1;letter-spacing:0.3cqw">KSA</span>
+    <span style="width:0;height:0;border-left:1.6cqw solid transparent;border-right:1.6cqw solid transparent;border-top:1.6cqw solid currentColor"></span>
+  </div>
+  <div style="flex:1;border-radius:0.9cqw;background:linear-gradient(172deg,#ffffff 0%,#f2f3f5 45%,#dfe2e6 100%);display:flex;align-items:center;justify-content:center;font-size:10.5cqw;line-height:1;letter-spacing:0.8cqw;padding-inline-start:0.8cqw;box-shadow:inset 0.17cqw 0.22cqw 0.8cqw rgba(10,13,18,.24)">{{ enText }}</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;360px&quot;,&quot;height&quot;:&quot;90px&quot;},&quot;ar&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ك ط ع&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;num&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;4040&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;private&quot;,&quot;transport&quot;,&quot;motorcycle&quot;],&quot;default&quot;:&quot;private&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;fmt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;long&quot;,&quot;standard&quot;,&quot;sport&quot;],&quot;default&quot;:&quot;long&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const MAP = {'ا':'A','ب':'B','ح':'J','د':'D','ر':'R','س':'S','ص':'X','ط':'T','ع':'E','ق':'G','ك':'K','ل':'L','م':'Z','ن':'N','ه':'H','و':'U','ى':'V'};
+    const AR = '٠١٢٣٤٥٦٧٨٩';
+    const p = this.props;
+    const num = String(p.num ?? '7');
+    const numAr = num.split('').map(d => /\d/.test(d) ? AR[+d] : '·').join('');
+    const numEn = num.split('').map(d => /\d/.test(d) ? d : '·').join('');
+    const ar = String(p.ar ?? 'ا ا ا').replace(/\s+/g, '').split('');
+    const moto = p.kind === 'motorcycle';
+    const fmt = moto ? 'standard' : (p.fmt || 'long');
+    const transport = p.kind === 'transport';
+    return {
+      numAr, numEn,
+      nums: num.split('').map(d => /\d/.test(d) ? { ar: AR[+d], en: d } : { ar: '·', en: '·' }),
+      letters: ar.map(a => ({ ar: a === 'ه' ? 'هـ' : a, en: MAP[a] || '·', dot: a === 'ب', plain: a !== 'ب' })),
+      arSpaced: ar.join(' '),
+      enText: ar.map(a => MAP[a] || '·').join(''),
+      isLong: fmt === 'long', isStd: fmt === 'standard', isSport: fmt === 'sport',
+      stripBg: 'linear-gradient(172deg,#ffffff,#e7eaed)', isTransport: transport, notTransport: !transport, stdDot: p.kind !== 'motorcycle',
+      stripBgStd: transport ? 'linear-gradient(180deg,#3f6fe0,#2a55c9)' : 'linear-gradient(172deg,#ffffff,#e7eaed)',
+      sportBlock: transport ? 'linear-gradient(180deg,#3f6fe0,#2a55c9)' : 'linear-gradient(172deg,#ffffff,#e2e5e8)',
+      sportInk: '#141414',
+      emblemFilter: 'none',
+      em_palm: !['gold','vision','madaen','dereyah'].includes(p.emblem), em_gold: p.emblem === 'gold', em_vision: p.emblem === 'vision', em_madaen: p.emblem === 'madaen', em_dereyah: p.emblem === 'dereyah',
+      emblemSrc: { gold: 'assets/emblem-gold.png', vision: 'assets/emblem-vision.png', madaen: 'assets/emblem-madaen.png', dereyah: 'assets/emblem-dereyah.png' }[p.emblem] || 'assets/emblem-palm.png',
+      emblemW: ({ vision: '13cqw', madaen: '11cqw', dereyah: '11cqw' })[p.emblem] || '11.5cqw'
+    };
+  }
+}
+</script>
+</body>
+</html>

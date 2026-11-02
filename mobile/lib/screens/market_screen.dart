@@ -53,14 +53,39 @@ class _MarketScreenState extends State<MarketScreen> {
       return _query.matches(plateLetters: l.letters, plateNumber: l.number);
     }).toList();
 
-    rows.sort(
-      (a, b) => switch (_sort) {
+    /*
+     * **الصِّلةُ أوّلًا، ثمّ ما اختاره المستخدم** — §١٣ من حزمة التسليم.
+     *
+     * فالبحثُ يقبل الحروفَ غيرَ متجاورة، فمن كتب «س د» تأتيه «س ع د»
+     * و«س د» معًا. ولو رُتّبت بالانتهاء وحده لنزلت التي كتبها بعينها تحت
+     * عشرين لوحةً تشبهها.
+     *
+     * **ولا يُلغى زرُّ الترتيب**: هو يفصل بين ما استوت صلتُه — فمن اختار
+     * «الأعلى سعرًا» يراه داخل كلّ رتبة. ومن لا بحثَ عنده فالرتبةُ صفرٌ
+     * للجميع، فيبقى الزرُّ وحدَه.
+     */
+    int byRelevance(Listing a, Listing b) => _query.isEmpty
+        ? 0
+        : _query
+              .relevance(plateLetters: a.letters, plateNumber: a.number)
+              .compareTo(
+                _query.relevance(
+                  plateLetters: b.letters,
+                  plateNumber: b.number,
+                ),
+              );
+
+    rows.sort((a, b) {
+      final tier = byRelevance(a, b);
+      if (tier != 0) return tier;
+
+      return switch (_sort) {
         /* وما لا نهايةَ له يقع آخرًا، لا أوّلًا بقيمةٍ صفريّة */
         MarketSort.endingSoon => (a.endsAt ?? _far).compareTo(b.endsAt ?? _far),
         MarketSort.highest => b.price.compareTo(a.price),
         MarketSort.lowest => a.price.compareTo(b.price),
-      },
-    );
+      };
+    });
     return rows;
   }
 

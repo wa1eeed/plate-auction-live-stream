@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// **استعلامُ البحث — يُطبَّع فورًا وأنت تكتب.**
 ///
 /// والمستخدمُ يكتب ما يحضره: «سعد» بالعربيّة، أو «SED» باللاتينيّة، أو
@@ -109,6 +111,47 @@ class PlateQuery {
 
     if (digits.isNotEmpty && !plateNumber.contains(digits)) return false;
     return true;
+  }
+
+  /// **رتبةُ الصِّلة** — §١٣ من حزمة التسليم: تطابقٌ تامّ ← يبدأ بـ ←
+  /// يحتوي متجاورًا ← الباقي. والأصغرُ أقرب.
+  ///
+  /// **والمطابقةُ وحدها لا تكفي.** فالبحثُ يقبل الحروفَ غيرَ متجاورة، فمن
+  /// كتب «س د» تأتيه «س ع د» و«س د» معًا — ولو جاءتا بترتيب الانتهاء وحده
+  /// لنزلت التي كتبها بعينها تحت عشرين لوحةً تشبهها.
+  ///
+  /// وهي رتبةٌ لا ترتيبٌ كامل: ما استوى في الصِّلة يُرتَّب بما اختاره
+  /// المستخدمُ من الزرّ — فاختيارُه لا يُلغى، بل يفصل بين المتساويات.
+  int relevance({required String plateLetters, required String plateNumber}) {
+    if (isEmpty) return 0;
+
+    var worst = 0;
+    if (letters.isNotEmpty) {
+      final theirs = plateLetters
+          .replaceAll(RegExp(r'\s+'), '')
+          .split('')
+          .map((c) => _normalize[c] ?? c)
+          .join();
+      worst = math.max(worst, _tier(theirs, letters.join()));
+    }
+    if (digits.isNotEmpty) {
+      worst = math.max(worst, _tier(plateNumber, digits));
+    }
+    return worst;
+  }
+
+  /*
+   * **والرتبةُ أسوأُ الجزأين لا مجموعُهما.**
+   *
+   * فمن كتب «س ع د ١» ووجد «س ع د» برقم «١٥» قد طابق الحروفَ تمامًا
+   * وقارب الرقم — ومجموعٌ يجعلها تسبق «س ع د» برقم «١» تامًّا. والأسوأُ
+   * يُنزلها دونها، وهو الصواب.
+   */
+  static int _tier(String haystack, String needle) {
+    if (haystack == needle) return 0;
+    if (haystack.startsWith(needle)) return 1;
+    if (haystack.contains(needle)) return 2;
+    return 3;
   }
 }
 

@@ -42,6 +42,7 @@ const config = [
        * عن كودٍ لا نملكه ولا نبنيه.
        */
       'docs/design_handoff_plates_app/**',
+      'docs/design_handoff_plates_web/**',
       'mobile/**',
     ],
   },

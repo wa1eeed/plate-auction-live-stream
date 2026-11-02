@@ -1,5 +1,5 @@
-import { bannerInputSchema } from '@/lib/domain/schemas'
-import { handleError, ok, readJson } from '@/lib/server/api'
+import { bannerShape } from '@/lib/domain/schemas'
+import { handleError, ok, patchOf, readJson } from '@/lib/server/api'
 import { requireAdminId } from '@/lib/server/require-admin'
 import { deleteBanner, updateBanner } from '@/lib/server/home-media-service'
 
@@ -17,7 +17,8 @@ export async function PATCH(request: Request, context: Ctx) {
      * فيُقرأ الشكلُ الداخليّ ثمّ يُجزَّأ، ويبقى تحقّقُ كلّ حقلٍ على حاله.
      * وما يخصّ الترتيب الزمنيّ يُفحص في `updateBanner` على الصفّ المدموج.
      */
-    const input = bannerInputSchema.innerType().partial().parse(await readJson(request))
+    const body = await readJson(request)
+    const input = patchOf(bannerShape.partial().parse(body), body)
     return ok({ item: await updateBanner(id, input, adminId) })
   } catch (error) {
     return handleError(error)
