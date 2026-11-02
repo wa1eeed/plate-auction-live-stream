@@ -124,6 +124,41 @@ class MazadApi {
     );
   }
 
+  /// **حفظُ الإعدادات** — `PATCH api/account/profile`.
+  ///
+  /// **والملفُّ والحسابُ البنكيُّ يُرسلان معًا** كما يقبلهما المخطَّط:
+  /// فالمستخدمُ يملأ الشاشةَ مرّةً ويحفظ مرّةً، وطلبان منفصلان يُنجح أحدَهما
+  /// ويُسقط الآخرَ فتبقى الشاشةُ نصفَ محفوظة.
+  Future<void> saveProfile({
+    required String displayName,
+    String? phone,
+    String? city,
+    String? snapchat,
+    String? tiktok,
+    String? instagram,
+    String? iban,
+    String? bankName,
+    String? holderName,
+  }) => _client.patch(
+    '/api/account/profile',
+    body: {
+      'displayName': displayName,
+      'phone': phone ?? '',
+      'city': city ?? '',
+      'social': {
+        'snapchat': snapchat ?? '',
+        'tiktok': tiktok ?? '',
+        'instagram': instagram ?? '',
+      },
+      if (iban != null)
+        'payout': {
+          'iban': iban,
+          'bankName': bankName ?? '',
+          'holderName': holderName ?? '',
+        },
+    },
+  );
+
   /// الإشعارات — `GET api/notifications`.
   Future<List<AppNotification>> notifications() async {
     final json = await _client.get('/api/notifications');

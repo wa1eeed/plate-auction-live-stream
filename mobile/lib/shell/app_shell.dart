@@ -259,12 +259,31 @@ class _AppShellState extends State<AppShell> {
             plates: demoOffers(_now) + demoFixed(_now),
             onBack: () => setState(() => _showcase = false),
           ),
-          AppTab.account when _settings => SettingsScreen(
-            blockers: const [
-              DeletionBlocker('عربون محجوز', '11,500 ر.س على 3 مزادات'),
-              DeletionBlocker('لوحات معروضة', '3 لوحات في السوق'),
-            ],
-            onBack: () => setState(() => _settings = false),
+          AppTab.account when _settings => AsyncView<ProfileView>(
+            load: () => ApiScope.of(context).profile(),
+            builder: (context, me, reload) => SettingsScreen(
+              initial: SettingsDraft(
+                name: me.name,
+                handle: me.handle.replaceFirst('@', ''),
+                email: me.email,
+                city: me.city,
+              ),
+              onBack: () => setState(() => _settings = false),
+              onSave: (draft) => runAction(
+                context,
+                () => ApiScope.of(context).saveProfile(
+                  displayName: draft.name,
+                  city: draft.city,
+                  snapchat: draft.snapchat,
+                  tiktok: draft.tiktok,
+                  instagram: draft.instagram,
+                  iban: draft.iban.isEmpty ? null : draft.iban,
+                  bankName: draft.bankName,
+                  holderName: draft.holderName,
+                ),
+                success: 'حُفظت إعداداتك',
+              ),
+            ),
           ),
           AppTab.account when _wallet => AsyncView<WalletView>(
             load: () => ApiScope.of(context).wallet(),

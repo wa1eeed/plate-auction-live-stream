@@ -14,23 +14,40 @@ class DeletionBlocker {
 
 /// **شاشةُ الإعدادات** — §5.10.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, this.blockers = const [], this.onBack});
+  const SettingsScreen({
+    super.key,
+    this.blockers = const [],
+    this.onBack,
+    this.initial,
+    this.onSave,
+  });
 
   /// ما يمنع الحذفَ الآن — فارغةٌ يعني أنّه ممكن.
   final List<DeletionBlocker> blockers;
 
   final VoidCallback? onBack;
 
+  /// ما يُملأ به النموذجُ عند الفتح — من الخادم.
+  final SettingsDraft? initial;
+
+  /// **يحفظ الملفَّ والحسابَ البنكيَّ معًا.**
+  ///
+  /// فالمستخدمُ يملأ الشاشةَ مرّةً ويحفظ مرّةً، وطلبان منفصلان يُنجح
+  /// أحدَهما ويُسقط الآخرَ فتبقى الشاشةُ نصفَ محفوظة.
+  final Future<bool> Function(SettingsDraft draft)? onSave;
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _name = TextEditingController(text: 'وليد');
-  final _handle = TextEditingController(text: 'waleed');
-  final _email = TextEditingController(text: 'waleed@waleed.in');
-  final _city = TextEditingController(text: 'الرياض');
-  final _snap = TextEditingController(text: 'waleed.plates');
+  late final _name = TextEditingController(text: widget.initial?.name ?? '');
+  late final _handle = TextEditingController(
+    text: widget.initial?.handle ?? '',
+  );
+  late final _email = TextEditingController(text: widget.initial?.email ?? '');
+  late final _city = TextEditingController(text: widget.initial?.city ?? '');
+  final _snap = TextEditingController();
   final _tiktok = TextEditingController();
   final _instagram = TextEditingController();
   final _iban = TextEditingController();
@@ -62,8 +79,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  bool _busy = false;
+
   bool get _bankValid =>
-      Iban.isValid(_iban.text) && _holder.text.trim().isNotEmpty;
+      !_busy && Iban.isValid(_iban.text) && _holder.text.trim().isNotEmpty;
+
+  Future<void> _save() async {
+    final send = widget.onSave;
+    if (send == null) return;
+    setState(() => _busy = true);
+    await send(
+      SettingsDraft(
+        name: _name.text.trim(),
+        handle: _handle.text.trim(),
+        email: _email.text.trim(),
+        city: _city.text.trim(),
+        snapchat: _snap.text.trim(),
+        tiktok: _tiktok.text.trim(),
+        instagram: _instagram.text.trim(),
+        iban: Iban.normalize(_iban.text),
+        bankName: Iban.bankName(_iban.text) ?? '',
+        holderName: _holder.text.trim(),
+      ),
+    );
+    if (mounted) setState(() => _busy = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,6 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _field('اسم صاحب الحساب', _holder, hint: 'كما في الهوية الوطنية'),
         const SizedBox(height: 14),
         GestureDetector(
+          onTap: _bankValid ? _save : null,
           behavior: HitTestBehavior.opaque,
           child: Container(
             height: 46,
@@ -623,4 +664,31 @@ class _DeleteSheetState extends State<_DeleteSheet> {
       ),
     ),
   ];
+}
+
+/// ما تحمله شاشةُ الإعدادات — يُملأ منه ويُحفظ إليه.
+class SettingsDraft {
+  const SettingsDraft({
+    required this.name,
+    required this.handle,
+    required this.email,
+    required this.city,
+    this.snapchat = '',
+    this.tiktok = '',
+    this.instagram = '',
+    this.iban = '',
+    this.bankName = '',
+    this.holderName = '',
+  });
+
+  final String name;
+  final String handle;
+  final String email;
+  final String city;
+  final String snapchat;
+  final String tiktok;
+  final String instagram;
+  final String iban;
+  final String bankName;
+  final String holderName;
 }
