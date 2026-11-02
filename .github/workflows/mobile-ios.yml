@@ -1,5 +1,9 @@
 # بناء تطبيق iOS في السحابة — بلا Xcode على جهازك.
 #
+# **ويبني Flutter لا غلافَ Capacitor.** كان يُنفّذ `cap sync` فيبني التطبيقَ
+# القديم؛ واستُبدل بالأصيل، فبقي المسارُ يرفع ما استُبدل. وآلةُ التوقيع
+# والتصدير والرفع هي هي — غُيّر ما تُوجَّه إليه وحده.
+#
 # بناءُ iOS يتطلّب macOS وXcode في **مكانٍ ما**، ولا مفرّ من ذلك. وجهاز
 # `macos-26` هنا يحملهما، فيبقى جهازُك نظيفًا. والإصدار مقصود: أبل ترفض
 # رفعًا بـSDK أقدم من 26، وصورةُ `macos-15` تحمل 18.5 — فيُبنى ويُوقَّع
@@ -50,95 +54,54 @@ jobs:
             exit 1
           fi
 
-      # بلا `version`: يتبع `packageManager` في `package.json` — وتحديدُه هنا
-      # يتعارض معه فيسقط قبل أن يبدأ شيء
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      # ---------------------------------------------------------- Flutter
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 22
-          cache: pnpm
+          flutter-version: 3.47.8
+          channel: stable
+          cache: true
 
-      - name: تثبيت الاعتماديات
-        run: pnpm install --frozen-lockfile
-
-      # --------------------------------------------------------------
-      # عنوانُ التطبيق ونطاقاتُه — **يُمرَّران، ولا يُترك الأمرُ لقيمةٍ في الكود.**
+      # ------------------------------------------------------- خطُّ اللوحة
       #
-      # `server.url` يُخبز في الحزمة وقت `cap sync`، فتغييرُ النطاق يُعطّل كلَّ
-      # نسخةٍ مثبَّتة حتى تمرّ أخرى بمراجعة المتجر. وقد وقع: بُني `v1.0.3`
-      # على القيمة المكتوبة في الكود بعد أن نُقل النطاق، فخرج يقرأ من ميّت.
+      # **بلاه لا يُبنى شيء.** `pubspec.yaml` يُعلن `plate-arial-bold.ttf`
+      # أصلًا، و`.gitignore` يستثنيه — فنسخةٌ نظيفةٌ تسقط بـ
+      # `Failed to compile`. جُرّب: أُخفي الملفُّ فسقط البناء، لا تحذيرٌ ولا
+      # تجاوز.
       #
-      # و`CAPACITOR_ALLOWED_HOSTS` تقبل بدائل (`*.payone.one`): فما يُدرج هنا
-      # يبقى مقبولًا للتنقّل داخل الغلاف، فينتقل التطبيقُ إلى نطاقٍ جديد
-      # بتحويلٍ من القديم **بلا بناءٍ ثانٍ**.
-      # --------------------------------------------------------------
-      # العنوانُ شرطٌ لا افتراض: بناءٌ يُرفع إلى متجرٍ بعنوانٍ مظنون أسوأ
-      # من بناءٍ لا يقع. ويُضبط في **متغيّرات المستودع** لا في الكود:
-      # Settings ← Secrets and variables ← Actions ← Variables.
-      - name: التحقّق من عنوان التطبيق
+      # ولا يُودَع في المستودع: ترخيصُ Monotype يُجيز تضمينَه في حزمةِ تطبيق،
+      # لا نشرَه في كودٍ علنيّ — وهما إذنان مختلفان.
+      #
+      # فيُؤخذ من سرٍّ إن ضُبط، وإلّا من خطوط هذا الخادم — وهو macOS وفيه
+      # Arial Bold. والترتيبُ مقصود: السرُّ يُثبّت نسخةً بعينها، وخطُّ الخادم
+      # يتبدّل مع صورته.
+      - name: تهيئة خطّ اللوحة
         env:
-          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          FONT_B64: ${{ secrets.PLATE_ARIAL_BOLD_BASE64 }}
         run: |
-          if [ -z "$APP_URL" ]; then
-            echo "::error::متغيّرُ المستودع NEXT_PUBLIC_APP_URL غير مضبوط — لا يُبنى تطبيقٌ بعنوانٍ مظنون"
-            exit 1
-          fi
-          echo "::notice::عنوانُ التطبيق $APP_URL"
-
-      # ---------------------------------------------------------------
-      # أيقونةُ التطبيق وشاشةُ إقلاعه من لوحة الإدارة.
-      #
-      # وهما مخبوزتان في الحزمة بالضرورة: تُعرضان قبل أن يعمل أيُّ كودِ ويب.
-      # فتُسحب المرفوعةُ من المنصّة الحيّة ويُولَّد منها قبل `cap sync` —
-      # فيتبعان ما يُضبط في اللوحة بلا تحرير أصولٍ بيد.
-      #
-      # وإن لم تُرفع أو تعذّر الوصول، يُرسم الرمزُ كما كان: البناءُ لا يقف
-      # على شبكةٍ قد تنقطع.
-      # ---------------------------------------------------------------
-      - name: أصولُ الهويّة من اللوحة
-        env:
-          APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
-        run: |
-          if curl -fsSL --max-time 30 "$APP_URL/brand/app-icon" -o /tmp/brand-icon.png; then
-            echo "::notice::أيقونةُ التطبيق من اللوحة ($(wc -c </tmp/brand-icon.png) بايت)"
-            BRAND_ICON_FILE=/tmp/brand-icon.png node scripts/gen-app-icons.mjs
+          DEST=mobile/assets/fonts/plate-arial-bold.ttf
+          if [ -n "$FONT_B64" ]; then
+            echo "$FONT_B64" | base64 -d > "$DEST"
+            echo "::notice::خطُّ اللوحة من السرّ"
           else
-            echo "::notice::لا أيقونةَ مرفوعةٌ في اللوحة — يُرسم الرمز"
+            bash mobile/tool/setup-fonts.sh
+            echo "::notice::خطُّ اللوحة من خطوط الخادم"
           fi
-
-      - name: مزامنة الغلاف
-        env:
-          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
-          CAPACITOR_ALLOWED_HOSTS: ${{ vars.CAPACITOR_ALLOWED_HOSTS }}
-        run: npx cap sync ios
-
-      # ---------------------------------------------- الإضافات كلُّها حاضرة
-      #
-      # `Package.swift` يولّده `cap sync`، وهو **مُودَعٌ في المستودع** فيَبلى:
-      # إضافةٌ تُثبَّت في `package.json` ولا تُزامن محليًّا تبقى غائبةً عنه.
-      #
-      # ومزامنةٌ تسقط صامتةً تُبقي الملفّ القديم، فيُبنى تطبيقٌ بلا الإضافة —
-      # وكودُنا يتعامل مع غيابها بلطفٍ (يسقط إلى أحداث الويب) فلا يظهر عطب.
-      # أي أنّ الميزة تغيب ولا أحد يعلم. فيُطابَق المعلَن بالمُولَّد.
-      - name: التحقّق من تسجيل الإضافات
-        run: |
-          MISSING=""
-          for PLUGIN in $(node -e "
-            const d = require('./package.json');
-            console.log(Object.keys(d.dependencies).filter(k => k.startsWith('@capacitor/') && k !== '@capacitor/core').join(' '))
-          "); do
-            # `@capacitor/splash-screen` ⟵ `CapacitorSplashScreen`
-            EXPECTED=$(echo "${PLUGIN#@capacitor/}" | awk -F- '{for(i=1;i<=NF;i++) printf "%s%s", toupper(substr($i,1,1)), substr($i,2)}')
-            if ! grep -q "Capacitor${EXPECTED}" ios/App/CapApp-SPM/Package.swift; then
-              MISSING="$MISSING $PLUGIN"
-            fi
-          done
-          if [ -n "$MISSING" ]; then
-            echo "::error::إضافاتٌ معلَنةٌ ولم تُسجَّل في Package.swift:$MISSING"
+          # ويُتحقَّق أنّه خطٌّ فعلًا — لا سرٌّ مبتورٌ يُفكّ إلى بايتاتٍ عمياء
+          if [ ! -s "$DEST" ] || ! file "$DEST" | grep -qi 'font'; then
+            echo "::error::خطُّ اللوحة ناقصٌ أو تالف — البناء لا يقوم بلاه"
             exit 1
           fi
-          echo "✓ كلّ إضافات Capacitor مسجَّلة"
+          ls -l "$DEST"
+
+      - name: جلب الاعتماديات
+        working-directory: mobile
+        run: flutter pub get
+
+      # **والفحوصُ قبل البناء لا بعده**: رفعٌ إلى TestFlight ببناءٍ لم يُقَس
+      # يُنفق مراجعةً على عطبٍ كان يُكشف في دقيقة.
+      - name: فحوصُ التطبيق
+        working-directory: mobile
+        run: flutter test
 
       # ---------------------------------------------------- أرقام النسخة
       #
@@ -202,20 +165,13 @@ jobs:
 
       - name: بناء تحقّقٍ بلا توقيع
         if: steps.signing.outputs.signed != 'true'
-        working-directory: ios/App
-        # يُثبت أنّ المشروع يُترجم ويُربط — ولا يُنتج ما يُثبَّت على جهاز.
-        # والاستحقاقات تُعطَّل: بلا فريقٍ لا ملفّ تعريف يحملها.
-        run: |
-          xcodebuild build \
-            -project App.xcodeproj \
-            -scheme App \
-            -destination 'generic/platform=iOS' \
-            -configuration Release \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS=
+        working-directory: mobile
+        # يُثبت أنّ التطبيق يُترجم ويُربط — ولا يُنتج ما يُثبَّت على جهاز.
+        run: flutter build ios --release --no-codesign
 
       - name: أرشفة وتصدير IPA
         if: steps.signing.outputs.signed == 'true'
-        working-directory: ios/App
+        working-directory: mobile
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
@@ -224,11 +180,22 @@ jobs:
           BUILD_NUMBER: ${{ steps.version.outputs.build }}
           MARKETING_VERSION: ${{ steps.version.outputs.marketing }}
         run: |
-          # ما لا يُوسَم يبقى على ما في الملفّ — فلا يُغيّر تحقّقٌ رقمَ إصدار
-          VERSION_ARGS="CURRENT_PROJECT_VERSION=$BUILD_NUMBER"
+          # ---------------------------------------------------------------
+          # **الأرقامُ تُمرَّر إلى Flutter لا إلى xcodebuild.**
+          #
+          # فـ`flutter build` يكتب `Generated.xcconfig`، وخطوةُ البناء داخل
+          # Xcode تقرؤه — فما يُمرَّر لـ`xcodebuild` يُدهَس بما وُلّد.
+          #
+          # وما لا يُوسَم يبقى على ما في `pubspec` — فلا يُغيّر تحقّقٌ رقمَ إصدار.
+          VERSION_ARGS=(--build-number="$BUILD_NUMBER")
           if [ -n "$MARKETING_VERSION" ]; then
-            VERSION_ARGS="$VERSION_ARGS MARKETING_VERSION=$MARKETING_VERSION"
+            VERSION_ARGS+=(--build-name="$MARKETING_VERSION")
           fi
+
+          # `--config-only` يكتب الإعداد ويجلب الإضافات ولا يترجم: الترجمةُ
+          # تقع في `xcodebuild archive` نفسِه عبر خطوة Flutter في المشروع،
+          # فلا يُبنى الشيءُ مرّتين.
+          flutter build ios --release --config-only "${VERSION_ARGS[@]}"
 
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -253,13 +220,12 @@ jobs:
           )
 
           xcodebuild archive \
-            -project App.xcodeproj \
-            -scheme App \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
-            ${VERSION_ARGS} \
             DEVELOPMENT_TEAM="$TEAM_ID"
 
           xcodebuild -exportArchive \

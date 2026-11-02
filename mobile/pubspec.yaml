@@ -106,10 +106,6 @@ flutter:
       fonts:
         - asset: assets/fonts/plate-arial-bold.ttf
           weight: 700
-    - family: PlateArialUnicode
-      fonts:
-        - asset: assets/fonts/plate-arial-unicode.ttf
-          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:
