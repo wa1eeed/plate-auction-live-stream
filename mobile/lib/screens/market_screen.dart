@@ -15,10 +15,12 @@ class MarketScreen extends StatefulWidget {
     super.key,
     required this.listings,
     required this.serverTime,
+    this.onOpen,
   });
 
   final List<Listing> listings;
   final DateTime serverTime;
+  final ValueChanged<Listing>? onOpen;
 
   @override
   State<MarketScreen> createState() => _MarketScreenState();
@@ -108,6 +110,7 @@ class _MarketScreenState extends State<MarketScreen> {
                   itemBuilder: (context, i) => MarketRowCard(
                     listing: rows[i],
                     serverTime: widget.serverTime,
+                    onTap: () => widget.onOpen?.call(rows[i]),
                     onWatch: () {},
                   ),
                 ),

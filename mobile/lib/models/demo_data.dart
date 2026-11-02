@@ -1,4 +1,5 @@
 import '../widgets/plate.dart';
+import '../widgets/listing/bid_log.dart';
 import 'listing.dart';
 
 /// **بياناتٌ تجريبيّةٌ ريثما تُربط `api/listings`** — بذرةُ النموذج نفسُها.
@@ -105,4 +106,29 @@ List<Listing> demoAll(DateTime now) => [
   ...demoAuctions(now),
   ...demoFixed(now),
   ...demoOffers(now),
+];
+
+/// كشفُ مزايداتٍ تجريبيٌّ — أسماءٌ تُقنَّع عند العرض.
+List<BidEntry> demoBids(DateTime now) => [
+  BidEntry(
+    bidder: 'أنت',
+    amount: 125000000,
+    at: now.subtract(const Duration(minutes: 4)),
+    isMine: true,
+  ),
+  BidEntry(
+    bidder: 'خالد عبدالله',
+    amount: 124000000,
+    at: now.subtract(const Duration(minutes: 19)),
+  ),
+  BidEntry(
+    bidder: 'نورة سعد',
+    amount: 120000000,
+    at: now.subtract(const Duration(hours: 2, minutes: 7)),
+  ),
+  BidEntry(
+    bidder: 'فهد الدوسري',
+    amount: 118500000,
+    at: now.subtract(const Duration(hours: 5)),
+  ),
 ];
