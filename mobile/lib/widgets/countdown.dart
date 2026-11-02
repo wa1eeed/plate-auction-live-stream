@@ -100,17 +100,27 @@ class _AuctionCountdownState extends State<AuctionCountdown>
     return Semantics(
       liveRegion: true,
       label: 'يتبقّى $days يوم و$hours ساعة و$minutes دقيقة',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _cell(days, 'يوم', cellColor),
-          _colon(),
-          _cell(hours, 'ساعة', cellColor),
-          _colon(),
-          _cell(minutes, 'دقيقة', cellColor),
-          _colon(),
-          _cell(seconds, 'ثانية', cellColor),
-        ],
+      /*
+       * **واليومُ يسارًا والثانيةُ يمينًا** — قرارُ صاحب المنتج.
+       *
+       * فالعدّادُ يُقرأ من الكبير إلى الصغير كالساعة الرقميّة، وهو ما ألِفته
+       * العينُ في كلّ مؤقّت. واتّباعُ اتّجاه الصفحة يقلبه فتبدأ القراءةُ
+       * بالثواني — وهي أسرعُ ما يتبدّل، فتسحب العينَ عن اليوم والساعة.
+       */
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _cell(days, 'يوم', cellColor),
+            _colon(),
+            _cell(hours, 'ساعة', cellColor),
+            _colon(),
+            _cell(minutes, 'دقيقة', cellColor),
+            _colon(),
+            _cell(seconds, 'ثانية', cellColor),
+          ],
+        ),
       ),
     );
   }
