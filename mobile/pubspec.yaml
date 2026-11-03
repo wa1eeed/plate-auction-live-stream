@@ -102,9 +102,12 @@ flutter:
           weight: 600
         - asset: assets/fonts/plex-Bold.ttf
           weight: 700
-    - family: PlateArial
+    # احتياطيُّ اللوحة لمن لا Arial عنده — OFL فيُحزم بلا إذن.
+    # و Arial نفسُه لا يُعلَن هنا: أبل تردّ تضمينَه (ITMS-91198)، وتُرسمه
+    # من النظام في iOS.
+    - family: PlateNoto
       fonts:
-        - asset: assets/fonts/plate-arial-bold.ttf
+        - asset: assets/fonts/plate-noto-bold.ttf
           weight: 700
 
   # To add assets to your application, add an assets section, like this:

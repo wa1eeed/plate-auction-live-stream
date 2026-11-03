@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/design/tokens.dart';
 import 'package:mazad/widgets/plate.dart';
+
+import 'font_sheet.dart';
 
 /// **لوحٌ يعرض الإصدارات كلَّها** — يُقابل `reference/plate-reference.png`.
 ///
@@ -102,21 +101,11 @@ Widget _sheet() {
 /// فبيئةُ الفحص تستبدل بكلّ خطٍّ خطًّا بديلًا يرسم كلَّ محرفٍ مربّعًا فارغًا —
 /// فلقطةٌ بلا تحميلٍ تحرس التخطيطَ وحده وتكذب في الحروف. وهي أوّلُ ما تشترطه
 /// الحزمة: «Arial Bold فقط».
-Future<void> _loadPlateFont() async {
-  final loader = FontLoader(AppFonts.plate)
-    ..addFont(rootBundle.load('assets/fonts/plate-arial-bold.ttf'));
-  await loader.load();
-}
+Future<void> _loadPlateFont() =>
+    loadPlateFont('assets/fonts/plate-noto-bold.ttf');
 
 void main() {
   setUpAll(() async {
-    /* والملفّ مستثنًى من Git — فإن غاب يُقال سببُه لا يُسقط الفحصَ بغموض */
-    if (!File('assets/fonts/plate-arial-bold.ttf').existsSync()) {
-      fail(
-        'خطُّ اللوحة غير موجود: assets/fonts/plate-arial-bold.ttf — '
-        'انظر docs/FLUTTER_APP.md لنسخه محليًّا.',
-      );
-    }
     await _loadPlateFont();
   });
 

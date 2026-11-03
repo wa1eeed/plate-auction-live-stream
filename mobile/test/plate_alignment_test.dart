@@ -1,24 +1,22 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mazad/design/tokens.dart';
 import 'package:mazad/widgets/plate.dart';
 
 /// **كلُّ حرفٍ عربيٍّ فوق ما يقابله من اللاتينيّ تمامًا** — أوّلُ قواعد اللوحة.
 ///
 /// ولا تُقاس بالعين: الحرفان يبدوان متجاورين في اللقطة وهما على عمودين
 /// مختلفين، والفرقُ بضعةُ بكسلات. فتُقاس المواضعُ المرسومة نفسُها.
+import 'font_sheet.dart';
+
 void main() {
-  setUpAll(() async {
-    if (!File('assets/fonts/plate-arial-bold.ttf').existsSync()) {
-      fail('خطُّ اللوحة غير موجود — انظر docs/FLUTTER_APP.md');
-    }
-    final loader = FontLoader(AppFonts.plate)
-      ..addFont(rootBundle.load('assets/fonts/plate-arial-bold.ttf'));
-    await loader.load();
-  });
+  /*
+   * **ويُقاس على الخطّ المحزوم لا على Arial.**
+   *
+   * فـArial لم يعد يُحزم — أبل تردّ تضمينَه (`ITMS-91198`) — ويُرسم من
+   * خطوط النظام في iOS. وبيئةُ الفحص بلا خطوط نظام، فالمقيسُ هنا هو ما
+   * يراه مَن لا Arial عنده: أندرويد.
+   */
+  setUpAll(() => loadPlateFont('assets/fonts/plate-noto-bold.ttf'));
 
   /// يُرجع مراكزَ المحارف المطلوبة على المحور الأفقيّ، بترتيب ظهورها.
   Future<List<(String, double)>> centers(

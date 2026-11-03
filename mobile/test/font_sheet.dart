@@ -18,9 +18,29 @@ import 'package:mazad/widgets/plate.dart';
 /// **ولكلّ خطٍّ ملفُّ فحصٍ مستقلّ**، لأنّ `flutter test` يُجري كلَّ ملفٍّ في
 /// عزلته: وتسجيلُ عائلتين باسمٍ واحدٍ في عمليّةٍ واحدة يُبقي الأوّلَ غالبًا،
 /// فتخرج اللقطتان متطابقتين ويُظنّ أن لا فرق. وقع ذلك فعلًا.
-Future<void> loadPlateFont(String file) async {
+Future<void> loadPlateFont(String file, {String? family}) async {
   if (!File(file).existsSync()) fail('ناقصٌ: $file — انظر docs/FLUTTER_APP.md');
-  await (FontLoader(AppFonts.plate)..addFont(rootBundle.load(file))).load();
+  final name = family ?? AppFonts.plateFallback.first;
+  /*
+   * **ويُقرأ من القرص لا من حزمة الأصول.**
+   *
+   * فـArial لم يعد مُعلَنًا في `pubspec` — أبل تردّ تضمينَه — فـ`rootBundle`
+   * لا يجده وإن كان الملفُّ موجودًا، ويسقط بـ«الأصلُ غيرُ موجودٍ أو فارغ».
+   * والقراءةُ من القرص تخدم المحزومَ وغيرَ المحزوم معًا.
+   */
+  /*
+   * **وتُقرأ متزامنةً لا `readAsBytes`.**
+   *
+   * فـ`testWidgets` يُجري جسمَه في زمنٍ مُصطنَع، والقراءةُ غيرُ المتزامنة
+   * حقيقيّةٌ — فمستقبَلُها لا يكتمل فيه أبدًا، ويعلّق الفحصُ حتّى المهلة
+   * بلا رسالةٍ تدلّ. وقع ذلك: علّق لوحا الخطوط عشرَ دقائقَ لكلٍّ.
+   *
+   * ومن ناداها في `setUpAll` لم يرَ شيئًا — فذاك خارج الزمن المصطنع.
+   */
+  final bytes = File(file).readAsBytesSync();
+  await (FontLoader(
+    name,
+  )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
 }
 
 /// **خطوطُ الواجهة** — وبدونها تخرج كلُّ لقطةٍ بمربّعاتٍ فارغةٍ مكانَ النصّ،
@@ -71,8 +91,16 @@ Future<void> loadIconFont() async {
 }
 
 /// كلُّ ما تحتاجه لقطةٌ صادقة: خطُّ اللوحة وخطوطُ الواجهة والأيقونات.
+/// **ويُحمَّل الاحتياطيُّ لا Arial.**
+///
+/// فـArial لم يعد يُحزم: أبل تردّ تضمينَه (`ITMS-91198`)، وتُرسمه من النظام
+/// في iOS. وبيئةُ الفحص بلا خطوط نظام — فلو طُلب لخرجت اللقطاتُ بمربّعات.
+///
+/// **وهذا يُقارب أندرويد لا iOS**، وهو المقصود: اللقطةُ تحرس التخطيطَ على
+/// الخطّ الذي نملكه ونشحنه، وتسلك مسارَ الاحتياط نفسَه الذي يسلكه الجهازُ
+/// الذي لا Arial فيه.
 Future<void> loadAllFonts() async {
-  await loadPlateFont('assets/fonts/plate-arial-bold.ttf');
+  await loadPlateFont('assets/fonts/plate-noto-bold.ttf');
   await loadUiFonts();
   await loadIconFont();
 }
