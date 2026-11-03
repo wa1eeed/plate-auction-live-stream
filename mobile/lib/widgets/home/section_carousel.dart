@@ -20,6 +20,7 @@ class SectionCarousel extends StatelessWidget {
     required this.serverTime,
     this.onSeeAll,
     this.onOpen,
+    this.onFollow,
   });
 
   final String eyebrow;
@@ -31,6 +32,9 @@ class SectionCarousel extends StatelessWidget {
 
   /// تُفتح صفحةُ اللوحة — وبدونه يُعرض كرتٌ لا يُضغط.
   final ValueChanged<Listing>? onOpen;
+
+  /// **المتابعة من الكرت** — وبلا نداءٍ لا يُرسَم الجرس.
+  final ValueChanged<Listing>? onFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -98,13 +102,9 @@ class SectionCarousel extends StatelessWidget {
                 listing: listings[i],
                 serverTime: serverTime,
                 onTap: () => onOpen?.call(listings[i]),
-                /*
-                 * **وجرسُ المتابعة رُفع** — `onFollow: () {}` نداءٌ فارغ:
-                 * يُرسَم الجرسُ ويُضغط فلا يقع شيء. **وكان يكسر التخطيط
-                 * أيضًا**: ظهورُه يزيد الكرتَ سبعَ نقاطٍ على ‎٢٣٢‎ التي
-                 * يمنحها الكاروسيل، فيفيض أسفلُ كلّ كرتٍ في الرئيسية.
-                 * ولا متابعةَ في الخادم أصلًا (TASKS.md).
-                 */
+                onFollow: onFollow == null
+                    ? null
+                    : () => onFollow!(listings[i]),
               ),
             ),
           ),

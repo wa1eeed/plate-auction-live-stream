@@ -59,4 +59,23 @@ class Listing {
 
   /// محجوزةٌ بانتظار سداد المشتري — تبقى معروضةً ولا تختفي.
   final bool settlementPending;
+
+  /// نسخةٌ بحالِ متابعةٍ أخرى — للفحص وللتفاؤل بعد ضغطة الجرس.
+  Listing copyWith({bool? following}) => Listing(
+    id: id,
+    reference: reference,
+    letters: letters,
+    number: number,
+    kind: kind,
+    format: format,
+    emblem: emblem,
+    saleType: saleType,
+    price: price,
+    bids: bids,
+    endsAt: endsAt,
+    standing: standing,
+    mine: mine,
+    following: following ?? this.following,
+    settlementPending: settlementPending,
+  );
 }

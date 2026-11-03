@@ -16,11 +16,15 @@ class MarketScreen extends StatefulWidget {
     required this.listings,
     required this.serverTime,
     this.onOpen,
+    this.onWatch,
   });
 
   final List<Listing> listings;
   final DateTime serverTime;
   final ValueChanged<Listing>? onOpen;
+
+  /// **يتابع لوحةً أو يترك متابعتها** — والحالُ من الخادم لا من الشاشة.
+  final ValueChanged<Listing>? onWatch;
 
   @override
   State<MarketScreen> createState() => _MarketScreenState();
@@ -136,7 +140,9 @@ class _MarketScreenState extends State<MarketScreen> {
                     listing: rows[i],
                     serverTime: widget.serverTime,
                     onTap: () => widget.onOpen?.call(rows[i]),
-                    /* والجرسُ رُفع — لا متابعةَ في الخادم (TASKS.md) */
+                    onWatch: widget.onWatch == null
+                        ? null
+                        : () => widget.onWatch!(rows[i]),
                   ),
                 ),
         ),

@@ -34,7 +34,10 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
 );
 
 Widget _screen() =>
-    _wrap(MarketScreen(listings: demoAll(_now), serverTime: _now));
+    /* ونداءُ المتابعة يُمرَّر كما يُمرّره الصدفُ — فاللوحُ يُري الجرس */
+    _wrap(
+      MarketScreen(listings: demoAll(_now), serverTime: _now, onWatch: (_) {}),
+    );
 
 void main() {
   setUpAll(loadAllFonts);

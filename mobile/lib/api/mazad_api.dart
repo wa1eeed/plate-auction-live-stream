@@ -96,6 +96,14 @@ class MazadApi {
   Future<Map<String, dynamic>> buy(String id) =>
       _client.post('/api/listings/$id/buy');
 
+  /// **المتابعة** — `POST`/`DELETE api/listings/{id}/watch`.
+  ///
+  /// وحالٌ صريحةٌ لا تبديل: مسارٌ يقلب ما لا يعرفه العميلُ يقينًا يُنتج
+  /// جرسًا يختلف عن حقيقته بعد ضغطتين متسارعتين.
+  Future<void> setWatch(String listingId, {required bool on}) => on
+      ? _client.post('/api/listings/$listingId/watch')
+      : _client.delete('/api/listings/$listingId/watch');
+
   /// سوم — `POST api/listings/{id}/offers`.
   Future<void> offer(String id, int amountHalalas) =>
       _client.post('/api/listings/$id/offers', body: {'amount': amountHalalas});
@@ -268,8 +276,17 @@ class MazadApi {
         )
         .map(_outbidItem);
 
+    /* وسقوطُ السوم لا يُفرغ التاب — بقيّةُ ما ينتظرك تُعرض */
+    final offers = await offersReceived().catchError(
+      (_) => const <PendingItem>[],
+    );
+
     return ActivityBundle(
-      pending: [...mine.awaitingMe.map((o) => o.toPendingItem()), ...outbid],
+      pending: [
+        ...mine.awaitingMe.map((o) => o.toPendingItem()),
+        ...offers,
+        ...outbid,
+      ],
       orders: [...mine.purchases, ...mine.sales],
       /*
        * **ومزايداتي وعروضي تُشتقّ من السوق** لا من مسارٍ ثالث.
@@ -501,15 +518,34 @@ class MazadApi {
     body: {'name': name, 'email': email, 'password': password, 'phone': phone},
   );
 
+  /// **السومُ الذي وصل على لوحاتي** — `GET api/offers`.
+  ///
+  /// والمعلَّقُ وحده يُرجَع من الخادم: ما قُبل صار صفقةً تُقرأ في
+  /// `api/orders`، وما رُفض أو سُحب لا ينتظر ردًّا. و«بانتظارك» قائمةُ ما
+  /// عليك لا سجلٌّ.
+  Future<List<PendingItem>> offersReceived() async {
+    final json = await _client.get('/api/offers');
+    return ((json['offers'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => _offerItem(raw.cast<String, dynamic>()))
+        .toList();
+  }
+
   /// **البائعُ يردّ على سوم** — `POST api/offers/{id}`.
   ///
   /// والقبولُ يُنشئ صفقةً، فيعود معرّفُها ليُفتح مسارُها في الحال.
-  Future<String?> respondToOffer(String offerId, {required bool accept}) async {
+  ///
+  /// **ويعود غلافًا لا معرّفًا مجرّدًا**: الرفضُ ينجح بلا معرّف، فـ`null`
+  /// منه كـ`null` من إخفاقٍ — ولا يُميَّزان. والغلافُ يفرّق: وجودُه نجاح.
+  Future<OfferAnswer> respondToOffer(
+    String offerId, {
+    required bool accept,
+  }) async {
     final json = await _client.post(
       '/api/offers/$offerId',
       body: {'decision': accept ? 'accept' : 'decline'},
     );
-    return json['orderId'] as String?;
+    return OfferAnswer(orderId: json['orderId'] as String?);
   }
 
   /// **ما تحتاجه شاشةُ الإعدادات** — الملفُّ وعوائقُ الحذف معًا.
@@ -597,6 +633,13 @@ class AccountBundle {
   final List<Listing> myPlates;
 }
 
+/// ما عاد به الردُّ على سوم — و`orderId` للقبول وحده.
+class OfferAnswer {
+  const OfferAnswer({this.orderId});
+
+  final String? orderId;
+}
+
 /// الملفُّ وعوائقُ الحذف — ما تفتح به شاشةُ الإعدادات.
 class SettingsBundle {
   const SettingsBundle({required this.profile, required this.blockers});
@@ -622,6 +665,30 @@ class OrdersBundle {
     ),
     ...sales.where((o) => o.stage == OrderStage.transfer),
   ];
+}
+
+/// **سومٌ وصلك** — بندٌ في «بانتظارك»، ومعرّفُه معرّفُ السوم لا الصفقة.
+PendingItem _offerItem(Map<String, dynamic> json) {
+  final plate = (json['plate'] as Map?)?.cast<String, dynamic>() ?? const {};
+  final amount = (json['amount'] as num?)?.toInt() ?? 0;
+
+  return PendingItem(
+    id: json['id'] as String? ?? '',
+    kind: PendingKind.offer,
+    /* والدورُ عليك بائعًا — فالسومُ وصل على لوحتك */
+    role: ActorRole.seller,
+    letters: plate['arabicLetters'] as String? ?? '',
+    number: plate['plateNumbers'] as String? ?? '',
+    plateKind: ApiMapping.kind(plate['plateType'] as String?),
+    format: ApiMapping.format(plate['plateFormat'] as String?),
+    emblem: ApiMapping.emblem(plate['emblem'] as String?),
+    saleLabel: 'سوم',
+    kicker: 'سوم على ${json['reference'] ?? ''}',
+    title: 'وصلك سوم ${_riyals(amount)} ر.س',
+    sub: 'من ${json['buyerName'] ?? 'مستخدم'}',
+    cta: 'اقبل السوم',
+    amount: amount,
+  );
 }
 
 /// **مزادٌ تجاوزك فيه أحد** — بندٌ في «بانتظارك».

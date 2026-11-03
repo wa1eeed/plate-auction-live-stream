@@ -126,6 +126,8 @@ abstract final class ApiMapping {
       bids: (json['bidCount'] as num?)?.toInt() ?? 0,
       endsAt: time(json['endsAt']),
       mine: json['isMine'] == true,
+      /* و`following` كانت صفرًا دائمًا — لم يكن في الخادم ما يملؤها */
+      following: json['iFollow'] == true,
       settlementPending: json['settlementPending'] == true,
     );
   }

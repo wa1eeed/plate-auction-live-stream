@@ -176,10 +176,65 @@ class _AppShellState extends State<AppShell> {
         success: 'وصل سومك للبائع',
         then: reload,
       ),
-      onFollow: () => _gate(GatedAction.follow),
+      onFollow: () => _follow(detail.listing, reload),
       onShare: () => _shareListing(detail.listing.id),
     ),
   );
+
+  /// **الردُّ على سوم** — قبولًا أو رفضًا.
+  ///
+  /// **والقبولُ يُنشئ صفقةً**، فيعود معرّفُها من الخادم ويُفتح مسارُها في
+  /// الحال: من قبِل سومًا يسأل «وماذا الآن؟» — والجواب صفحةُ الصفقة.
+  Future<void> _answerOffer(
+    String offerId, {
+    required bool accept,
+    required VoidCallback reload,
+  }) async {
+    final api = ApiScope.of(context);
+    final answer = await runValue(
+      context,
+      () => api.respondToOffer(offerId, accept: accept),
+    );
+    if (answer == null || !mounted) return;
+
+    showToast(
+      context,
+      accept ? 'قبلت السوم — وأُنشئت الصفقة' : 'رفضت السوم',
+      kind: ToastKind.success,
+    );
+
+    final orderId = answer.orderId;
+    if (accept && orderId != null) {
+      final fresh = await api
+          .order(orderId)
+          .then<OrderView?>((o) => o, onError: (_) => null);
+      if (!mounted) return;
+      if (fresh != null) {
+        setState(() => _openOrder = fresh);
+        return;
+      }
+    }
+    reload();
+  }
+
+  /// **المتابعة** — يتابع لوحةً أو يترك متابعتها، ثمّ يُعاد الجلب.
+  ///
+  /// **والحالُ الجديدةُ تُؤخذ من اللوحة التي في اليد** لا تُقلَب ظنًّا:
+  /// `following` وصلت من الخادم مع البطاقة، فالمطلوبُ نقيضُها.
+  ///
+  /// ويُطلب الحسابُ أوّلًا — متابعةٌ بلا حسابٍ لا موضعَ لها تُحفظ فيه.
+  Future<void> _follow(Listing listing, VoidCallback reload) async {
+    if (!await _gate(GatedAction.follow)) return;
+    if (!mounted) return;
+
+    final on = !listing.following;
+    final done = await runAction(
+      context,
+      () => ApiScope.of(context).setWatch(listing.id, on: on),
+      success: on ? 'تتابع هذه اللوحة' : 'تركت متابعتها',
+    );
+    if (done) reload();
+  }
 
   /// **مشاركةُ رابط اللوحة** — يُنسخ الرابطُ لتُلصق في أيّ تطبيق.
   ///
@@ -469,6 +524,7 @@ class _AppShellState extends State<AppShell> {
                   }),
               onOpenPending: () =>
                   _openGated(GatedAction.orders, () => _tab = AppTab.activity),
+              onFollow: (l) => _follow(l, reload),
               onOpenMarket: () => setState(() => _tab = AppTab.market),
               onOpenSell: () =>
                   _openGated(GatedAction.sell, () => _tab = AppTab.sell),
@@ -487,6 +543,7 @@ class _AppShellState extends State<AppShell> {
               listings: snap.listings,
               serverTime: snap.serverTime,
               onOpen: (l) => setState(() => _open = l),
+              onWatch: (l) => _follow(l, reload),
             ),
           ),
           AppTab.market =>
@@ -593,6 +650,8 @@ class _AppShellState extends State<AppShell> {
               onOpenAuction: (id) => setState(() {
                 _open = a.myBids.where((l) => l.id == id).firstOrNull;
               }),
+              onAnswerOffer: (offerId, accept) =>
+                  _answerOffer(offerId, accept: accept, reload: reload),
             ),
           ),
           AppTab.account when _orders != null => AsyncView<OrdersBundle>(

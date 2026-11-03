@@ -113,6 +113,8 @@ export type MemoryDatabase = {
   listings: Listing[]
   bids: Bid[]
   offers: Offer[]
+  /** المتابعة — علاقةٌ بين مستخدمٍ وإعلان، بلا معرّفٍ لها */
+  watchlist: { userId: string; listingId: string; createdAt: string }[]
   orders: Order[]
   events: ListingEvent[]
   audits: {
@@ -203,6 +205,7 @@ export function emptyDatabase(): MemoryDatabase {
     listings: [],
     bids: [],
     offers: [],
+    watchlist: [],
     orders: [],
     events: [],
     audits: [],
@@ -504,6 +507,31 @@ export class MemoryStore implements AuctionStore {
       rows = rows.filter((o) => mine.has(o.listingId))
     }
     return clone(rows.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  }
+
+  async setWatch(userId: string, listingId: string, on: boolean): Promise<void> {
+    const at = this.db.watchlist.findIndex(
+      (w) => w.userId === userId && w.listingId === listingId,
+    )
+    if (on) {
+      /* والمفتاحُ مركَّبٌ في القاعدة — فضغطتان لا تُنشئان صفّين */
+      if (at === -1) {
+        this.db.watchlist.push({ userId, listingId, createdAt: new Date().toISOString() })
+      }
+      return
+    }
+    if (at !== -1) this.db.watchlist.splice(at, 1)
+  }
+
+  async listWatchedListingIds(userId: string): Promise<string[]> {
+    return this.db.watchlist
+      .filter((w) => w.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((w) => w.listingId)
+  }
+
+  async countWatchers(listingId: string): Promise<number> {
+    return this.db.watchlist.filter((w) => w.listingId === listingId).length
   }
 
   async getOffer(id: string): Promise<Offer | null> {

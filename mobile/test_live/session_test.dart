@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/api/api_client.dart';
 import 'package:mazad/api/mazad_api.dart';
+import 'package:mazad/models/activity.dart';
 import 'package:mazad/models/order.dart';
 
 /// **فحصٌ بجلسةٍ حقيقيّة على الخادم الحقيقيّ.**
@@ -188,6 +189,49 @@ void main() {
     expect(view.due, greaterThan(0));
     expect(view.methods, isNotEmpty);
     expect(view.plateLabel, isNotEmpty);
+  });
+
+  /// **المتابعةُ تُكتب وتُقرأ** — وكانت `following` صفرًا دائمًا.
+  test('المتابعة: جرسٌ يقع له أثر', () async {
+    if (!ready()) return;
+    if (!mayWrite) {
+      markTestSkipped('اضبط MAZAD_WRITE=1 — المتابعةُ تكتب');
+      return;
+    }
+
+    final market = await api.listings();
+    final target = market.listings.firstWhere((l) => !l.mine);
+
+    await api.setWatch(target.id, on: true);
+    var again = await api.listings();
+    expect(
+      again.listings.firstWhere((l) => l.id == target.id).following,
+      isTrue,
+    );
+    expect(again.listings.where((l) => l.following), isNotEmpty);
+
+    await api.setWatch(target.id, on: false);
+    again = await api.listings();
+    expect(
+      again.listings.firstWhere((l) => l.id == target.id).following,
+      isFalse,
+    );
+  });
+
+  /// **والسومُ الذي وصلني يُقرأ** — وهو الرابعُ في «بانتظارك».
+  test('سومٌ وصلك يُقرأ بلوحته', () async {
+    if (!ready()) return;
+
+    final offers = await api.offersReceived();
+    for (final item in offers) {
+      expect(item.kind, PendingKind.offer);
+      expect(item.id, isNotEmpty);
+      /* والاسمُ مقنَّعٌ كما في كشف المزايدات */
+      expect(item.sub, startsWith('من '));
+      expect(item.letters, isNotEmpty);
+    }
+    // ignore: avoid_print
+    print('  سومٌ معلَّقٌ على لوحاتي: ${offers.length}');
   });
 
   /// **ولا تُقرأ صفقةُ غيرك** — وهو ما يحرسه المسار.

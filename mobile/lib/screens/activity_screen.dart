@@ -27,6 +27,7 @@ class ActivityScreen extends StatefulWidget {
     this.onOpenOrder,
     this.onOpenListing,
     this.onOpenAuction,
+    this.onAnswerOffer,
   });
 
   final List<PendingItem> pending;
@@ -43,6 +44,9 @@ class ActivityScreen extends StatefulWidget {
 
   /// **ومزادٌ تجاوزك فيه أحدٌ يُفتح بمعرّف لوحته** لا بمعرّف صفقة.
   final ValueChanged<String>? onOpenAuction;
+
+  /// **الردُّ على سوم** — معرّفُه، وقبولٌ أو رفض.
+  final void Function(String offerId, bool accept)? onAnswerOffer;
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -161,6 +165,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
              * السوق. وكان الزرّان كلاهما يُنادي `onOpenOrder` بأيّ معرّف،
              * فلا يجد الصفقةَ ولا يقع شيء.
              */
+            /* والسومُ يُقبل ويُرفض من البطاقة — ولا يفتح صفقةً بعد */
+            if (item.kind == PendingKind.offer) {
+              return PendingCard(
+                item: item,
+                onAccept: () => widget.onAnswerOffer?.call(item.id, true),
+                onDecline: () => widget.onAnswerOffer?.call(item.id, false),
+              );
+            }
+
             final act = item.kind == PendingKind.outbid
                 ? () => widget.onOpenAuction?.call(item.id)
                 : () => widget.onOpenOrder?.call(item.id);

@@ -178,6 +178,20 @@ export interface AuctionStore {
 
   // ---- العروض
   listOffers(query: { listingId?: string; buyerId?: string; sellerId?: string }): Promise<Offer[]>
+
+  /**
+   * **المتابعة** — تُكتب وتُمحى بالطرفين، بلا معرّفٍ لها.
+   *
+   * و`on` واحدةٌ بدل دالّتين: الواجهةُ تُبدّل حالًا لا تُنشئ علاقةً وتحذفها،
+   * ومسارٌ واحدٌ بحالٍ صريحةٍ أمتنُ من مسارين يُظنّ أيُّهما وقع.
+   */
+  setWatch(userId: string, listingId: string, on: boolean): Promise<void>
+
+  /** ما يتابعه — معرّفاتٌ تُقابَل بالإعلانات عند بناء البطاقات. */
+  listWatchedListingIds(userId: string): Promise<string[]>
+
+  /** عددُ متابعي إعلانٍ — يُعرض لصاحبه. */
+  countWatchers(listingId: string): Promise<number>
   getOffer(id: string): Promise<Offer | null>
   createOffer(input: NewOffer): Promise<Offer>
   updateOffer(id: string, patch: Partial<Offer>): Promise<Offer>

@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/design/tokens.dart';
 import 'package:mazad/models/demo_data.dart';
 import 'package:mazad/screens/home_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mazad/screens/listing_screen.dart';
+import 'package:mazad/screens/market_screen.dart';
 import 'package:mazad/screens/settings_screen.dart';
 import 'package:mazad/widgets/home/home_banners.dart';
 import 'package:mazad/widgets/home/section_carousel.dart';
@@ -105,6 +107,56 @@ void main() {
     expect(bar.onBid, isNotNull);
     expect(bar.onBuy, isNotNull);
     expect(bar.onOffer, isNotNull);
+  });
+
+  /// **وجرسُ المتابعة يُرسَم بنداءٍ ويُخفى بلا نداء.**
+  ///
+  /// فقد كان يُرسَم أبدًا ويُضغط فلا يقع شيء — ولا متابعةَ في الخادم أصلًا.
+  /// والآن له مسارُه، فيُرسَم حين يُمرَّر نداؤُه.
+  testWidgets('الجرسُ يتبع نداءَه رسمًا وإخفاء', (tester) async {
+    tester.view.physicalSize = const Size(780, 1688);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    final rows = demoAll(_now);
+    Future<int> bells({required bool wired}) async {
+      await tester.pumpWidget(
+        _wrap(
+          MarketScreen(
+            listings: rows,
+            serverTime: _now,
+            onWatch: wired ? (_) {} : null,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      return find.byIcon(LucideIcons.bell).evaluate().length;
+    }
+
+    expect(await bells(wired: false), 0);
+    expect(await bells(wired: true), greaterThan(0));
+  });
+
+  /// **وحالُ الجرس من الخادم** (`iFollow`) لا من ظنّ الشاشة.
+  testWidgets('المتابَعةُ تُرسم بجرسٍ رنّان', (tester) async {
+    tester.view.physicalSize = const Size(780, 1688);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    final one = demoAll(_now).first;
+    await tester.pumpWidget(
+      _wrap(
+        MarketScreen(
+          listings: [one.copyWith(following: true)],
+          serverTime: _now,
+          onWatch: (_) {},
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byIcon(LucideIcons.bellRing), findsOneWidget);
+    expect(find.byIcon(LucideIcons.bell), findsNothing);
   });
 
   /// **وبابُ الخروج ليس اختياريًّا** — ولا زرُّ الحذف الذي تشترطه أبل.

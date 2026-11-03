@@ -756,6 +756,13 @@ export type ListingCard = {
    * فبطاقةٌ عامّة لا يُبنى منها من يملك ماذا.
    */
   isMine: boolean
+  /**
+   * الزائرُ يتابع هذا الإعلان.
+   *
+   * يُحسب على الخادم كـ`isMine`، ولا يخرج معرّفُ متابعٍ ولا عددُهم في
+   * بطاقةٍ عامّة — من يتابع ماذا شأنُ صاحبه.
+   */
+  iFollow: boolean
   createdAt: string
   /**
    * **محجوزةٌ بانتظار السداد — لا مباعة.**
@@ -781,6 +788,10 @@ export type ListingDetail = {
   status: ListingStatus
   seller: PublicSeller
   isMine: boolean
+  /** الزائرُ يتابع هذا الإعلان */
+  iFollow: boolean
+  /** عددُ متابعيه — يُعرض لصاحبه وحده */
+  watcherCount: number | null
 
   price: Halalas
   startingPrice: Halalas

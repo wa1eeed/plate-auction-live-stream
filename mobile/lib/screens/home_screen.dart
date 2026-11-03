@@ -26,6 +26,7 @@ class HomeScreen extends StatelessWidget {
     this.onOpenPending,
     this.onOpenMarket,
     this.onOpenSell,
+    this.onFollow,
   });
 
   /// ما يُعرض في السوق — يُقسَّم هنا على الأقسام الثلاثة.
@@ -48,6 +49,9 @@ class HomeScreen extends StatelessWidget {
 
   /// **تُفتح صفحةُ اللوحة من كرت الكاروسيل** — وبدونه كروتٌ لا تُضغط.
   final ValueChanged<Listing>? onOpen;
+
+  /// **المتابعة من كرت الكاروسيل** — وبلا نداءٍ لا يُرسَم الجرس.
+  final ValueChanged<Listing>? onFollow;
 
   /// **تفتح السوقَ** — من بانر «ثلاث خيارات» ومن «عرض الكل» في الأقسام.
   final VoidCallback? onOpenMarket;
@@ -123,6 +127,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 22),
         SectionCarousel(
           onSeeAll: onOpenMarket,
+          onFollow: onFollow,
           eyebrow: 'مباشر الآن',
           eyebrowColor: AppColors.accent,
           title: 'مزادات جارية',
@@ -133,6 +138,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 22),
         SectionCarousel(
           onSeeAll: onOpenMarket,
+          onFollow: onFollow,
           eyebrow: 'بسعر ثابت',
           eyebrowColor: AppColors.accent2_600,
           title: 'بيع مباشر',
@@ -145,6 +151,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 22),
         SectionCarousel(
           onSeeAll: onOpenMarket,
+          onFollow: onFollow,
           eyebrow: 'قدّم سومك',
           eyebrowColor: AppColors.neutral700,
           title: 'على السوم',

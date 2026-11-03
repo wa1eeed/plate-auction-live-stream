@@ -543,6 +543,9 @@ export async function getMarketListings(
       .map((order) => order.listingId),
   )
 
+  /* وما يتابعه الزائرُ يُقرأ مرّةً لا مرّةً لكلّ بطاقة */
+  const followed = new Set(viewerId ? await store.listWatchedListingIds(viewerId) : [])
+
   for (const listing of listings) {
     if (listing.status === 'draft') continue
     const seller = await store.findUser(listing.sellerId)
@@ -571,6 +574,7 @@ export async function getMarketListings(
       remainingMs: remainingMs(listing, now),
       sellerName: seller?.displayName ?? 'مستخدم',
       isMine: Boolean(viewerId) && listing.sellerId === viewerId,
+      iFollow: followed.has(listing.id),
       createdAt: listing.createdAt,
       /* والمزادُ لا يُحجز — انظر `awaitingSettlement` */
       settlementPending:
@@ -708,6 +712,18 @@ export async function getListingDetail(
       memberSince: seller?.createdAt ?? listing.createdAt,
     },
     isMine: viewerId === listing.sellerId,
+    iFollow: viewerId
+      ? (await store.listWatchedListingIds(viewerId)).includes(listing.id)
+      : false,
+    /*
+     * **وعددُ المتابعين لصاحب الإعلان وحده.**
+     *
+     * فهو يفيده: يعرف أنّ لوحتَه مرصودةٌ فيصبر على سعره. وعرضُه للزائر
+     * يُغري بالتسابق على ما يُظَنّ مطلوبًا، ويكشف عن سلوك الآخرين ما لا
+     * شأنَ له به.
+     */
+    watcherCount:
+      viewerId === listing.sellerId ? await store.countWatchers(listing.id) : null,
 
     price: listing.price,
     startingPrice: listing.startingPrice,

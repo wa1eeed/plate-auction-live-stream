@@ -827,6 +827,42 @@ export class PostgresStore implements AuctionStore {
     return rows.map(offerFromRow)
   }
 
+  async setWatch(userId: string, listingId: string, on: boolean): Promise<void> {
+    if (!on) {
+      await this.db
+        .delete(t.watchlist)
+        .where(and(eq(t.watchlist.userId, userId), eq(t.watchlist.listingId, listingId)))
+      return
+    }
+    /*
+     * **و`onConflictDoNothing` لا `select` ثمّ `insert`.**
+     *
+     * فالقراءةُ ثمّ الكتابةُ بينهما فجوةٌ تُنشئ صفّين عند ضغطتين متسارعتين،
+     * والمفتاحُ المركَّبُ يحسمها في القاعدة بطلبٍ واحد.
+     */
+    await this.db
+      .insert(t.watchlist)
+      .values({ userId, listingId, createdAt: new Date().toISOString() })
+      .onConflictDoNothing()
+  }
+
+  async listWatchedListingIds(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ listingId: t.watchlist.listingId })
+      .from(t.watchlist)
+      .where(eq(t.watchlist.userId, userId))
+      .orderBy(desc(t.watchlist.createdAt))
+    return rows.map((row) => row.listingId)
+  }
+
+  async countWatchers(listingId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(t.watchlist)
+      .where(eq(t.watchlist.listingId, listingId))
+    return row?.n ?? 0
+  }
+
   async getOffer(id: string): Promise<Offer | null> {
     const [row] = await this.db.select().from(t.offers).where(eq(t.offers.id, id)).limit(1)
     return row ? offerFromRow(row) : null

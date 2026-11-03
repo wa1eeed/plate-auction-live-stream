@@ -115,11 +115,13 @@ class ListingScreen extends StatelessWidget {
           semantics: 'مشاركة',
           onTap: onShare,
         ),
-        /*
-         * **وجرسُ المتابعة رُفع** — كان `_RoundButton` بلا `onTap` أصلًا،
-         * ولا متابعةَ في الخادم (TASKS.md). و`onFollow` يبقى في الواجهة
-         * ليُوصَل حين تُبنى.
-         */
+        const SizedBox(width: 8),
+        /* وحالُ الجرس من الخادم (`iFollow`) لا من ظنّ الشاشة */
+        _RoundButton(
+          icon: listing.following ? LucideIcons.bellRing : LucideIcons.bell,
+          semantics: listing.following ? 'إلغاء المتابعة' : 'متابعة',
+          onTap: onFollow,
+        ),
       ],
     ),
   );

@@ -464,6 +464,25 @@ export const notifications = pgTable(
  * **والمرفقُ يُخزَّن بمفتاحه لا بمحتواه**: الوسائطُ في مخزنها، والجدولُ
  * يحمل مفتاحَها ونوعَها وحجمَها — فلا تنتفخ القاعدةُ بالصور.
  */
+/**
+ * المتابعة — «فلانٌ يتابع هذه اللوحة».
+ *
+ * مفتاحُها مركَّبٌ من الطرفين: علاقةٌ لا كيان، والتكرارُ يُمنع في القاعدة
+ * لا في الخدمة. انظر `drizzle/0010_watchlist.sql`.
+ */
+export const watchlist = pgTable(
+  'watchlist',
+  {
+    userId: text('user_id').notNull(),
+    listingId: text('listing_id').notNull(),
+    createdAt: stamp('created_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ name: 'watchlist_pk', columns: [table.userId, table.listingId] }),
+    index('watchlist_listing_idx').on(table.listingId),
+  ],
+)
+
 export const orderMessages = pgTable(
   'order_messages',
   {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/design/tokens.dart';
+import 'package:mazad/models/activity.dart';
 import 'package:mazad/models/demo_data.dart';
 import 'package:mazad/models/listing.dart';
 import 'package:mazad/screens/activity_screen.dart';
@@ -29,13 +30,16 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
 ActivityScreen _screen({
   bool empty = false,
   ValueChanged<Listing>? onOpenListing,
+  void Function(String, bool)? onAnswerOffer,
+  List<PendingItem>? pending,
 }) => ActivityScreen(
-  pending: empty ? const [] : demoPending(),
+  pending: empty ? const [] : (pending ?? demoPending()),
   myBids: demoAuctions(_now),
   myOffers: demoOffers(_now),
   watching: demoFixed(_now),
   serverTime: _now,
   onOpenListing: onOpenListing,
+  onAnswerOffer: onAnswerOffer,
 );
 
 void main() {
@@ -124,6 +128,30 @@ void main() {
       await tester.pump();
       expect(opened, isNotNull, reason: 'صفُّ «$tab» لا يُفتح');
     }
+  });
+
+  /// **والسومُ يُقبل ويُرفض من البطاقة** — وكان `onDecline` لا يُمرَّر،
+  /// و`onAccept` يُنادي `onOpenOrder` بمعرّفِ سومٍ فلا يجد صفقة.
+  testWidgets('زرّا السوم يُنادَيان بمعرّفه', (tester) async {
+    final answers = <(String, bool)>[];
+    final offer = demoPending().firstWhere((p) => p.kind == PendingKind.offer);
+
+    await tester.pumpWidget(
+      _wrap(
+        _screen(
+          pending: [offer],
+          onAnswerOffer: (id, accept) => answers.add((id, accept)),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('اقبل السوم'));
+    await tester.pump();
+    await tester.tap(find.text('ارفض'));
+    await tester.pump();
+
+    expect(answers, [(offer.id, true), (offer.id, false)]);
   });
 
   testWidgets('لا تفيض الشاشةُ على عرض 360', (tester) async {
