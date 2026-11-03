@@ -275,7 +275,21 @@ test.describe('الملاحة السفلية والهيدر', () => {
     await page.goto('/market')
     const header = page.locator('header').first()
 
+    /*
+     * **ويُنتظر الرسمُ قبل القياس.**
+     *
+     * فالقياسُ الأوّل كان يقع عقب `goto` مباشرةً، و`load` لا يعني أنّ
+     * الترويسة أخذت مكانها — فيُقرأ ارتفاعُها صفرًا. ثمّ يُقاس بعد التمرير
+     * فيصير ٦٥، فيُعلَن «الارتفاع تبدّل بالتمرير» وهو لم يتبدّل: قياسٌ
+     * سبق الرسم لا ارتفاعٌ متغيّر. وسقط الفحصُ في البوّابة وحدها — عدّاؤها
+     * أبطأ — ومرّ محلّيًّا، وهو أسوأ أنواع الفحص: يُنذر حيث لا عطب.
+     *
+     * و`toBeVisible` تُعاود حتى يصير للعنصر صندوقٌ غيرُ صفريّ.
+     */
+    await expect(header).toBeVisible()
     const top = await header.evaluate((el) => el.getBoundingClientRect().height)
+    expect(top, 'الترويسةُ لم تُرسم قبل القياس').toBeGreaterThan(0)
+
     await page.evaluate(() => window.scrollTo(0, 900))
     await page.waitForTimeout(400)
     const scrolled = await header.evaluate((el) => el.getBoundingClientRect().height)
