@@ -304,12 +304,15 @@ abstract final class ApiMapping {
       city: user['city'] as String? ?? '',
       email: user['email'] as String? ?? '',
       phone: user['phone'] as String? ?? '',
+      joinedAt: time(user['createdAt']),
     );
   }
 
   /// **صفقةٌ في قائمة «صفقاتي»** — من `api/orders`.
   static OrderView order(Map<String, dynamic> json, {required bool asBuyer}) {
     final plate = (json['plate'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final identity = (json['transferIdentity'] as Map?)
+        ?.cast<String, dynamic>();
     final counterpart = json['counterpartName'] as String? ?? '—';
 
     return OrderView(
@@ -324,6 +327,12 @@ abstract final class ApiMapping {
       emblem: emblem(plate['emblem'] as String?),
       price: (json['amount'] as num?)?.toInt() ?? 0,
       net: ((json['settlement'] as Map?)?['net'] as num?)?.toInt(),
+      counterpartPhone: json['counterpartPhone'] as String?,
+      /* وبياناتُ الهويّة في الصفقة، ويعرضها البائعُ وحده */
+      counterpartNationalId: asBuyer
+          ? null
+          : identity?['nationalId'] as String?,
+      counterpartBirthDate: asBuyer ? null : identity?['birthDate'] as String?,
       /*
        * **والطرفُ الآخرُ يصل باسمٍ واحد** — فيُركَّب الطرفان من دور القارئ:
        * من يقرأ مشترياتِه هو المشتري، والآخرُ هو البائع. والخادمُ لا يُرسل
@@ -367,6 +376,7 @@ class ProfileView {
     required this.city,
     required this.email,
     required this.phone,
+    this.joinedAt,
   });
 
   final String name;
@@ -375,6 +385,25 @@ class ProfileView {
   final String city;
   final String email;
   final String phone;
+
+  /// لحظةُ إنشاء الحساب — منها «منضمٌّ منذ» في المعرض.
+  final DateTime? joinedAt;
+
+  /// **«منذ سنتين» لا تاريخٌ يُقرأ ويُحسب.**
+  String get joinedLabel {
+    final at = joinedAt;
+    if (at == null) return '—';
+    final days = DateTime.now().difference(at).inDays;
+    if (days < 31) return days < 2 ? 'اليوم' : '$days يومًا';
+    final months = days ~/ 30;
+    if (months < 12) return months == 1 ? 'شهر' : '$months أشهر';
+    final years = days ~/ 365;
+    return switch (years) {
+      1 => 'سنة',
+      2 => 'سنتين',
+      _ => '$years سنوات',
+    };
+  }
 }
 
 /// تفاصيلُ لوحةٍ كما تحتاجها شاشتُها.

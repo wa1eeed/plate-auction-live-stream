@@ -17,7 +17,6 @@ class ListingActionBar extends StatelessWidget {
     this.onBid,
     this.onBuy,
     this.onOffer,
-    this.onAuto,
     this.offerPending = false,
   });
 
@@ -29,7 +28,6 @@ class ListingActionBar extends StatelessWidget {
   final ValueChanged<int>? onBid;
   final VoidCallback? onBuy;
   final VoidCallback? onOffer;
-  final VoidCallback? onAuto;
 
   /// سومٌ قُدّم ولم يُردَّ عليه بعد.
   final bool offerPending;
@@ -54,7 +52,6 @@ class ListingActionBar extends StatelessWidget {
         listing: listing,
         increment: increment,
         onBid: onBid,
-        onAuto: onAuto,
       ),
       SaleType.fixed => _Primary(label: 'اشترِ الآن', onTap: onBuy),
       SaleType.offers =>
@@ -128,17 +125,11 @@ class _Primary extends StatelessWidget {
 
 /// **صفُّ المزايدة**: [− مبلغ +] · «زايد» · سطرُ أقلِّ مزايدةٍ والزيادة.
 class _BidRow extends StatefulWidget {
-  const _BidRow({
-    required this.listing,
-    required this.increment,
-    this.onBid,
-    this.onAuto,
-  });
+  const _BidRow({required this.listing, required this.increment, this.onBid});
 
   final Listing listing;
   final int increment;
   final ValueChanged<int>? onBid;
-  final VoidCallback? onAuto;
 
   @override
   State<_BidRow> createState() => _BidRowState();
@@ -228,29 +219,14 @@ class _BidRowState extends State<_BidRow> {
                 style: AppText.body(11.5, color: AppColors.neutral700),
               ),
             ),
-            GestureDetector(
-              onTap: widget.onAuto,
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    LucideIcons.zap,
-                    size: 14,
-                    color: AppColors.accent700,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'مزايدة تلقائية حتى سقف',
-                    style: AppText.body(
-                      12.5,
-                      color: AppColors.accent700,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            /*
+             * **ورابطُ «مزايدة تلقائية حتى سقف» رُفع — ولا يُعاد حتى تُبنى.**
+             *
+             * فالوكالةُ في المزايدة (§5.3) تلزمها آلةٌ في الخادم تردّ عن
+             * صاحبها بأقلّ زيادةٍ حتى سقفه، ولا وجودَ لها. ورابطٌ يُضغط فلا
+             * يقع شيءٌ أسوأُ من رابطٍ ليس فيه: الأوّلُ يُقرأ عطبًا، والثاني
+             * ميزةٌ لم تصل. وهي مقيَّدةٌ في `TASKS.md`.
+             */
           ],
         ),
       ],

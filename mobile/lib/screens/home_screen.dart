@@ -24,6 +24,8 @@ class HomeScreen extends StatelessWidget {
     this.onOpenWallet,
     this.onOpenNotifications,
     this.onOpenPending,
+    this.onOpenMarket,
+    this.onOpenSell,
   });
 
   /// ما يُعرض في السوق — يُقسَّم هنا على الأقسام الثلاثة.
@@ -46,6 +48,12 @@ class HomeScreen extends StatelessWidget {
 
   /// **تُفتح صفحةُ اللوحة من كرت الكاروسيل** — وبدونه كروتٌ لا تُضغط.
   final ValueChanged<Listing>? onOpen;
+
+  /// **تفتح السوقَ** — من بانر «ثلاث خيارات» ومن «عرض الكل» في الأقسام.
+  final VoidCallback? onOpenMarket;
+
+  /// **تفتح «اعرض لوحتك»** — من بانر «بِع بأمان».
+  final VoidCallback? onOpenSell;
 
   final VoidCallback? onOpenWallet;
   final VoidCallback? onOpenNotifications;
@@ -103,12 +111,18 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 22),
         ],
+        /* والشرائحُ الثلاثُ تفتح وجهاتِها — §5.1: الأولى والثانية السوقَ،
+           و«بِع بأمان» شاشةَ العرض، و«ضمان الجدّية» المحفظة */
         HomeBanners(
           nearestAuctionEnd: nearestEnd,
           availableHalalas: availableHalalas,
+          onMarket: onOpenMarket,
+          onSell: onOpenSell,
+          onWallet: onOpenWallet,
         ),
         const SizedBox(height: 22),
         SectionCarousel(
+          onSeeAll: onOpenMarket,
           eyebrow: 'مباشر الآن',
           eyebrowColor: AppColors.accent,
           title: 'مزادات جارية',
@@ -118,6 +132,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         SectionCarousel(
+          onSeeAll: onOpenMarket,
           eyebrow: 'بسعر ثابت',
           eyebrowColor: AppColors.accent2_600,
           title: 'بيع مباشر',
@@ -129,6 +144,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         SectionCarousel(
+          onSeeAll: onOpenMarket,
           eyebrow: 'قدّم سومك',
           eyebrowColor: AppColors.neutral700,
           title: 'على السوم',

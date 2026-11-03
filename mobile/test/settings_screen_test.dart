@@ -39,6 +39,57 @@ void main() {
     );
   });
 
+  /// **وبابُ الخروج يُفتح** — وكان الزرُّ بلا نداءٍ أصلًا.
+  testWidgets('تسجيل الخروج يُنادى', (tester) async {
+    tester.view.physicalSize = const Size(780, 1688);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    var out = 0;
+    await tester.pumpWidget(_wrap(SettingsScreen(onLogout: () => out++)));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.scrollUntilVisible(
+      find.text('تسجيل الخروج'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('تسجيل الخروج'));
+    await tester.pump();
+    expect(out, 1);
+  });
+
+  /// **والحذفُ لا يقع قبل الإقرار، ويقع بعده** — وكان الزرُّ `Container`.
+  testWidgets('حذفُ الحساب: إقرارٌ ثمّ نداء', (tester) async {
+    tester.view.physicalSize = const Size(780, 1688);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    var deleted = 0;
+    await tester.pumpWidget(_wrap(SettingsScreen(onDelete: () => deleted++)));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.scrollUntilVisible(
+      find.text('حذف الحساب'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('حذف الحساب'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('علّق حسابي واطلب الحذف'));
+    await tester.pump();
+    expect(deleted, 0, reason: 'بلا إقرارٍ لا يقع الحذف');
+
+    await tester.tap(find.textContaining('أفهم أنّ الحذف نهائيٌّ'));
+    await tester.pump();
+    await tester.tap(find.text('علّق حسابي واطلب الحذف'));
+    await tester.pumpAndSettle();
+    expect(deleted, 1);
+  });
+
   /// **والجوالُ موثّقٌ للقراءة** — تغييرُه يُغيّر هويّةَ الدخول.
   testWidgets('الجوالُ لا يُحرَّر من هنا', (tester) async {
     await tester.pumpWidget(_wrap(const SettingsScreen()));

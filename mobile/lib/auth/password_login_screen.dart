@@ -119,24 +119,10 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  'نسيت كلمة المرور؟',
-                  style: AppText.body(
-                    12.5,
-                    color: AppColors.accent700,
-                    weight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          /*
+           * **و«نسيت كلمة المرور؟» رُفع** — لا مسارَ استرجاعٍ في الخادم،
+           * ولا بريدَ يُرسل منه. وكان نصًّا يُضغط فلا يقع شيء.
+           */
           const Spacer(),
           GestureDetector(
             onTap: _valid ? _submit : null,

@@ -26,6 +26,7 @@ class ActivityScreen extends StatefulWidget {
     required this.serverTime,
     this.onOpenOrder,
     this.onOpenListing,
+    this.onOpenAuction,
   });
 
   final List<PendingItem> pending;
@@ -39,6 +40,9 @@ class ActivityScreen extends StatefulWidget {
 
   /// **وصفُّ اللوحة يفتح صفحتَها** — في مزايداتي وعروضي وأتابعها.
   final ValueChanged<Listing>? onOpenListing;
+
+  /// **ومزادٌ تجاوزك فيه أحدٌ يُفتح بمعرّف لوحته** لا بمعرّف صفقة.
+  final ValueChanged<String>? onOpenAuction;
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -150,11 +154,19 @@ class _ActivityScreenState extends State<ActivityScreen> {
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 90),
           itemCount: widget.pending.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, i) => PendingCard(
-            item: widget.pending[i],
-            onAct: () => widget.onOpenOrder?.call(widget.pending[i].id),
-            onAccept: () => widget.onOpenOrder?.call(widget.pending[i].id),
-          ),
+          itemBuilder: (context, i) {
+            final item = widget.pending[i];
+            /*
+             * **وبندُ التجاوز معرّفُه معرّفُ لوحةٍ لا صفقة** — فيُفتح من
+             * السوق. وكان الزرّان كلاهما يُنادي `onOpenOrder` بأيّ معرّف،
+             * فلا يجد الصفقةَ ولا يقع شيء.
+             */
+            final act = item.kind == PendingKind.outbid
+                ? () => widget.onOpenAuction?.call(item.id)
+                : () => widget.onOpenOrder?.call(item.id);
+
+            return PendingCard(item: item, onAct: act, onAccept: act);
+          },
         );
 
       case ActivityTab.bids:

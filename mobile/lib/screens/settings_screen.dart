@@ -20,6 +20,8 @@ class SettingsScreen extends StatefulWidget {
     this.onBack,
     this.initial,
     this.onSave,
+    this.onLogout,
+    this.onDelete,
   });
 
   /// ما يمنع الحذفَ الآن — فارغةٌ يعني أنّه ممكن.
@@ -35,6 +37,12 @@ class SettingsScreen extends StatefulWidget {
   /// فالمستخدمُ يملأ الشاشةَ مرّةً ويحفظ مرّةً، وطلبان منفصلان يُنجح
   /// أحدَهما ويُسقط الآخرَ فتبقى الشاشةُ نصفَ محفوظة.
   final Future<bool> Function(SettingsDraft draft)? onSave;
+
+  /// **الخروجُ من الحساب** — وكان الزرُّ بلا نداءٍ أصلًا.
+  final VoidCallback? onLogout;
+
+  /// **تعليقُ الحساب وطلبُ حذفه** — تشترطه أبل من داخل التطبيق.
+  final VoidCallback? onDelete;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -378,7 +386,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _footer() => Row(
     children: [
       Expanded(
-        child: _OutlinedButton(label: 'تسجيل الخروج', color: AppColors.text),
+        child: _OutlinedButton(
+          label: 'تسجيل الخروج',
+          color: AppColors.text,
+          onTap: widget.onLogout,
+        ),
       ),
       const SizedBox(width: 8),
       Expanded(
@@ -398,7 +410,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
     ),
-    builder: (context) => _DeleteSheet(blockers: widget.blockers),
+    builder: (context) => _DeleteSheet(
+      blockers: widget.blockers,
+      onConfirm: () {
+        Navigator.pop(context);
+        widget.onDelete?.call();
+      },
+    ),
   );
 
   Widget _title(String text) =>
@@ -499,9 +517,12 @@ class _OutlinedButton extends StatelessWidget {
 
 /// **ورقةُ حذف الحساب** — تمنع أو تشرح، ولا تحذف بضغطة.
 class _DeleteSheet extends StatefulWidget {
-  const _DeleteSheet({required this.blockers});
+  const _DeleteSheet({required this.blockers, this.onConfirm});
 
   final List<DeletionBlocker> blockers;
+
+  /// **والإقرارُ وحده لا يحذف** — كان الزرُّ `Container` لا يُضغط.
+  final VoidCallback? onConfirm;
 
   @override
   State<_DeleteSheet> createState() => _DeleteSheetState();
@@ -648,19 +669,23 @@ class _DeleteSheetState extends State<_DeleteSheet> {
       ),
     ),
     const SizedBox(height: 14),
-    Container(
-      height: 50,
-      decoration: BoxDecoration(
-        /* **ولا يُفعَّل الزرُّ قبل الإقرار** — حذفٌ لا رجعةَ فيه */
-        color: _ack
-            ? AppColors.danger
-            : AppColors.danger.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'علّق حسابي واطلب الحذف',
-        style: AppText.body(15, color: Colors.white, weight: FontWeight.w700),
+    GestureDetector(
+      onTap: _ack ? widget.onConfirm : null,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          /* **ولا يُفعَّل الزرُّ قبل الإقرار** — حذفٌ لا رجعةَ فيه */
+          color: _ack
+              ? AppColors.danger
+              : AppColors.danger.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'علّق حسابي واطلب الحذف',
+          style: AppText.body(15, color: Colors.white, weight: FontWeight.w700),
+        ),
       ),
     ),
   ];

@@ -136,7 +136,7 @@ class _MarketScreenState extends State<MarketScreen> {
                     listing: rows[i],
                     serverTime: widget.serverTime,
                     onTap: () => widget.onOpen?.call(rows[i]),
-                    onWatch: () {},
+                    /* والجرسُ رُفع — لا متابعةَ في الخادم (TASKS.md) */
                   ),
                 ),
         ),

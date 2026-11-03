@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../api/api_scope.dart';
 import '../api/mapping.dart';
+import '../api/api_client.dart';
 import '../api/mazad_api.dart';
 import '../auth/auth_flow.dart';
 import '../auth/auth_gate.dart';
@@ -15,7 +17,6 @@ import '../widgets/wallet/top_up_sheet.dart';
 import '../widgets/order/identity_form.dart';
 import '../widgets/order/pay_sheet.dart';
 import '../models/chat.dart';
-import '../models/demo_data.dart';
 import '../models/invoice.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
@@ -176,8 +177,83 @@ class _AppShellState extends State<AppShell> {
         then: reload,
       ),
       onFollow: () => _gate(GatedAction.follow),
+      onShare: () => _shareListing(detail.listing.id),
     ),
   );
+
+  /// **مشاركةُ رابط اللوحة** — يُنسخ الرابطُ لتُلصق في أيّ تطبيق.
+  ///
+  /// ولا تُستدعى ورقةُ المشاركة الأصليّة: تلزمها حزمةٌ جديدة، وإضافتُها
+  /// قبيل إصدارٍ تُدخل على البناء ما لم يُجرَّب. والنسخُ يبلغ المقصودَ
+  /// اليومَ بلا ذلك.
+  Future<void> _shareListing(String id) async {
+    final link = '${ApiClient.baseUrl}/market/$id';
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    showToast(context, 'نُسخ رابط اللوحة', kind: ToastKind.success);
+  }
+
+  /// **الاتّصالُ بالطرف الآخر** — يفتح هاتفَ الجهاز بالرقم.
+  ///
+  /// و`onCall` في المحادثة لم يكن يُمرَّر، فأيقونةُ السمّاعة جُماد.
+  Future<void> _call(String phone) async {
+    final opened = await launchExternal('tel:$phone');
+    if (!mounted || opened) return;
+    showToast(
+      context,
+      'ما قدرنا نفتح الهاتف — الرقم $phone',
+      kind: ToastKind.warning,
+    );
+  }
+
+  /// **الخروجُ من الحساب.**
+  ///
+  /// وكان الزرُّ في الإعدادات بلا نداءٍ أصلًا — و`logout()` مكتوبةٌ في
+  /// العميل لا يناديها أحد. فمن دخل لم يكن له بابُ خروج.
+  ///
+  /// **وتُمحى الجلسةُ محلّيًّا وإن سقط نداءُ الخادم**: كوكيٌّ بقي في جهازٍ
+  /// ظنَّ صاحبُه أنّه خرج أسوأُ من كوكيٍّ بطل عند الخادم وحده.
+  Future<void> _logout() async {
+    final api = ApiScope.of(context);
+    final session = SessionScope.of(context);
+
+    await api.logout().catchError((_) {});
+    if (!mounted) return;
+
+    session.signOut();
+    setState(() {
+      _settings = false;
+      _wallet = false;
+      _notifs = false;
+      _showcase = false;
+      _help = false;
+      _orders = null;
+      _openOrder = null;
+      _open = null;
+      _tab = AppTab.home;
+    });
+    showToast(context, 'خرجت من حسابك', kind: ToastKind.info);
+  }
+
+  /// **تعليقُ الحساب وطلبُ حذفه** — وأبل تشترطه من داخل التطبيق.
+  ///
+  /// والخادمُ يمحو الجلسةَ في طلبه نفسِه، فيُخرَج هنا كذلك: واجهةُ حسابٍ
+  /// معطَّلٍ تُردّ عن كلّ ما فيها.
+  Future<void> _deleteAccount() async {
+    final api = ApiScope.of(context);
+    final done = await runAction(
+      context,
+      api.deleteAccount,
+      success: 'علّقنا حسابك — يُحذف بعد ثلاثين يومًا',
+    );
+    if (!done || !mounted) return;
+
+    SessionScope.of(context).signOut();
+    setState(() {
+      _settings = false;
+      _tab = AppTab.home;
+    });
+  }
 
   /// **سدادُ الصفقة** — تُفتح الورقةُ بالمطلوب المحسوب من الخادم.
   ///
@@ -393,6 +469,9 @@ class _AppShellState extends State<AppShell> {
                   }),
               onOpenPending: () =>
                   _openGated(GatedAction.orders, () => _tab = AppTab.activity),
+              onOpenMarket: () => setState(() => _tab = AppTab.market),
+              onOpenSell: () =>
+                  _openGated(GatedAction.sell, () => _tab = AppTab.sell),
             ),
           ),
           /*
@@ -444,6 +523,10 @@ class _AppShellState extends State<AppShell> {
                 messages: thread.messages,
                 onSend: (body) =>
                     ApiScope.of(context).sendMessage(_openOrder!.id, body),
+                /* ويُطلَب الرقمُ في هاتف الجهاز — لا داخل التطبيق */
+                onCall: _openOrder!.counterpartPhone == null
+                    ? null
+                    : () => _call(_openOrder!.counterpartPhone!),
                 onBack: () => setState(() => _chat = false),
               ),
             ),
@@ -467,6 +550,9 @@ class _AppShellState extends State<AppShell> {
             ),
           AppTab.activity when _openOrder != null => OrderScreen(
             order: _openOrder!,
+            /* وكانت البطاقةُ مقفلةً أبدًا — لا تُمرَّر إليها بياناتٌ أصلًا */
+            counterpartPhone: _openOrder!.counterpartPhone,
+            counterpartId: _openOrder!.counterpartNationalId,
             onBack: () => setState(() => _openOrder = null),
             onOpenChat: () => setState(() => _chat = true),
             onOpenInvoice: () => setState(() => _invoice = true),
@@ -504,6 +590,9 @@ class _AppShellState extends State<AppShell> {
                 _openOrder = a.orders.where((o) => o.id == id).firstOrNull;
               }),
               onOpenListing: (l) => setState(() => _open = l),
+              onOpenAuction: (id) => setState(() {
+                _open = a.myBids.where((l) => l.id == id).firstOrNull;
+              }),
             ),
           ),
           AppTab.account when _orders != null => AsyncView<OrdersBundle>(
@@ -531,24 +620,38 @@ class _AppShellState extends State<AppShell> {
               onBack: () => setState(() => _notifs = false),
             ),
           ),
-          AppTab.account when _showcase => ShowcaseScreen(
-            name: 'وليد',
-            handle: '@waleed',
-            city: 'الرياض',
-            joined: 'سنتين',
-            plates: demoOffers(_now) + demoFixed(_now),
-            onBack: () => setState(() => _showcase = false),
+          /*
+           * **ومعرضُ لوحاتي كان بذرةَ ديمو واسمًا مكتوبًا في الكود.**
+           *
+           * «وليد · @waleed · الرياض · سنتين» ولوحاتٌ من `demoOffers` —
+           * فمن فتحه رأى حسابَ غيره. وهي علّةُ السوق نفسُها: شاشةٌ تُرسم من
+           * البذرة لا من الخادم.
+           */
+          AppTab.account when _showcase => AsyncView<AccountBundle>(
+            load: () => ApiScope.of(context).account(),
+            builder: (context, me, reload) => ShowcaseScreen(
+              name: me.profile.name,
+              handle: me.profile.handle,
+              city: me.profile.city,
+              joined: me.profile.joinedLabel,
+              plates: me.myPlates,
+              onBack: () => setState(() => _showcase = false),
+            ),
           ),
-          AppTab.account when _settings => AsyncView<ProfileView>(
-            load: () => ApiScope.of(context).profile(),
-            builder: (context, me, reload) => SettingsScreen(
+          AppTab.account when _settings => AsyncView<SettingsBundle>(
+            load: () => ApiScope.of(context).settings(),
+            builder: (context, bundle, reload) => SettingsScreen(
               initial: SettingsDraft(
-                name: me.name,
-                handle: me.handle.replaceFirst('@', ''),
-                email: me.email,
-                city: me.city,
+                name: bundle.profile.name,
+                handle: bundle.profile.handle.replaceFirst('@', ''),
+                email: bundle.profile.email,
+                city: bundle.profile.city,
               ),
+              /* وما يمنع الحذفَ يُقرأ من الخادم — وكان دائمًا فارغًا */
+              blockers: bundle.blockers,
               onBack: () => setState(() => _settings = false),
+              onLogout: _logout,
+              onDelete: _deleteAccount,
               onSave: (draft) => runAction(
                 context,
                 () => ApiScope.of(context).saveProfile(

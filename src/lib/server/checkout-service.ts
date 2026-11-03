@@ -111,6 +111,8 @@ export async function getCheckoutView(orderId: string, userId: string): Promise<
         customEmblemUrl: listing.customEmblemUrl,
       },
       counterpartName: seller?.displayName ?? 'مستخدم',
+      /* وصفحةُ السداد سابقةٌ لتأكيد البيانات دائمًا — فلا جوّالَ فيها */
+      counterpartPhone: null,
       settlement,
       timeline: buildOrderTimeline(order, settlement, Date.now(), 'buyer'),
     },

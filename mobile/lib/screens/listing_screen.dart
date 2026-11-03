@@ -25,6 +25,7 @@ class ListingScreen extends StatelessWidget {
     this.onBuy,
     this.onOffer,
     this.onFollow,
+    this.onShare,
   });
 
   final Listing listing;
@@ -45,6 +46,9 @@ class ListingScreen extends StatelessWidget {
   final VoidCallback? onBuy;
   final VoidCallback? onOffer;
   final VoidCallback? onFollow;
+
+  /// **مشاركةُ رابط اللوحة** — وكان زرُّ المشاركة بلا نداء.
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -106,30 +110,27 @@ class ListingScreen extends StatelessWidget {
             ),
           ),
         ),
-        _RoundButton(icon: LucideIcons.share, semantics: 'مشاركة'),
-        const SizedBox(width: 8),
         _RoundButton(
-          icon: listing.following ? LucideIcons.bellRing : LucideIcons.bell,
-          semantics: 'متابعة',
-          color: listing.following ? AppColors.accent700 : AppColors.text,
+          icon: LucideIcons.share,
+          semantics: 'مشاركة',
+          onTap: onShare,
         ),
+        /*
+         * **وجرسُ المتابعة رُفع** — كان `_RoundButton` بلا `onTap` أصلًا،
+         * ولا متابعةَ في الخادم (TASKS.md). و`onFollow` يبقى في الواجهة
+         * ليُوصَل حين تُبنى.
+         */
       ],
     ),
   );
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({
-    required this.icon,
-    required this.semantics,
-    this.onTap,
-    this.color,
-  });
+  const _RoundButton({required this.icon, required this.semantics, this.onTap});
 
   final IconData icon;
   final String semantics;
   final VoidCallback? onTap;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -145,7 +146,7 @@ class _RoundButton extends StatelessWidget {
           color: AppColors.surface,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 19, color: color ?? AppColors.text),
+        child: Icon(icon, size: 19, color: AppColors.text),
       ),
     ),
   );

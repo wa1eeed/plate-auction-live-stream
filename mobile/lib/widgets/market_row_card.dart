@@ -163,25 +163,32 @@ class MarketRowCard extends StatelessWidget {
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: onWatch,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AppColors.neutral100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  listing.following ? LucideIcons.bellRing : LucideIcons.bell,
-                  size: 15,
-                  color: listing.following
-                      ? AppColors.accent700
-                      : AppColors.neutral600,
+            /*
+             * **ولا يُرسَم الجرسُ بلا نداء** — كما في `PlateCard`.
+             *
+             * فزرٌّ يُرى ويُضغط ولا يقع شيءٌ يُقرأ عطبًا، وغيابُه يُقرأ
+             * ميزةً لم تصل. ولا متابعةَ في الخادم أصلًا (TASKS.md).
+             */
+            if (onWatch != null)
+              GestureDetector(
+                onTap: onWatch,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: AppColors.neutral100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    listing.following ? LucideIcons.bellRing : LucideIcons.bell,
+                    size: 15,
+                    color: listing.following
+                        ? AppColors.accent700
+                        : AppColors.neutral600,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         if (listing.endsAt != null) ...[

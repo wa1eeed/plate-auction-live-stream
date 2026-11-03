@@ -55,6 +55,9 @@ class OrderView {
     this.transferAt,
     this.releasedAt,
     this.deadline,
+    this.counterpartPhone,
+    this.counterpartNationalId,
+    this.counterpartBirthDate,
   });
 
   /// **المعرّفُ الذي تأخذه المسارات** — لا الرقمُ الذي يُعرض.
@@ -97,6 +100,15 @@ class OrderView {
 
   /// مهلةُ المرحلة الحاليّة.
   final DateTime? deadline;
+
+  /// **جوّالُ الطرف الآخر** — و`null` قبل أن يؤكّد المشتري بياناته.
+  ///
+  /// فالبطاقةُ تبقى مقفلةً حتى يصير التواصلُ لازمًا للنقل (§5.7).
+  final String? counterpartPhone;
+
+  /// رقمُ هوية المشتري وتاريخُ ميلاده — **للبائع، وبعد التأكيد**.
+  final String? counterpartNationalId;
+  final String? counterpartBirthDate;
 
   bool get isClosed =>
       stage == OrderStage.cancelled || stage == OrderStage.defaulted;

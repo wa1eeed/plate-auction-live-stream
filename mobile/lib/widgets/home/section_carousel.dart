@@ -98,7 +98,13 @@ class SectionCarousel extends StatelessWidget {
                 listing: listings[i],
                 serverTime: serverTime,
                 onTap: () => onOpen?.call(listings[i]),
-                onFollow: () {},
+                /*
+                 * **وجرسُ المتابعة رُفع** — `onFollow: () {}` نداءٌ فارغ:
+                 * يُرسَم الجرسُ ويُضغط فلا يقع شيء. **وكان يكسر التخطيط
+                 * أيضًا**: ظهورُه يزيد الكرتَ سبعَ نقاطٍ على ‎٢٣٢‎ التي
+                 * يمنحها الكاروسيل، فيفيض أسفلُ كلّ كرتٍ في الرئيسية.
+                 * ولا متابعةَ في الخادم أصلًا (TASKS.md).
+                 */
               ),
             ),
           ),

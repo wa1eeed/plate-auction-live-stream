@@ -100,6 +100,39 @@ void main() {
       matchesGoldenFile('goldens/home-banners.png'),
     );
   });
+
+  /// **والشريحةُ تفتح وجهتَها** — §5.1.
+  ///
+  /// و`pumpAndSettle` لا تصلح هنا: البنرُ يحمل حركاتٍ دائمةً (`floatA`
+  /// و`holdBar` و`cyc`) فلا تسكن الشجرةُ أبدًا. فيُضخّ بمدّةٍ مقدَّرة.
+  testWidgets('شريحةُ البيع تفتح «اعرض لوحتك»', (tester) async {
+    var sell = 0;
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.rtl,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: Material(
+            color: AppColors.bg,
+            child: Center(
+              child: SizedBox(
+                width: 390,
+                child: HomeBanners(
+                  nearestAuctionEnd: _end,
+                  onSell: () => sell++,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('اعرض لوحتك'), warnIfMissed: false);
+    await tester.pump();
+    expect(sell, 1);
+  });
 }
 
 /// بنرٌ واحدٌ بعينه — يُفتح `PageView` على صفحته ويُجمَّد.

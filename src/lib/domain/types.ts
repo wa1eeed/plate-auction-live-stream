@@ -916,6 +916,14 @@ export type AccountOffer = Offer & {
 export type AccountOrder = Order & {
   plate: Plate
   counterpartName: string
+  /**
+   * جوّالُ الطرف الآخر — **ولا يُرسَل إلّا بعد أن يؤكّد المشتري بياناته**.
+   *
+   * فالجوّالُ بيانٌ شخصيّ، ولا يُكشف لمجرّد وقوع الصفقة بل حين يصير
+   * التواصلُ لازمًا للنقل (§5.7). و`null` قبل ذلك — والشاشةُ تعرض سطرَ
+   * القفل، لا رقمًا فارغًا.
+   */
+  counterpartPhone: string | null
   /** التفصيل المالي: كم خُصم من العربون وكم بقي للسداد */
   settlement: OrderSettlement
   /** مراحل الصفقة من نشأتها إلى إغلاقها */

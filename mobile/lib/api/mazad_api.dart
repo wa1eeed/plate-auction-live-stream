@@ -6,6 +6,7 @@ import '../models/listing.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/settings_screen.dart' show DeletionBlocker;
 import 'api_client.dart';
 import 'mapping.dart';
 
@@ -244,10 +245,31 @@ class MazadApi {
   Future<ActivityBundle> activity() async {
     final results = await Future.wait([orders(), listings()]);
     final mine = results[0] as OrdersBundle;
-    final market = (results[1] as MarketSnapshot).listings;
+    final snapshot = results[1] as MarketSnapshot;
+    final market = snapshot.listings;
+    final serverTime = snapshot.serverTime;
+
+    /*
+     * **و«بانتظارك» يجمع الصفقاتِ والتجاوزَ** — §5.6 يذكر أربعةَ أنواع.
+     *
+     * وكان يبني الصفقاتِ وحدها، فمن تجاوزه أحدٌ في مزادٍ لم يُعلَم إلّا
+     * بأن يفتح «مزايداتي» ويقارن بعينه. والبياناتُ في السوق المجلوب أصلًا:
+     * الخادمُ يُرسل مع كلّ لوحةٍ حالَ المزايد عليها.
+     *
+     * **وسومٌ وصلك لا يُبنى بعد**: لا مسارَ يُرجع السومَ على لوحاتي.
+     */
+    final outbid = market
+        .where(
+          (l) =>
+              l.saleType == SaleType.auction &&
+              l.standing == BidStanding.outbid &&
+              /* ومزادٌ انقضى لا يُزايَد فيه — فلا يُنادى عليه */
+              (l.endsAt == null || l.endsAt!.isAfter(serverTime)),
+        )
+        .map(_outbidItem);
 
     return ActivityBundle(
-      pending: mine.awaitingMe.map((o) => o.toPendingItem()).toList(),
+      pending: [...mine.awaitingMe.map((o) => o.toPendingItem()), ...outbid],
       orders: [...mine.purchases, ...mine.sales],
       /*
        * **ومزايداتي وعروضي تُشتقّ من السوق** لا من مسارٍ ثالث.
@@ -264,7 +286,7 @@ class MazadApi {
           .toList(),
       myOffers: market.where((l) => l.saleType == SaleType.offers).toList(),
       watching: market.where((l) => l.following).toList(),
-      serverTime: (results[1] as MarketSnapshot).serverTime,
+      serverTime: serverTime,
     );
   }
 
@@ -479,6 +501,65 @@ class MazadApi {
     body: {'name': name, 'email': email, 'password': password, 'phone': phone},
   );
 
+  /// **البائعُ يردّ على سوم** — `POST api/offers/{id}`.
+  ///
+  /// والقبولُ يُنشئ صفقةً، فيعود معرّفُها ليُفتح مسارُها في الحال.
+  Future<String?> respondToOffer(String offerId, {required bool accept}) async {
+    final json = await _client.post(
+      '/api/offers/$offerId',
+      body: {'decision': accept ? 'accept' : 'decline'},
+    );
+    return json['orderId'] as String?;
+  }
+
+  /// **ما تحتاجه شاشةُ الإعدادات** — الملفُّ وعوائقُ الحذف معًا.
+  ///
+  /// **والعوائقُ تُقرأ مع الشاشة لا عند الضغط**: §٥٫١٠ تقول إنّ من عليه
+  /// معلّقٌ يرى «لا يمكن حذف حسابك الآن» بقائمتها. وكانت تُمرَّر فارغةً
+  /// دائمًا، فتَعِد الورقةُ بحذفٍ يردّه الخادمُ بـ٤٠٩.
+  ///
+  /// وسقوطُ العوائق لا يُسقط الشاشة: الملفُّ هو محتواها.
+  Future<SettingsBundle> settings() async {
+    final me = await profile();
+    final blockers = await deletionBlockers().catchError(
+      (_) => const <DeletionBlocker>[],
+    );
+    return SettingsBundle(profile: me, blockers: blockers);
+  }
+
+  /// **ما يمنع حذفَ الحساب** — `GET api/account/delete`.
+  ///
+  /// تُقرأ قبل أن تُعرض ورقةُ الحذف: من عليه صفقةٌ قائمةٌ أو مالٌ محجوزٌ
+  /// يُقال له بأيِّها يبدأ، لا يُترك يضغط ثمّ يُردّ.
+  Future<List<DeletionBlocker>> deletionBlockers() async {
+    final json = await _client.get('/api/account/delete');
+    return ((json['blockers'] as List?) ?? const []).whereType<Map>().map((
+      raw,
+    ) {
+      final b = raw.cast<String, dynamic>();
+      return DeletionBlocker(
+        _blockerLabel(b['kind'] as String?),
+        b['detail'] as String? ?? '',
+      );
+    }).toList();
+  }
+
+  /// **وعنوانُ العائق من نوعه** — والتفصيلُ يأتي من الخادم بأرقامه.
+  static String _blockerLabel(String? kind) => switch (kind) {
+    'open_orders' => 'صفقات لم تكتمل',
+    'live_listings' => 'إعلانات قائمة',
+    'held_funds' => 'مبلغ محجوز',
+    'wallet_balance' => 'رصيد في محفظتك',
+    'live_bids' => 'مزايدات قائمة',
+    _ => 'معلّق',
+  };
+
+  /// **حذفُ الحساب بطلب صاحبه** — `POST api/account/delete`.
+  ///
+  /// وهو تعطيلٌ ثلاثين يومًا ثمّ حذف، لا محوٌ في الحال: محوُ صفِّه محوٌ
+  /// لتاريخٍ ماليٍّ تقابله صفقاتٌ وفواتير. والجلسةُ تُمحى في الخادم فورًا.
+  Future<void> deleteAccount() => _client.post('/api/account/delete');
+
   /// خروج — `POST api/auth/logout`.
   Future<void> logout() async {
     await _client.post('/api/auth/logout');
@@ -516,6 +597,14 @@ class AccountBundle {
   final List<Listing> myPlates;
 }
 
+/// الملفُّ وعوائقُ الحذف — ما تفتح به شاشةُ الإعدادات.
+class SettingsBundle {
+  const SettingsBundle({required this.profile, required this.blockers});
+
+  final ProfileView profile;
+  final List<DeletionBlocker> blockers;
+}
+
 /// مشترياتٌ ومبيعاتٌ معًا.
 class OrdersBundle {
   const OrdersBundle({required this.purchases, required this.sales});
@@ -534,6 +623,28 @@ class OrdersBundle {
     ...sales.where((o) => o.stage == OrderStage.transfer),
   ];
 }
+
+/// **مزادٌ تجاوزك فيه أحد** — بندٌ في «بانتظارك».
+PendingItem _outbidItem(Listing l) => PendingItem(
+  id: l.id,
+  kind: PendingKind.outbid,
+  role: ActorRole.buyer,
+  letters: l.letters,
+  number: l.number,
+  plateKind: l.kind,
+  format: l.format,
+  emblem: l.emblem,
+  saleLabel: 'مزاد',
+  kicker: 'مزاد ${l.reference}',
+  title: 'تجاوزك أحدٌ في المزاد',
+  sub: 'أعلى مزايدة الآن ${_riyals(l.price)} ر.س',
+  cta: 'زايد من جديد',
+);
+
+String _riyals(int halalas) => (halalas ~/ 100).toString().replaceAllMapped(
+  RegExp(r'(\d)(?=(\d{3})+$)'),
+  (m) => '${m[1]},',
+);
 
 /// يحوّل صفقةً إلى بندٍ في «بانتظارك».
 extension OrderPending on OrderView {

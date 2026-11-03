@@ -1358,6 +1358,14 @@ async function decorateOrders(
       ...order,
       plate: toPlate(listing),
       counterpartName: other?.displayName ?? 'مستخدم',
+      /*
+       * **والجوّالُ يُفتح بتأكيد المشتري بياناته لا قبله.**
+       *
+       * فالطرفان يحتاجان التواصلَ عند النقل في أبشر — وقبله لا حاجة،
+       * وكشفُ جوّالِ إنسانٍ بلا حاجةٍ إفشاء. وكان لا يُرسَل أصلًا، فبقيت
+       * البطاقةُ مقفلةً في كلّ مرحلةٍ ولو تمّت الصفقة.
+       */
+      counterpartPhone: order.transferIdentity ? (other?.phone ?? null) : null,
       settlement,
       timeline: buildOrderTimeline(order, settlement, now, side),
     })
