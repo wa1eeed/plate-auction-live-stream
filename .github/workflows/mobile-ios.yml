@@ -225,12 +225,20 @@ jobs:
             -authenticationKeyIssuerID "$ISSUER_ID"
           )
 
-          # **ولا تُمرَّر هويّةُ توقيعٍ هنا.**
+          # **وأسلوبُ التوقيع يُمرَّر `Automatic` — ولا تُمرَّر هويّة.**
           #
-          # فالتوقيعُ تلقائيّ، وتحديدُ الهويّة يدويًّا يُسقطه بـ«إعداداتُ
-          # تعريفٍ متضاربة». وكان قالبُ Flutter يفرض `iPhone Developer` في
-          # إعداد `Release` فيطلب Xcode ملفَّ تطويرٍ لأرشفةٍ متجرٍ — فنُزع
-          # من المشروع نفسِه، وتُرك لـXcode أن يختار التوزيع.
+          # قُرئ في سجلّ بناءٍ ساقط: `CODE_SIGN_STYLE=` فارغةً و
+          # `CODE_SIGN_IDENTITY="Apple Development"`. فهدفُ `Runner` في قالب
+          # Flutter لا يضبط الأسلوبَ أصلًا (المضبوطُ لهدف الفحوص وحده)،
+          # وبفراغه يختار Xcode التطويرَ — وملفُّ التطوير يشترط أجهزةً
+          # مسجّلة، فيسقط بـ«فريقُك بلا أجهزة» على أرشفةٍ لا جهازَ فيها.
+          #
+          # ومشروعُ Capacitor الذي كان يُرفع بنجاحٍ يضبطها `Automatic` في
+          # هدفه — فهذا هو الفرقُ لا غيرُه.
+          #
+          # **ولا تُمرَّر الهويّةُ معها**: مع التوقيع التلقائيّ يختارها Xcode،
+          # وتحديدُها يدويًّا يُسقط البناءَ بـ«إعداداتُ تعريفٍ متضاربة» —
+          # جُرّب فسقط.
           xcodebuild archive \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
@@ -238,7 +246,8 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
-            DEVELOPMENT_TEAM="$TEAM_ID"
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
 
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
