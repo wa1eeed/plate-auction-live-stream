@@ -225,7 +225,7 @@ jobs:
             -authenticationKeyIssuerID "$ISSUER_ID"
           )
 
-          # **وأسلوبُ التوقيع يُمرَّر `Automatic` — ولا تُمرَّر هويّة.**
+          # **وإعدادُ التوقيع في المشروع لا هنا.**
           #
           # قُرئ في سجلّ بناءٍ ساقط: `CODE_SIGN_STYLE=` فارغةً و
           # `CODE_SIGN_IDENTITY="Apple Development"`. فهدفُ `Runner` في قالب
@@ -233,12 +233,13 @@ jobs:
           # وبفراغه يختار Xcode التطويرَ — وملفُّ التطوير يشترط أجهزةً
           # مسجّلة، فيسقط بـ«فريقُك بلا أجهزة» على أرشفةٍ لا جهازَ فيها.
           #
-          # ومشروعُ Capacitor الذي كان يُرفع بنجاحٍ يضبطها `Automatic` في
-          # هدفه — فهذا هو الفرقُ لا غيرُه.
+          # ومُرّرت من هنا فطُبّقت — وبقي يختار التطوير. فتحديدُ الهويّة من
+          # سطر الأمر يتعارض مع التوقيع التلقائيّ («إعداداتُ تعريفٍ متضاربة»)،
+          # والأسلوبُ وحده لا يكفي.
           #
-          # **ولا تُمرَّر الهويّةُ معها**: مع التوقيع التلقائيّ يختارها Xcode،
-          # وتحديدُها يدويًّا يُسقط البناءَ بـ«إعداداتُ تعريفٍ متضاربة» —
-          # جُرّب فسقط.
+          # فكُتب الاثنان في `project.pbxproj` حيث كتبهما مشروعُ Capacitor —
+          # `Automatic` مع `Apple Distribution` في `Release` و`Profile`. فلا
+          # تعارضَ، ويعرف Xcode أنّ المقصدَ متجرٌ لا جهازُ مطوّر.
           xcodebuild archive \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
@@ -246,8 +247,7 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic
+            DEVELOPMENT_TEAM="$TEAM_ID"
 
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
