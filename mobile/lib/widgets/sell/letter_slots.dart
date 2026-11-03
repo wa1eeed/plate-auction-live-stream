@@ -50,13 +50,27 @@ class LetterSlots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < 3; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(child: _slot(context, i)),
+    /*
+     * **والخاناتُ تُصفّ يسار→يمين كاللوحة لا كالعربيّة.**
+     *
+     * فاللوحةُ تُرسم `dir="ltr"` كما في حزمة التسليم: أوّلُ حرفٍ يسارًا،
+     * وتحته مقابلُه اللاتينيّ. وكان صفُّ الخانات يتبع اتّجاه التطبيق
+     * (عربيٌّ، فأولاها يمينًا) — فيملأ المستخدمُ الخانةَ اليمنى أوّلًا
+     * ويراها في المعاينة يسارًا. فتبدو اللوحةُ مقلوبةً وهي تطابق ما أُدخل.
+     *
+     * والأصلحُ أن يتّفق المُدخَلُ والمعاينةُ على اتّجاهٍ واحد — فما يُملأ
+     * أوّلًا يُرى أوّلًا.
+     */
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: _slot(context, i)),
+          ],
         ],
-      ],
+      ),
     );
   }
 

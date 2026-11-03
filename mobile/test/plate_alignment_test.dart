@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mazad/models/listing.dart';
 import 'package:mazad/widgets/plate.dart';
 
 /// **كلُّ حرفٍ عربيٍّ فوق ما يقابله من اللاتينيّ تمامًا** — أوّلُ قواعد اللوحة.

@@ -44,7 +44,16 @@ class SessionScope extends InheritedNotifier<Session> {
 }
 
 /// ما يحتاج حسابًا — ومنه تُشتقّ جملةُ المطالبة.
-enum GatedAction { bid, buy, offer, follow, sell, wallet, orders }
+enum GatedAction {
+  bid,
+  buy,
+  offer,
+  follow,
+  sell,
+  wallet,
+  orders,
+  notifications,
+}
 
 extension GatedActionText on GatedAction {
   /// **ولكلّ وظيفةٍ جملتُها** — لا «سجّل الدخول للمتابعة».
@@ -52,6 +61,10 @@ extension GatedActionText on GatedAction {
   /// فمن ضغط «زايد» يريد أن يُقال له لماذا يلزمه حساب: العربونُ يُحجز من
   /// محفظته، وهي لا تكون إلّا لحساب.
   (String, String) get prompt => switch (this) {
+    GatedAction.notifications => (
+      'تحتاج حسابًا لترى إشعاراتك',
+      'الإشعارات تخصّ مزايداتك وصفقاتك — ولا تكون إلّا لحساب.',
+    ),
     GatedAction.bid => (
       'تحتاج حسابًا لتزايد',
       'العربون يُحجز من محفظتك مع أوّل مزايدة، والمحفظة لا تكون إلّا '

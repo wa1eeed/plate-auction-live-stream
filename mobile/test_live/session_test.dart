@@ -129,6 +129,31 @@ void main() {
     }
   });
 
+  /// **مِجسُّ «حسابي»** — أيُّ النداءات الثلاثة يسقط.
+  ///
+  /// فالشاشةُ تجمع الملفَّ والمحفظةَ والسوقَ في `Future.wait`، وهي تسقط
+  /// بأوّل إخفاق فلا يُعرف أيُّها. وقد ظهرت للمستخدم «تعذّر إتمام الطلب»،
+  /// وهي رسالةٌ احتياطيّةٌ تعني أنّ الردَّ لم يكن JSON أصلًا.
+  test('حسابي: أيُّ نداءٍ يسقط', () async {
+    if (!ready()) return;
+
+    for (final (name, call) in <(String, Future<void> Function())>[
+      ('الملفّ', () => api.profile()),
+      ('المحفظة', () => api.wallet()),
+      ('السوق', () => api.listings()),
+      ('الحزمة كاملةً', () => api.account()),
+    ]) {
+      try {
+        await call();
+        // ignore: avoid_print
+        print('  ✓ $name');
+      } catch (e) {
+        // ignore: avoid_print
+        print('  ✗ $name — $e');
+      }
+    }
+  });
+
   /// **ولا تُقرأ صفقةُ غيرك** — وهو ما يحرسه المسار.
   test('ومعرّفٌ ليس لك يُردّ', () async {
     if (!ready()) return;

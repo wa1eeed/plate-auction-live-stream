@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mazad/widgets/sell/letter_slots.dart';
+import 'package:mazad/widgets/plate.dart';
 import 'package:mazad/design/tokens.dart';
 import 'package:mazad/screens/sell_screen.dart';
 
@@ -22,6 +24,7 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
 );
 
 void main() {
+  _slotDirection();
   setUpAll(loadAllFonts);
 
   testWidgets('لوحُ إضافة لوحة', (tester) async {
@@ -109,5 +112,52 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
     expect(tester.takeException(), isNull);
+  });
+}
+
+/// **الخاناتُ واللوحةُ بالاتّجاه نفسِه** — وهو ما انقلب في أوّل تجربةٍ
+/// على جهاز.
+///
+/// فاللوحةُ تُرسم `dir="ltr"` كما في حزمة التسليم: أوّلُ حرفٍ يسارًا وتحته
+/// مقابلُه اللاتينيّ. وكان صفُّ الخانات يتبع اتّجاه التطبيق (عربيٌّ، فأولاها
+/// يمينًا) — فيملأ المستخدمُ اليمنى أوّلًا ويراها في المعاينة يسارًا،
+/// فتبدو اللوحةُ مقلوبةً وهي تطابق ما أُدخل.
+void _slotDirection() {
+  testWidgets('أوّلُ خانةٍ وأوّلُ حرفٍ في اللوحة كلاهما يسارًا', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 700);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: Column(
+              children: [
+                LetterSlots(letters: const ['ق', 'و', 'س'], onChanged: (_) {}),
+                const SizedBox(height: 40),
+                const SizedBox(
+                  height: 110,
+                  child: SaudiPlate(letters: 'قوس', number: '1234'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    double x(String ch, int skip) =>
+        (find.text(ch).evaluate().elementAt(skip).renderObject! as RenderBox)
+            .localToGlobal(Offset.zero)
+            .dx;
+
+    /* الظهورُ الأوّلُ في الخانات والثاني في اللوحة */
+    expect(x('ق', 0) < x('س', 0), isTrue, reason: 'أوّلُ خانةٍ يسارًا');
+    expect(x('ق', 1) < x('س', 1), isTrue, reason: 'وأوّلُ حرفٍ في اللوحة كذلك');
   });
 }

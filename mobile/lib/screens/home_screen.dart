@@ -15,7 +15,15 @@ class HomeScreen extends StatelessWidget {
     super.key,
     required this.listings,
     required this.serverTime,
+    this.availableHalalas = 0,
+    this.pendingCount = 0,
+    this.pendingFirst,
+    this.hasUnread = false,
     this.onOpenStory,
+    this.onOpen,
+    this.onOpenWallet,
+    this.onOpenNotifications,
+    this.onOpenPending,
   });
 
   /// ما يُعرض في السوق — يُقسَّم هنا على الأقسام الثلاثة.
@@ -25,7 +33,23 @@ class HomeScreen extends StatelessWidget {
   final DateTime serverTime;
 
   /// تُفتح قصّةٌ في عارضٍ يملأ الشاشة.
+  /// **الرصيدُ المتاحُ من الخادم** — وكان رقمًا مكتوبًا في الشاشة.
+  final int availableHalalas;
+
+  /// ما ينتظر ردَّه — وبصفره يُخفى الشريطُ بدل أن يَعِد بثلاثةٍ لا توجد.
+  final int pendingCount;
+  final String? pendingFirst;
+
+  final bool hasUnread;
+
   final ValueChanged<Story>? onOpenStory;
+
+  /// **تُفتح صفحةُ اللوحة من كرت الكاروسيل** — وبدونه كروتٌ لا تُضغط.
+  final ValueChanged<Listing>? onOpen;
+
+  final VoidCallback? onOpenWallet;
+  final VoidCallback? onOpenNotifications;
+  final VoidCallback? onOpenPending;
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +82,31 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 76),
       children: [
         const SizedBox(height: 6),
-        const HomeHeader(availableHalalas: 3850000, hasUnread: true),
+        HomeHeader(
+          availableHalalas: availableHalalas,
+          hasUnread: hasUnread,
+          onWallet: onOpenWallet,
+          onNotifications: onOpenNotifications,
+        ),
         const SizedBox(height: 22),
         StoriesStrip(onOpen: onOpenStory),
         const SizedBox(height: 22),
-        const PendingBar(
-          count: 3,
-          title: '3 أمور بانتظار ردّك',
-          first: 'أكّد بياناتك لنقل الملكية',
+        /* وما لا ينتظر ردًّا لا يُعلَن عنه شريطٌ يقول «ثلاثةُ أمور» */
+        if (pendingCount > 0) ...[
+          PendingBar(
+            count: pendingCount,
+            title:
+                '$pendingCount ${pendingCount == 1 ? 'أمر' : 'أمور'}'
+                ' بانتظار ردّك',
+            first: pendingFirst ?? '',
+            onTap: onOpenPending,
+          ),
+          const SizedBox(height: 22),
+        ],
+        HomeBanners(
+          nearestAuctionEnd: nearestEnd,
+          availableHalalas: availableHalalas,
         ),
-        const SizedBox(height: 22),
-        HomeBanners(nearestAuctionEnd: nearestEnd, availableHalalas: 3850000),
         const SizedBox(height: 22),
         SectionCarousel(
           eyebrow: 'مباشر الآن',
@@ -76,6 +114,7 @@ class HomeScreen extends StatelessWidget {
           title: 'مزادات جارية',
           listings: auctions,
           serverTime: now,
+          onOpen: onOpen,
         ),
         const SizedBox(height: 22),
         SectionCarousel(
@@ -86,6 +125,7 @@ class HomeScreen extends StatelessWidget {
               .where((l) => l.saleType == SaleType.fixed)
               .toList(),
           serverTime: now,
+          onOpen: onOpen,
         ),
         const SizedBox(height: 22),
         SectionCarousel(
@@ -96,6 +136,7 @@ class HomeScreen extends StatelessWidget {
               .where((l) => l.saleType == SaleType.offers)
               .toList(),
           serverTime: now,
+          onOpen: onOpen,
         ),
         const SizedBox(height: 22),
         const GuaranteesBar(),

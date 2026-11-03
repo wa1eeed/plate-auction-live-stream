@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../design/tokens.dart';
 import '../screens/login_screen.dart';
 import 'password_login_screen.dart';
 import 'register_screen.dart';
@@ -39,21 +40,39 @@ class _AuthFlowState extends State<AuthFlow> {
         /* ورجوعُ النظام يُغلق المسارَ ولا يُخرج من التطبيق */
         widget.onClose();
       },
-      child: switch (_route) {
-        AuthRoute.otp => LoginScreen(
-          onDone: widget.onSignedIn,
-          onPasswordLogin: () => setState(() => _route = AuthRoute.password),
-          onRegister: () => setState(() => _route = AuthRoute.register),
-        ),
-        AuthRoute.password => PasswordLoginScreen(
-          onBack: () => setState(() => _route = AuthRoute.otp),
-          onDone: widget.onSignedIn,
-        ),
-        AuthRoute.register => RegisterScreen(
-          onBack: () => setState(() => _route = AuthRoute.otp),
-          onDone: widget.onSignedIn,
-        ),
-      },
+      /*
+       * **و`Scaffold` هنا — وبدونه تخرج الشاشةُ سوداءَ موشومة.**
+       *
+       * فأبوابُ الدخول تُصيَّر مباشرةً تحت `MaterialApp.home`، و`AppShell`
+       * وحدَه كان يحمل `Scaffold`. وبلا `Material` فوق النصّ يرسمه Flutter
+       * بخطوطٍ تحذيريّةٍ تحته على خلفيةٍ سوداء — وهو ما رآه المستخدم.
+       *
+       * وثلاثتُها بلا `Scaffold` فيها، فيُوضع هنا مرّةً للثلاثة.
+       */
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        /* والحقولُ تُزاح فوق لوحة المفاتيح بدل أن تختفي تحتها */
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(child: _screen()),
+      ),
     );
+  }
+
+  Widget _screen() {
+    return switch (_route) {
+      AuthRoute.otp => LoginScreen(
+        onDone: widget.onSignedIn,
+        onPasswordLogin: () => setState(() => _route = AuthRoute.password),
+        onRegister: () => setState(() => _route = AuthRoute.register),
+      ),
+      AuthRoute.password => PasswordLoginScreen(
+        onBack: () => setState(() => _route = AuthRoute.otp),
+        onDone: widget.onSignedIn,
+      ),
+      AuthRoute.register => RegisterScreen(
+        onBack: () => setState(() => _route = AuthRoute.otp),
+        onDone: widget.onSignedIn,
+      ),
+    };
   }
 }

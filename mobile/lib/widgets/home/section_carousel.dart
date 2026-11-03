@@ -19,6 +19,7 @@ class SectionCarousel extends StatelessWidget {
     required this.listings,
     required this.serverTime,
     this.onSeeAll,
+    this.onOpen,
   });
 
   final String eyebrow;
@@ -27,6 +28,9 @@ class SectionCarousel extends StatelessWidget {
   final List<Listing> listings;
   final DateTime serverTime;
   final VoidCallback? onSeeAll;
+
+  /// تُفتح صفحةُ اللوحة — وبدونه يُعرض كرتٌ لا يُضغط.
+  final ValueChanged<Listing>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +97,7 @@ class SectionCarousel extends StatelessWidget {
               child: PlateCard(
                 listing: listings[i],
                 serverTime: serverTime,
+                onTap: () => onOpen?.call(listings[i]),
                 onFollow: () {},
               ),
             ),

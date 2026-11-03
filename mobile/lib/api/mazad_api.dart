@@ -42,6 +42,42 @@ class MazadApi {
     );
   }
 
+  /// **ما تحتاجه الشاشةُ الرئيسيّة** — السوقُ ومعه ترويستُه.
+  ///
+  /// فالترويسةُ تعرض الرصيدَ المتاحَ وعددَ ما ينتظر ردَّك ونقطةَ الإشعارات،
+  /// وثلاثتُها خلف الحساب. وكانت أرقامًا مكتوبةً في الشاشة.
+  ///
+  /// **ولمن لا حسابَ له يُجلب السوقُ وحده** — فثلاثةُ طلباتٍ تُردّ ‎٤٠١‎
+  /// تُبطئ أوّلَ شاشةٍ يراها الزائرُ بلا فائدة.
+  ///
+  /// **وإخفاقُ واحدٍ منها لا يُفرغ الشاشة**: السوقُ هو المحتوى، والترويسةُ
+  /// زينتُه. فتُقرأ ما وصل ويُترك ما لم يصل بصفره.
+  Future<HomeBundle> home({required bool signedIn}) async {
+    final market = await listings();
+    if (!signedIn) return HomeBundle(market: market);
+
+    final rest = await Future.wait([
+      wallet().then<Object?>((w) => w).catchError((_) => null),
+      orders().then<Object?>((o) => o).catchError((_) => null),
+      notifications().then<Object?>((n) => n).catchError((_) => null),
+    ]);
+
+    final w = rest[0] as WalletView?;
+    final mine = rest[1] as OrdersBundle?;
+    final notes = rest[2] as List<AppNotification>?;
+    final waiting = mine?.awaitingMe ?? const [];
+
+    return HomeBundle(
+      market: market,
+      availableHalalas: w?.available ?? 0,
+      pendingCount: waiting.length,
+      pendingFirst: waiting.isEmpty
+          ? null
+          : waiting.first.toPendingItem().title,
+      hasUnread: notes?.any((n) => n.unread) ?? false,
+    );
+  }
+
   /// تفاصيلُ لوحة — `GET api/listings/{id}`.
   Future<ListingDetailView> listingDetail(String id) async =>
       ApiMapping.listingDetail(await _client.get('/api/listings/$id'));
@@ -364,6 +400,23 @@ class MazadApi {
     await _client.post('/api/auth/logout');
     await _client.clearSession();
   }
+}
+
+/// ما تحتاجه الشاشةُ الرئيسيّة — سوقٌ وترويسة.
+class HomeBundle {
+  const HomeBundle({
+    required this.market,
+    this.availableHalalas = 0,
+    this.pendingCount = 0,
+    this.pendingFirst,
+    this.hasUnread = false,
+  });
+
+  final MarketSnapshot market;
+  final int availableHalalas;
+  final int pendingCount;
+  final String? pendingFirst;
+  final bool hasUnread;
 }
 
 /// ما تحتاجه شاشةُ «حسابي» في ندوةٍ واحدة.

@@ -235,10 +235,13 @@ class _AppShellState extends State<AppShell> {
   }
 
   /// يفتح تبويبًا يحتاج حسابًا — أو يسأل أوّلًا.
-  Future<void> _openGatedTab(AppTab tab, GatedAction action) async {
-    if (await _gate(action)) {
-      if (mounted) setState(() => _tab = tab);
-    }
+  Future<void> _openGatedTab(AppTab tab, GatedAction action) =>
+      _openGated(action, () => _tab = tab);
+
+  /// **ويُغيَّر ما يُغيَّر بعد الإذن لا قبله** — وإلّا فُتحت شاشةٌ ثمّ رُدّت.
+  Future<void> _openGated(GatedAction action, VoidCallback change) async {
+    if (!await _gate(action)) return;
+    if (mounted) setState(change);
   }
 
   @override
@@ -253,21 +256,54 @@ class _AppShellState extends State<AppShell> {
             initialIndex: demoStories.indexOf(_story!),
             onClose: () => setState(() => _story = null),
           ),
-          AppTab.home => AsyncView<MarketSnapshot>(
+          AppTab.home => AsyncView<HomeBundle>(
+            load: () =>
+                ApiScope.of(context)
+                    .home(signedIn: SessionScope.of(context).signedIn),
+            builder: (context, h, reload) => HomeScreen(
+              listings: h.market.listings,
+              serverTime: h.market.serverTime,
+              availableHalalas: h.availableHalalas,
+              pendingCount: h.pendingCount,
+              pendingFirst: h.pendingFirst,
+              hasUnread: h.hasUnread,
+              onOpenStory: (s) => setState(() => _story = s),
+              /* والكرتُ يفتح صفحتَه في تاب السوق — فهو موضعُها */
+              onOpen: (l) => setState(() {
+                _open = l;
+                _tab = AppTab.market;
+              }),
+              onOpenWallet: () => _openGated(GatedAction.wallet, () {
+                _tab = AppTab.account;
+                _wallet = true;
+              }),
+              onOpenNotifications: () =>
+                  _openGated(GatedAction.notifications, () {
+                    _tab = AppTab.account;
+                    _notifs = true;
+                  }),
+              onOpenPending: () =>
+                  _openGated(GatedAction.orders, () => _tab = AppTab.activity),
+            ),
+          ),
+          /*
+           * **والسوقُ يقرأ الخادمَ لا البذرة.**
+           *
+           * كان يُرسم من `demoAll` — فمعرّفاتُ لوحاته ليست عند الخادم، ومن
+           * ضغط لوحةً سأل الخادمَ عن معرّفٍ لا يعرفه فقيل له «الإعلان غير
+           * موجود». وهي شاشةٌ كاملةٌ لا تعمل، وسببُها سطرٌ لم يُربط.
+           */
+          AppTab.market when _open == null => AsyncView<MarketSnapshot>(
             load: () => ApiScope.of(context).listings(),
-            builder: (context, snap, reload) => HomeScreen(
+            builder: (context, snap, reload) => MarketScreen(
               listings: snap.listings,
               serverTime: snap.serverTime,
-              onOpenStory: (s) => setState(() => _story = s),
+              onOpen: (l) => setState(() => _open = l),
             ),
           ),
           AppTab.market =>
             _open == null
-                ? MarketScreen(
-                    listings: demoAll(_now),
-                    serverTime: _now,
-                    onOpen: (l) => setState(() => _open = l),
-                  )
+                ? const SizedBox.shrink()
                 : AsyncView<ListingDetailView>(
                     /* وتفاصيلُ اللوحة تُجلب عند فتحها لا مع السوق كلِّه */
                     load: () => ApiScope.of(context).listingDetail(_open!.id),
