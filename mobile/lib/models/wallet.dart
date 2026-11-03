@@ -1,7 +1,27 @@
 import '../widgets/plate.dart';
 
 /// حركةٌ في كشف الحساب.
-enum LedgerKind { topup, withdrawal, hold, release, forfeit, purchase, payout }
+/// **أنواعُ القيد — اثنا عشر كما في الخادم** (`LedgerEntryType`).
+///
+/// وكانت سبعةً، فسقطت خمسةٌ منها إلى `topup` في التحويل: **فيُقرأ سطرُ
+/// عمولةٍ «شحن رصيد»** — رقمٌ خارجٌ يُعرَض داخلًا بعنوانٍ ليس له. وعددُها
+/// هنا عددُها هناك، فما استُجدّ في الخادم ظهر عطبًا في التحويل لا عنوانًا
+/// كاذبًا في الكشف.
+enum LedgerKind {
+  topup,
+  withdrawal,
+  hold,
+  release,
+  forfeit,
+  depositApplied,
+  saleProceeds,
+  purchase,
+  refund,
+  commission,
+  vat,
+  adjustment,
+  payout,
+}
 
 /// سطرٌ في كشف الحساب — **ولكلٍّ مرجعُه وحالُه وسببُه**.
 class LedgerEntry {
@@ -35,8 +55,13 @@ class LedgerEntry {
     LedgerKind.hold => 'حجز عربون',
     LedgerKind.release => 'فكّ عربون',
     LedgerKind.forfeit => 'مصادرة عربون',
+    LedgerKind.depositApplied => 'خصم العربون من الصفقة',
+    LedgerKind.saleProceeds || LedgerKind.payout => 'عائد بيع',
     LedgerKind.purchase => 'سداد قيمة لوحة',
-    LedgerKind.payout => 'عائد بيع',
+    LedgerKind.refund => 'ردّ سداد',
+    LedgerKind.commission => 'عمولة المنصّة',
+    LedgerKind.vat => 'ضريبة القيمة المضافة',
+    LedgerKind.adjustment => 'تسوية رصيد',
   };
 }
 
@@ -85,6 +110,14 @@ class WalletView {
 
   final List<HeldDeposit> deposits;
   final List<LedgerEntry> ledger;
+
+  /// **محفظةٌ لم تصل** — تُعرض أصفارًا في ترويسة «حسابي» ولا تُسقط الشاشة.
+  const WalletView.empty()
+    : available = 0,
+      balance = 0,
+      held = 0,
+      deposits = const [],
+      ledger = const [];
 }
 
 /// طرائقُ الشحن المفعَّلة — كما تقولها الإدارةُ لا كما يفترض الجهاز.

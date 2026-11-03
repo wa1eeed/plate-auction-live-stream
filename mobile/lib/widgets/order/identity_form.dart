@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../design/tokens.dart';
+import 'birth_date_field.dart';
 
 /// تقويمُ الميلاد — **وهو شرطٌ لا تفصيل**.
 enum BirthCalendar { hijri, gregorian }
@@ -31,30 +32,27 @@ class IdentityForm extends StatefulWidget {
 
 class _IdentityFormState extends State<IdentityForm> {
   final _id = TextEditingController();
-  final _birth = TextEditingController();
+  BirthDate? _birth;
   BirthCalendar _cal = BirthCalendar.hijri;
   bool _busy = false;
 
   @override
   void dispose() {
     _id.dispose();
-    _birth.dispose();
     super.dispose();
   }
 
   /// **رقمٌ من عشر خاناتٍ يبدأ بـ١ أو ٢** — مواطنٌ أو مقيم.
   bool get _idValid => RegExp(r'^[12]\d{9}$').hasMatch(_id.text.trim());
 
-  bool get _birthValid =>
-      RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(_birth.text.trim());
-
-  bool get _valid => !_busy && _idValid && _birthValid;
+  bool get _valid => !_busy && _idValid && _birth != null;
 
   Future<void> _submit() async {
     final send = widget.onSubmit;
-    if (send == null) return;
+    final birth = _birth;
+    if (send == null || birth == null) return;
     setState(() => _busy = true);
-    await send(_id.text.trim(), _birth.text.trim(), _cal);
+    await send(_id.text.trim(), birth.wire, _cal);
     if (mounted) setState(() => _busy = false);
   }
 
@@ -105,21 +103,30 @@ class _IdentityFormState extends State<IdentityForm> {
               ),
               _CalendarToggle(
                 value: _cal,
-                onChanged: (v) => setState(() => _cal = v),
+                /*
+                 * **وتبديلُ التقويم يُفرغ ما انتُقي.**
+                 *
+                 * فـ«‎١٤ رجب ‎١٤١٢‎» لا تعني شيئًا في الميلاديّ، وإبقاؤها
+                 * معروضةً بعد التبديل يُرسل هجريًّا بعلامةِ ميلاديّ.
+                 */
+                onChanged: (v) => setState(() {
+                  if (v != _cal) _birth = null;
+                  _cal = v;
+                }),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          _field(
-            controller: _birth,
-            hint: 'dd/mm/yyyy',
-            keyboard: TextInputType.datetime,
+          BirthDateField(
+            calendar: _cal,
+            value: _birth,
+            onChanged: (v) => setState(() => _birth = v),
           ),
           const SizedBox(height: 6),
           Text(
             _cal == BirthCalendar.hijri
-                ? 'مثل: 14/07/1412 — كما في الهوية الوطنية'
-                : 'مثل: 04/05/1990 — كما في الإقامة',
+                ? 'كما في الهوية الوطنية — هجري'
+                : 'كما في الإقامة — ميلادي',
             style: AppText.body(11, color: AppColors.neutral700),
           ),
           const SizedBox(height: 14),

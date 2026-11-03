@@ -18,6 +18,7 @@ class OrderScreen extends StatelessWidget {
     this.onOpenChat,
     this.onOpenInvoice,
     this.onConfirmIdentity,
+    this.onPay,
   });
 
   final OrderView order;
@@ -31,6 +32,9 @@ class OrderScreen extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onOpenChat;
   final VoidCallback? onOpenInvoice;
+
+  /// **يفتح ورقةَ السداد** — في مرحلة `pay` وللمشتري وحده.
+  final VoidCallback? onPay;
 
   /// يُرسل بياناتِ المشتري — ويُرجع `true` إن قُبلت.
   final Future<bool> Function(
@@ -201,27 +205,57 @@ class OrderScreen extends StatelessWidget {
   );
 
   /// نداءُ المرحلة لمن ليس عليه نموذج.
-  Widget _callCard() => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.banner),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(order.stageName, style: AppText.heading(17)),
-        const SizedBox(height: 6),
-        Text(
-          _callSub,
-          style: AppText.body(
-            12,
-            color: AppColors.neutral700,
-          ).copyWith(height: 1.5),
-        ),
-      ],
-    ),
-  );
+  ///
+  /// **ومرحلةُ السداد تحمل زرَّها** — فنداءٌ يقول «سدّد من محفظتك» ثمّ لا
+  /// يُسدَّد منه شيءٌ يُقرأ عطبًا، وقد كان كذلك.
+  Widget _callCard() {
+    final payable = order.stage == OrderStage.pay && order.youAreBuyer;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.banner),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(order.stageName, style: AppText.heading(17)),
+          const SizedBox(height: 6),
+          Text(
+            _callSub,
+            style: AppText.body(
+              12,
+              color: AppColors.neutral700,
+            ).copyWith(height: 1.5),
+          ),
+          if (payable && onPay != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: onPay,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'سدّد $_money ر.س',
+                  style: AppText.body(
+                    17,
+                    color: AppColors.neutral100,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   String get _callSub => switch (order.stage) {
     OrderStage.pay =>

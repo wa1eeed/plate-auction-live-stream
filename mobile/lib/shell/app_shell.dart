@@ -13,12 +13,14 @@ import '../widgets/common/external_link.dart';
 import '../widgets/common/toast.dart';
 import '../widgets/wallet/top_up_sheet.dart';
 import '../widgets/order/identity_form.dart';
+import '../widgets/order/pay_sheet.dart';
 import '../models/chat.dart';
 import '../models/demo_data.dart';
 import '../models/invoice.dart';
 import '../models/order.dart';
 import '../models/wallet.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/orders_screen.dart';
 import '../screens/activity_screen.dart';
 import '../screens/listing_screen.dart';
 import '../screens/order_screen.dart';
@@ -59,6 +61,9 @@ class _AppShellState extends State<AppShell> {
 
   /* لوحةٌ مفتوحةٌ فوق السوق — تُخفي شريطَ التبويب */
   Listing? _open;
+
+  /// **«صفقاتي»** — `null` مغلقةٌ، و`true` تُفتح على «مبيعاتي».
+  bool? _orders;
 
   /*
    * **صفقةٌ مفتوحةٌ فوق «نشاطي» — كائنُها لا رايةٌ تقول «مفتوحة».**
@@ -133,6 +138,110 @@ class _AppShellState extends State<AppShell> {
       kind: ToastKind.success,
     );
     reload();
+  }
+
+  /// **شاشةُ اللوحة** — تُفتح من السوق ومن «نشاطي» كذلك.
+  ///
+  /// فصفوفُ «مزايداتي» و«عروضي» و«أتابعها» لم تكن تُضغط: الكرتُ يقبل
+  /// `onTap` ولم يُمرَّر — فيرى المستخدمُ لوحاتَه ولا يصل إلى واحدةٍ منها.
+  /// وهي الشاشةُ نفسُها، فلا تُكتب مرّتين.
+  Widget _listingView() => AsyncView<ListingDetailView>(
+    /* وتفاصيلُ اللوحة تُجلب عند فتحها لا مع السوق كلِّه */
+    load: () => ApiScope.of(context).listingDetail(_open!.id),
+    builder: (context, detail, reload) => ListingScreen(
+      listing: detail.listing,
+      serverTime: _now,
+      bids: detail.bids,
+      depositHalalas: detail.depositAmount,
+      increment: detail.increment,
+      reserve: detail.reserve,
+      sellerName: detail.sellerName,
+      onBack: () => setState(() => _open = null),
+      onBid: (amount) => _act(
+        GatedAction.bid,
+        (api) => api.bid(_open!.id, amount),
+        success: 'سُجّلت مزايدتك',
+        then: reload,
+      ),
+      onBuy: () => _act(
+        GatedAction.buy,
+        (api) async => api.buy(_open!.id),
+        success: 'تمّ الشراء — سدّد لتُحجز لك',
+        then: reload,
+      ),
+      onOffer: () => _act(
+        GatedAction.offer,
+        (api) => api.offer(_open!.id, detail.nextBidAmount),
+        success: 'وصل سومك للبائع',
+        then: reload,
+      ),
+      onFollow: () => _gate(GatedAction.follow),
+    ),
+  );
+
+  /// **سدادُ الصفقة** — تُفتح الورقةُ بالمطلوب المحسوب من الخادم.
+  ///
+  /// ومآلاتُه ثلاثة: المحفظةُ تُسوّي فورًا فتنتقل الصفقةُ إلى تأكيد
+  /// البيانات، والبطاقةُ تُحوّل إلى صفحةٍ خارج التطبيق، والحوالةُ تُسجَّل
+  /// معلّقةً برقمٍ يُكتب فيها.
+  Future<void> _pay(OrderView order) async {
+    final api = ApiScope.of(context);
+
+    final info = await runValue(context, () => api.checkout(order.id));
+    if (info == null || !mounted) return;
+
+    final method = await showPaySheet(context, info);
+    if (method == null || !mounted) return;
+
+    final result = await runValue(
+      context,
+      () => api.payOrder(order.id, method),
+    );
+    if (result == null || !mounted) return;
+
+    /* وصفحةُ البوّابة تُفتح خارج التطبيق — كما في شحن الرصيد */
+    final url = result.redirectUrl;
+    if (url != null) {
+      final opened = await launchExternal(url);
+      if (!mounted) return;
+      if (!opened) {
+        showToast(
+          context,
+          'ما قدرنا نفتح صفحة الدفع — حاول مرّة ثانية',
+          kind: ToastKind.warning,
+        );
+        return;
+      }
+      await _refreshOpenOrder();
+      return;
+    }
+
+    if (!mounted) return;
+    showToast(
+      context,
+      result.settled
+          ? 'سُدّدت الصفقة — أكّد بياناتك ليبدأ البائع النقل'
+          : 'سُجّلت حوالتك برقم ${result.reference} — '
+                'اكتبه في الحوالة ليُعتمد سدادك',
+      kind: ToastKind.success,
+    );
+    await _refreshOpenOrder();
+  }
+
+  /// **تُعاد قراءةُ الصفقة المفتوحة** بعد ما يُغيّر مرحلتَها.
+  ///
+  /// فالشاشةُ تحمل نسخةً أُخذت من حزمة «نشاطي»، ولو بقيت على حالها بعد
+  /// السداد ظلّ زرُّ «سدّد» أمام من سدّد.
+  Future<void> _refreshOpenOrder() async {
+    final open = _openOrder;
+    if (open == null) return;
+
+    /* وتُقرأ وحدَها لا ضمن القائمة — ومن سقطت قراءتُه بقي على ما بيده */
+    final fresh = await ApiScope.of(context)
+        .order(open.id)
+        .then<OrderView?>((o) => o, onError: (_) => null);
+    if (!mounted || fresh == null) return;
+    setState(() => _openOrder = fresh);
   }
 
   /// **لا فاتورةَ بعد** — تُصدَر عند اكتمال الصفقة لا عند نشأتها.
@@ -302,41 +411,7 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
           AppTab.market =>
-            _open == null
-                ? const SizedBox.shrink()
-                : AsyncView<ListingDetailView>(
-                    /* وتفاصيلُ اللوحة تُجلب عند فتحها لا مع السوق كلِّه */
-                    load: () => ApiScope.of(context).listingDetail(_open!.id),
-                    builder: (context, detail, reload) => ListingScreen(
-                      listing: detail.listing,
-                      serverTime: _now,
-                      bids: detail.bids,
-                      depositHalalas: detail.depositAmount,
-                      increment: detail.increment,
-                      reserve: detail.reserve,
-                      sellerName: detail.sellerName,
-                      onBack: () => setState(() => _open = null),
-                      onBid: (amount) => _act(
-                        GatedAction.bid,
-                        (api) => api.bid(_open!.id, amount),
-                        success: 'سُجّلت مزايدتك',
-                        then: reload,
-                      ),
-                      onBuy: () => _act(
-                        GatedAction.buy,
-                        (api) async => api.buy(_open!.id),
-                        success: 'تمّ الشراء — سدّد لتُحجز لك',
-                        then: reload,
-                      ),
-                      onOffer: () => _act(
-                        GatedAction.offer,
-                        (api) => api.offer(_open!.id, detail.nextBidAmount),
-                        success: 'وصل سومك للبائع',
-                        then: reload,
-                      ),
-                      onFollow: () => _gate(GatedAction.follow),
-                    ),
-                  ),
+            _open == null ? const SizedBox.shrink() : _listingView(),
           AppTab.sell => SellScreen(
             onCancel: () => setState(() => _tab = AppTab.home),
             onPublish: (draft) => runAction(
@@ -395,19 +470,27 @@ class _AppShellState extends State<AppShell> {
             onBack: () => setState(() => _openOrder = null),
             onOpenChat: () => setState(() => _chat = true),
             onOpenInvoice: () => setState(() => _invoice = true),
-            onConfirmIdentity: (nationalId, birth, cal) => runAction(
-              context,
-              () => ApiScope.of(context).confirmIdentity(
-                _openOrder!.id,
-                nationalId: nationalId,
-                birthDate: birth,
-                birthCalendar: cal == BirthCalendar.hijri
-                    ? 'hijri'
-                    : 'gregorian',
-              ),
-              success: 'وصلت بياناتك للبائع',
-            ),
+            onPay: () => _pay(_openOrder!),
+            onConfirmIdentity: (nationalId, birth, cal) async {
+              final sent = await runAction(
+                context,
+                () => ApiScope.of(context).confirmIdentity(
+                  _openOrder!.id,
+                  nationalId: nationalId,
+                  birthDate: birth,
+                  birthCalendar: cal == BirthCalendar.hijri
+                      ? 'hijri'
+                      : 'gregorian',
+                ),
+                success: 'وصلت بياناتك للبائع',
+              );
+              /* ومرحلةُ الصفقة تنتقل بوصولها — فتُعاد قراءتُها */
+              if (sent) await _refreshOpenOrder();
+              return sent;
+            },
           ),
+          /* ولوحةٌ فُتحت من «نشاطي» يرجع ظهرُها إلى «نشاطي» */
+          AppTab.activity when _open != null => _listingView(),
           AppTab.activity => AsyncView<ActivityBundle>(
             load: () => ApiScope.of(context).activity(),
             builder: (context, a, reload) => ActivityScreen(
@@ -419,6 +502,22 @@ class _AppShellState extends State<AppShell> {
               /* والصفقةُ تُؤخذ من الحزمة التي في اليد — لا ندوةَ ثانية */
               onOpenOrder: (id) => setState(() {
                 _openOrder = a.orders.where((o) => o.id == id).firstOrNull;
+              }),
+              onOpenListing: (l) => setState(() => _open = l),
+            ),
+          ),
+          AppTab.account when _orders != null => AsyncView<OrdersBundle>(
+            load: () => ApiScope.of(context).orders(),
+            builder: (context, mine, reload) => OrdersScreen(
+              purchases: mine.purchases,
+              sales: mine.sales,
+              startOnSales: _orders!,
+              onBack: () => setState(() => _orders = null),
+              /* وكرتُ الصفقة يفتح مسارَها في «نشاطي» — موضعُه */
+              onOpen: (o) => setState(() {
+                _orders = null;
+                _openOrder = o;
+                _tab = AppTab.activity;
               }),
             ),
           ),
@@ -494,6 +593,7 @@ class _AppShellState extends State<AppShell> {
               onOpenNotifications: () => setState(() => _notifs = true),
               onOpenShowcase: () => setState(() => _showcase = true),
               onOpenHelp: () => setState(() => _help = true),
+              onOpenOrders: (sales) => setState(() => _orders = sales),
             ),
           ),
         },
@@ -513,6 +613,7 @@ class _AppShellState extends State<AppShell> {
               _settings ||
               _notifs ||
               _showcase ||
+              _orders != null ||
               _help ||
               _chat ||
               _invoice ||

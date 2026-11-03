@@ -25,6 +25,7 @@ class AccountScreen extends StatelessWidget {
     this.onOpenNotifications,
     this.onOpenShowcase,
     this.onOpenHelp,
+    this.onOpenOrders,
   });
 
   final String name;
@@ -42,6 +43,9 @@ class AccountScreen extends StatelessWidget {
   final VoidCallback? onOpenNotifications;
   final VoidCallback? onOpenShowcase;
   final VoidCallback? onOpenHelp;
+
+  /// **مشترياتي ومبيعاتي** — تفتح «صفقاتي» على التاب المقصود.
+  final ValueChanged<bool>? onOpenOrders;
 
   static const _links = <AccountLink>[
     (LucideIcons.shoppingCart, 'مشترياتي', 'كل ما اشتريته وتفاصيله وفواتيره'),
@@ -144,11 +148,14 @@ class AccountScreen extends StatelessWidget {
         for (var i = 0; i < _links.length; i++) ...[
           _MenuRow(
             link: _links[i],
+            /* وصفٌّ بلا وجهةٍ يُضغط فلا يقع شيء — فلا يبقى منها صفّ */
             onTap: switch (_links[i].$2) {
               'الإعدادات' => onOpenSettings,
               'الإشعارات' => onOpenNotifications,
               'معرض لوحاتي' => onOpenShowcase,
               'المساعدة' => onOpenHelp,
+              'مشترياتي' => () => onOpenOrders?.call(false),
+              'مبيعاتي' => () => onOpenOrders?.call(true),
               _ => null,
             },
           ),

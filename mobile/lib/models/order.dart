@@ -45,6 +45,7 @@ class OrderView {
     required this.format,
     required this.emblem,
     required this.price,
+    this.net,
     required this.buyerName,
     required this.sellerName,
     required this.youAreBuyer,
@@ -75,6 +76,13 @@ class OrderView {
   final PlateEmblem emblem;
 
   final int price;
+
+  /// **ما يُدفَع أو يُقبَض فعلًا** — الثمنُ ناقصَ العربون وزائدَ العمولة.
+  ///
+  /// و`null` لصفقةٍ لم تصل تسويتُها. ولا يُحسب هنا: قواعدُ العمولة
+  /// وضريبتها في الخادم، وحسابٌ موازٍ يفترق عنها عند أوّل تعديل.
+  final int? net;
+
   final String buyerName;
   final String sellerName;
 
@@ -157,6 +165,33 @@ class OrderView {
       OrderStage.transfer => 'بانتظارك لنقل الملكية',
       OrderStage.review => 'الإدارة تتحقّق من نقلك',
       OrderStage.done => 'اكتملت الصفقة — وصل عائدك',
+      _ => '',
+    };
+  }
+
+  /// **اسمُ المرحلة في وسمٍ ضيّق** — سطرٌ قصيرٌ لا نداءٌ كامل.
+  ///
+  /// فـ`stageName` نداءٌ يُكتب عنوانًا لشاشة («الدور على البائع: نقل
+  /// الملكية في أبشر»)، ووسمٌ في كرتٍ عرضُه بضعُ عشرات لا يسعه — فيُقطع
+  /// بنقاطٍ أو يفيض. وهذا يقول الحالَ في كلمتين أو ثلاث.
+  String get stageChip {
+    if (stage == OrderStage.cancelled) return 'ملغاة';
+    if (stage == OrderStage.defaulted) return 'انقضت مهلة السداد';
+    if (stage == OrderStage.done) return 'مكتملة';
+    if (youAreBuyer) {
+      return switch (stage) {
+        OrderStage.pay => 'بانتظار سدادك',
+        OrderStage.id => 'بانتظارك لتأكيد بياناتك',
+        OrderStage.transfer => 'بانتظار نقل البائع',
+        OrderStage.review => 'الإدارة تتحقّق',
+        _ => '',
+      };
+    }
+    return switch (stage) {
+      OrderStage.pay => 'بانتظار سداد المشتري',
+      OrderStage.id => 'بانتظار بيانات المشتري',
+      OrderStage.transfer => 'بانتظارك لنقل الملكية',
+      OrderStage.review => 'الإدارة تتحقّق',
       _ => '',
     };
   }

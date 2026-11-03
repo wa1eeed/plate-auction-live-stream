@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/design/tokens.dart';
 import 'package:mazad/models/demo_data.dart';
+import 'package:mazad/models/listing.dart';
 import 'package:mazad/screens/activity_screen.dart';
+import 'package:mazad/widgets/market_row_card.dart';
 
 import 'font_sheet.dart';
 
@@ -24,12 +26,16 @@ Widget _wrap(Widget child, {Size size = const Size(390, 844)}) => MaterialApp(
   ),
 );
 
-ActivityScreen _screen({bool empty = false}) => ActivityScreen(
+ActivityScreen _screen({
+  bool empty = false,
+  ValueChanged<Listing>? onOpenListing,
+}) => ActivityScreen(
   pending: empty ? const [] : demoPending(),
   myBids: demoAuctions(_now),
   myOffers: demoOffers(_now),
   watching: demoFixed(_now),
   serverTime: _now,
+  onOpenListing: onOpenListing,
 );
 
 void main() {
@@ -99,6 +105,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ما عليك شيء الآن'), findsOneWidget);
+  });
+
+  /// **وصفُّ اللوحة في التابات الثلاثة يفتح صفحتَها.**
+  ///
+  /// فـ`MarketRowCard` يقبل `onTap` ولم يكن يُمرَّر — فصفوفُ «مزايداتي»
+  /// و«عروضي» و«أتابعها» تُضغط فلا يقع شيء.
+  testWidgets('صفوفُ عروضي ومزايداتي تُفتح', (tester) async {
+    Listing? opened;
+    await tester.pumpWidget(_wrap(_screen(onOpenListing: (l) => opened = l)));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    for (final tab in ['مزايداتي', 'عروضي', 'أتابعها']) {
+      opened = null;
+      await tester.tap(find.text(tab));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byType(MarketRowCard).first);
+      await tester.pump();
+      expect(opened, isNotNull, reason: 'صفُّ «$tab» لا يُفتح');
+    }
   });
 
   testWidgets('لا تفيض الشاشةُ على عرض 360', (tester) async {

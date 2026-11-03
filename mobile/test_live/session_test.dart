@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazad/api/api_client.dart';
 import 'package:mazad/api/mazad_api.dart';
+import 'package:mazad/models/order.dart';
 
 /// **فحصٌ بجلسةٍ حقيقيّة على الخادم الحقيقيّ.**
 ///
@@ -152,6 +153,41 @@ void main() {
         print('  ✗ $name — $e');
       }
     }
+  });
+
+  /// **والصفقةُ تُقرأ وحدَها وتُقرأ صفحةُ سدادها.**
+  ///
+  /// فمساراها (`GET api/orders/{id}` و`GET api/checkout/{id}`) لم يكونا
+  /// موجودين: الويبُ يقرؤهما في الخادم قبل التصيير، والتطبيقُ يسألهما
+  /// بالشبكة — فكان يأتيه ‎٤٠٥‎.
+  test('صفقةٌ بمعرّفها، وصفحةُ سدادها', () async {
+    if (!ready()) return;
+
+    final mine = await api.orders();
+    final one = [...mine.purchases, ...mine.sales].firstOrNull;
+    if (one == null) {
+      markTestSkipped('لا صفقةَ في هذا الحساب');
+      return;
+    }
+
+    final fresh = await api.order(one.id);
+    expect(fresh.id, one.id);
+    expect(fresh.reference, isNotEmpty);
+    expect(fresh.youAreBuyer, one.youAreBuyer);
+
+    /* وصفحةُ السداد للمشتري وحده، وفي مرحلة السداد وحدها */
+    final payable = mine.purchases
+        .where((o) => o.stage == OrderStage.pay)
+        .firstOrNull;
+    if (payable == null) {
+      markTestSkipped('لا صفقةَ بانتظار السداد');
+      return;
+    }
+
+    final view = await api.checkout(payable.id);
+    expect(view.due, greaterThan(0));
+    expect(view.methods, isNotEmpty);
+    expect(view.plateLabel, isNotEmpty);
   });
 
   /// **ولا تُقرأ صفقةُ غيرك** — وهو ما يحرسه المسار.

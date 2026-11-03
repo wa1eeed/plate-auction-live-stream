@@ -106,22 +106,97 @@ void main() {
   });
 
   /// **ولا يُرسَل نموذجٌ ناقص** — زرٌّ باهتٌ قبل اكتمال البيانات.
-  testWidgets('الزرُّ لا يُرسل حتى يصحّ الرقمُ والتاريخ', (tester) async {
-    String? sent;
-    await tester.pumpWidget(_wrap(OrderScreen(order: _order())));
+  testWidgets('الزرُّ لا يُرسل حتى يصحّ الرقمُ ويُنتقى التاريخ', (
+    tester,
+  ) async {
+    String? sentId;
+    String? sentBirth;
+    /*
+     * **وسطحُ الفحص يتّسع للزرّ.**
+     *
+     * فالافتراضيُّ ‎٨٠٠×٦٠٠‎، والزرُّ في الصفقة أسفلُ من ذلك — فتسقط
+     * النقرةُ خارج السطح ولا يقع شيء. وكان الفحصُ قبلُ يقرأ من ذلك أنّ
+     * الزرَّ امتنع، وهو لم يُضغط أصلًا.
+     */
+    tester.view.physicalSize = const Size(780, 1688);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      _wrap(
+        OrderScreen(
+          order: _order(),
+          onConfirmIdentity: (id, birth, _) async {
+            sentId = id;
+            sentBirth = birth;
+            return true;
+          },
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 200));
 
-    final fields = find.byType(TextField);
-    await tester.enterText(fields.at(0), '3098765432');
+    await tester.enterText(find.byType(TextField), '3098765432');
     await tester.pump();
     await tester.tap(find.text('أرسلها للبائع'));
     await tester.pump();
-    expect(sent, isNull, reason: 'رقمٌ لا يبدأ بـ١ أو ٢ لا يُرسَل');
+    expect(sentId, isNull, reason: 'رقمٌ لا يبدأ بـ١ أو ٢ لا يُرسَل');
 
-    await tester.enterText(fields.at(0), '1098765432');
-    await tester.enterText(fields.at(1), '14/07/1412');
+    /* ورقمٌ صحيحٌ بلا تاريخٍ لا يُرسل كذلك */
+    await tester.enterText(find.byType(TextField), '1098765432');
     await tester.pump();
-    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('أرسلها للبائع'));
+    await tester.pump();
+    expect(sentId, isNull, reason: 'بلا تاريخٍ منتقًى لا يُرسَل');
+
+    await tester.tap(find.text('اختر تاريخ ميلادك'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('اختر 1 محرّم'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('أرسلها للبائع'));
+    await tester.pump();
+    expect(sentId, '1098765432');
+    /*
+     * **والصيغةُ `YYYY-MM-DD` كما يطلبها الخادم** — وكانت `dd/mm/yyyy`،
+     * فكلُّ تاريخٍ صحيحٍ يُكتب يُردّ بـ«تاريخ الميلاد بصيغة سنة-شهر-يوم».
+     */
+    expect(sentBirth, matches(r'^\d{4}-\d{2}-\d{2}$'));
+    expect(sentBirth, '1410-01-01');
+  });
+
+  /// **ومرحلةُ السداد تحمل زرَّها.**
+  ///
+  /// فبطاقةُ النداء كانت تقول «سدّد من محفظتك أو بحوالة بنكية» ولا زرَّ
+  /// تحتها — فيفتحها المشتري من «بانتظارك» ويخرج كما دخل.
+  testWidgets('مرحلةُ السداد: للمشتري زرٌّ وللبائع لا', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      _wrap(
+        OrderScreen(
+          order: _order(stage: OrderStage.pay),
+          onPay: () => taps++,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('سدّد 41,000 ر.س'), findsOneWidget);
+    await tester.tap(find.text('سدّد 41,000 ر.س'));
+    await tester.pump();
+    expect(taps, 1);
+
+    /* والبائعُ ينتظر السداد ولا يسدّد — فلا زرَّ له */
+    await tester.pumpWidget(
+      _wrap(
+        OrderScreen(
+          order: _order(stage: OrderStage.pay, buyer: false),
+          onPay: () => taps++,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.textContaining('سدّد 41,000'), findsNothing);
   });
 
   testWidgets('لا تفيض الصفقةُ على عرض 360', (tester) async {

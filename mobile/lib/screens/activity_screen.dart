@@ -25,6 +25,7 @@ class ActivityScreen extends StatefulWidget {
     required this.watching,
     required this.serverTime,
     this.onOpenOrder,
+    this.onOpenListing,
   });
 
   final List<PendingItem> pending;
@@ -35,6 +36,9 @@ class ActivityScreen extends StatefulWidget {
 
   /// **يُمرَّر معرّفُ الصفقة** لا مجرّدُ «افتح».
   final ValueChanged<String>? onOpenOrder;
+
+  /// **وصفُّ اللوحة يفتح صفحتَها** — في مزايداتي وعروضي وأتابعها.
+  final ValueChanged<Listing>? onOpenListing;
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -176,8 +180,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 90),
       itemCount: rows.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) =>
-          MarketRowCard(listing: rows[i], serverTime: widget.serverTime),
+      itemBuilder: (context, i) => MarketRowCard(
+        listing: rows[i],
+        serverTime: widget.serverTime,
+        /* والكرتُ يقبل `onTap` — ولم يكن يُمرَّر، فكانت الصفوفُ جُمادًا */
+        onTap: () => widget.onOpenListing?.call(rows[i]),
+      ),
     );
   }
 }

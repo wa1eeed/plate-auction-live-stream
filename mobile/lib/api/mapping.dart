@@ -133,10 +133,21 @@ abstract final class ApiMapping {
   /// **المحفظة** — من `api/account/wallet`.
   static WalletView wallet(Map<String, dynamic> json) {
     final deposits = (json['deposits'] as List?) ?? const [];
+    /*
+     * **وكشفُ الحساب سطورُه في `lines`** — كما يبنيه `buildStatement`.
+     *
+     * وكان يُقرأ `entries` ثمّ يُحتاط بقراءة `statement` قائمةً — وهو كائنٌ
+     * دائمًا، فانقلب الاحتياطُ إلى تحويلٍ ساقط: «_Map is not a subtype of
+     * List». ويُقرأ المفتاحُ الصحيحُ أوّلًا، ولا يُحوَّل ما ليس قائمةً:
+     * `whereType<List>()` تُسقط ما خالف بلا رمي.
+     */
     final statement = (json['statement'] as Map?)?.cast<String, dynamic>();
     final entries =
-        (statement?['entries'] as List?) ??
-        (json['statement'] as List?) ??
+        [
+          statement?['lines'],
+          statement?['entries'],
+          json['statement'],
+        ].whereType<List>().firstOrNull ??
         const [];
 
     return WalletView(
@@ -194,15 +205,23 @@ abstract final class ApiMapping {
     );
   }
 
+  /// **وأسماءُ الأنواع أسماءُ الخادم** — `LedgerEntryType` باثني عشر.
+  ///
+  /// و`purchase` و`payout` لم تكونا فيه قطّ (اسماهما `purchase_payment` و
+  /// `sale_proceeds`)، وما لم يُعرَف كان يسقط إلى «شحن رصيد».
   static LedgerKind _ledgerKind(String? raw) => switch (raw) {
     'topup' => LedgerKind.topup,
     'withdrawal' => LedgerKind.withdrawal,
     'deposit_hold' => LedgerKind.hold,
     'deposit_release' => LedgerKind.release,
     'deposit_forfeit' => LedgerKind.forfeit,
-    'purchase' => LedgerKind.purchase,
-    'payout' => LedgerKind.payout,
-    _ => LedgerKind.topup,
+    'deposit_applied' => LedgerKind.depositApplied,
+    'sale_proceeds' => LedgerKind.saleProceeds,
+    'purchase_payment' => LedgerKind.purchase,
+    'purchase_refund' => LedgerKind.refund,
+    'commission' => LedgerKind.commission,
+    'vat' => LedgerKind.vat,
+    _ => LedgerKind.adjustment,
   };
 
   /// **الإشعارات** — من `api/notifications`.
@@ -274,7 +293,8 @@ abstract final class ApiMapping {
     final handle = user['handle'] as String?;
 
     return ProfileView(
-      name: user['name'] as String? ?? '—',
+      /* والخادمُ يسمّيه `displayName` — و`name` احتياطٌ لردٍّ مختصَر */
+      name: user['displayName'] as String? ?? user['name'] as String? ?? '—',
       /* والمعرّفُ يصل بلا `@` — وهي علامةُ عرضٍ تُضاف هنا */
       handle: handle == null || handle.isEmpty ? '' : '@$handle',
       membershipNumber:
@@ -303,6 +323,7 @@ abstract final class ApiMapping {
       format: format(plate['plateFormat'] as String?),
       emblem: emblem(plate['emblem'] as String?),
       price: (json['amount'] as num?)?.toInt() ?? 0,
+      net: ((json['settlement'] as Map?)?['net'] as num?)?.toInt(),
       /*
        * **والطرفُ الآخرُ يصل باسمٍ واحد** — فيُركَّب الطرفان من دور القارئ:
        * من يقرأ مشترياتِه هو المشتري، والآخرُ هو البائع. والخادمُ لا يُرسل

@@ -1,5 +1,6 @@
 import '../models/activity.dart';
 import '../models/chat.dart';
+import '../models/checkout.dart';
 import '../models/invoice.dart';
 import '../models/listing.dart';
 import '../models/order.dart';
@@ -151,14 +152,24 @@ class MazadApi {
   ///
   /// فثلاثُ ندواتٍ متتابعةٍ تُبطئ الشاشةَ بمجموع أزمنتها، والمتوازيةُ
   /// بأبطئها وحده.
+  ///
+  /// **والملفُّ وحده شرطُ الشاشة** — فيه الاسمُ والمعرّفُ ورقمُ العضوية،
+  /// وشاشةُ حسابٍ باسم «—» أسوأُ من خطأٍ يُقال. وأمّا المحفظةُ واللوحاتُ
+  /// فتُقرأ ما وصل: `Future.wait` تسقط بأوّل إخفاق، فكان سطرٌ واحدٌ ساقطٌ
+  /// في الكشف يُلبس الشاشةَ كلَّها «تعذّر إتمام الطلب».
   Future<AccountBundle> account() async {
-    final results = await Future.wait([profile(), wallet(), listings()]);
+    final me = await profile();
+    final rest = await Future.wait([
+      wallet().then<Object?>((w) => w).catchError((_) => null),
+      listings().then<Object?>((m) => m).catchError((_) => null),
+    ]);
 
-    final market = results[2] as MarketSnapshot;
+    final market = rest[1] as MarketSnapshot?;
     return AccountBundle(
-      profile: results[0] as ProfileView,
-      wallet: results[1] as WalletView,
-      myPlates: market.listings.where((l) => l.mine).toList(),
+      profile: me,
+      wallet: rest[0] as WalletView? ?? const WalletView.empty(),
+      myPlates:
+          market?.listings.where((l) => l.mine).toList() ?? const <Listing>[],
     );
   }
 
@@ -257,9 +268,15 @@ class MazadApi {
     );
   }
 
-  /// صفقةٌ — `GET api/orders/{id}`.
-  Future<Map<String, dynamic>> order(String id) =>
-      _client.get('/api/orders/$id');
+  /// **صفقةٌ واحدة** — `GET api/orders/{id}`.
+  ///
+  /// تُقرأ بعد كلّ خطوةٍ تُغيّر المرحلة، ودورُك فيها يأتي من الخادم
+  /// (`side`) فلا يُخمَّن من اسمٍ أو ترتيب.
+  Future<OrderView> order(String id) async {
+    final json = await _client.get('/api/orders/$id');
+    final row = (json['order'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return ApiMapping.order(row, asBuyer: json['side'] != 'seller');
+  }
 
   /// تأكيدُ بيانات المشتري — `POST api/orders/{id}/identity`.
   Future<void> confirmIdentity(
@@ -318,6 +335,73 @@ class MazadApi {
         .cast<Map<String, dynamic>>()
         .map(ApiMapping.invoice)
         .toList();
+  }
+
+  /// **صفحةُ سداد صفقة** — `GET api/checkout/{id}`.
+  ///
+  /// مقصورةٌ على مشتري الصفقة في الخادم، فردُّها ‎٤٠٣‎ لغيره.
+  Future<CheckoutInfo> checkout(String orderId) async {
+    final json = await _client.get('/api/checkout/$orderId');
+    final order = (json['order'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final s =
+        (order['settlement'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final commission = (s['commission'] as Map?)?.cast<String, dynamic>();
+    final options = (json['payment'] as Map?)?.cast<String, dynamic>();
+    final bank = (options?['bank'] as Map?)?.cast<String, dynamic>();
+
+    return CheckoutInfo(
+      due:
+          (s['net'] as num?)?.toInt() ??
+          (order['amount'] as num?)?.toInt() ??
+          0,
+      price: (s['price'] as num?)?.toInt() ?? 0,
+      depositApplied: (s['depositApplied'] as num?)?.toInt() ?? 0,
+      commission: (commission?['total'] as num?)?.toInt() ?? 0,
+      availableHalalas: (json['availableBalance'] as num?)?.toInt() ?? 0,
+      plateLabel: json['plateLabel'] as String? ?? '',
+      sellerName: json['sellerName'] as String? ?? '',
+      methods: ((json['methods'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((raw) {
+            final m = raw.cast<String, dynamic>();
+            final method = payMethodOf(m['method'] as String?);
+            if (method == null) return null;
+            return PayOption(
+              method: method,
+              label: m['label'] as String? ?? '',
+              available: m['available'] == true,
+              hint: m['hint'] as String? ?? '',
+            );
+          })
+          .whereType<PayOption>()
+          .toList(),
+      bank: bank == null
+          ? null
+          : BankDetails(
+              name: bank['name'] as String? ?? '',
+              accountName: bank['accountName'] as String? ?? '',
+              iban: bank['iban'] as String? ?? '',
+              accountNumber: bank['accountNumber'] as String? ?? '',
+              instructions: bank['instructions'] as String? ?? '',
+            ),
+    );
+  }
+
+  /// **سدادُ صفقة** — `POST api/checkout/{id}`.
+  ///
+  /// والمحفظةُ وحدها تُسوّي فورًا (`settled`)؛ والبطاقةُ تعود برابطٍ يُفتح
+  /// خارج التطبيق، والحوالةُ بعمليةٍ معلّقةٍ تنتظر توثيقَ الإدارة.
+  Future<PayResult> payOrder(String orderId, PayMethod method) async {
+    final json = await _client.post(
+      '/api/checkout/$orderId',
+      body: {'method': payMethodWire(method)},
+    );
+
+    return PayResult(
+      reference: json['paymentReference'] as String? ?? '',
+      settled: json['settled'] == true,
+      redirectUrl: json['redirectUrl'] as String?,
+    );
   }
 
   /// **خياراتُ الدفع المفعَّلة** — `GET api/payments`.
