@@ -74,6 +74,10 @@ jobs:
         run: |
           if curl -fsSL --max-time 30 "$APP_URL/brand/app-icon" -o /tmp/brand-icon.png; then
             echo "::notice::أيقونةُ التطبيق من اللوحة ($(wc -c </tmp/brand-icon.png) بايت)"
+            # والمولّدُ يرسم بمتصفّحٍ بلا رأس، ونواتُه ليست في `pnpm install`.
+            # ويُنصَّب داخل الشرط لا قبله: من لم يرفع أيقونةً لا يُنتظَر له
+            # تنزيلُ متصفّحٍ لن يُستعمل.
+            pnpm exec playwright install --with-deps chromium
             BRAND_ICON_FILE=/tmp/brand-icon.png node scripts/gen-app-icons.mjs
           else
             echo "::notice::لا أيقونةَ مرفوعةٌ في اللوحة — يُرسم الرمز"
